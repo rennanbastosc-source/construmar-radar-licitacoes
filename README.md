@@ -1,6 +1,8 @@
-# Radar de Licitações — MVP PNCP (CONSTRUMAR)
+## 🌐 Links de Produção (Render)
 
-Sistema de monitoramento contínuo e prospecção de oportunidades de licitações públicas com foco em obras, construção civil e engenharia no Estado do Ceará (CE) com valor estimado $\ge$ R$ 900.000,00, consumindo diretamente a API pública do Portal Nacional de Contratações Públicas (PNCP).
+- **Frontend (Painel Web):** [https://construmar-radar-frontend.onrender.com](https://construmar-radar-frontend.onrender.com)
+- **Backend (API Go):** [https://construmar-radar-backend.onrender.com](https://construmar-radar-backend.onrender.com)
+- **Repositório GitHub:** [https://github.com/rennanbastosc-source/construmar-radar-licitacoes](https://github.com/rennanbastosc-source/construmar-radar-licitacoes)
 
 ---
 
