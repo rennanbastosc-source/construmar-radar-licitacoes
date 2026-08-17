@@ -1,0 +1,38 @@
+services:
+  # Backend: API em Go (Golang)
+  - type: web
+    name: construmar-radar-backend
+    runtime: go
+    rootDir: backend
+    buildCommand: go build -o radar-backend main.go
+    startCommand: ./radar-backend
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DB_PATH
+        value: ./radar.db
+      - key: PNCP_BASE_URL
+        value: https://pncp.gov.br/api/consulta
+      - key: DEFAULT_UF
+        value: CE
+      - key: MIN_ESTIMATED_VALUE
+        value: "900000.00"
+      - key: SYNC_INTERVAL_HOURS
+        value: "6"
+
+  # Frontend: Interface Next.js
+  - type: web
+    name: construmar-radar-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: construmar-radar-backend
+          property: host

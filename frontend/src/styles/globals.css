@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Theme Palette: Construmar Navy & Slate */
+  --bg-app: #090e17;
+  --bg-surface: #101a2b;
+  --bg-surface-elevated: #16243b;
+  --bg-surface-hover: #1d2f4d;
+  
+  --border-subtle: #1e314f;
+  --border-strong: #2a4369;
+  --border-focus: #3b82f6;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-inverse: #090e17;
+
+  /* Brand Accents */
+  --brand-primary: #f59e0b;
+  --brand-primary-hover: #d97706;
+  --brand-primary-subtle: rgba(245, 158, 11, 0.12);
+
+  --accent-navy: #1e3a8a;
+  --accent-blue: #3b82f6;
+  --accent-blue-subtle: rgba(59, 130, 246, 0.12);
+
+  /* Status Tokens */
+  --status-inscope-text: #34d399;
+  --status-inscope-bg: rgba(16, 185, 129, 0.14);
+  --status-inscope-border: rgba(16, 185, 129, 0.35);
+
+  --status-review-text: #fbbf24;
+  --status-review-bg: rgba(245, 158, 11, 0.14);
+  --status-review-border: rgba(245, 158, 11, 0.35);
+
+  --status-urgent-text: #f87171;
+  --status-urgent-bg: rgba(239, 68, 68, 0.14);
+  --status-urgent-border: rgba(239, 68, 68, 0.35);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.5);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  /* Prevent iOS zoom */
+  font-size: 16px;
+}
+
+@media (min-width: 768px) {
+  button, input, select, textarea {
+    font-size: 14px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Base Layout Helpers */
+.container {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Utility Animations */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual de Identidade Visual - CONSTRUMAR Locações e Serviços</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-navy: #0A2540;
+      --secondary-blue: #144272;
+      --accent-orange: #F26419;
+      --accent-orange-light: #FF7A00;
+      --accent-cyan: #0EA5E9;
+      --bg-dark: #071524;
+      --bg-card: #0D2137;
+      --text-light: #F8FAFC;
+      --text-muted: #94A3B8;
+      --border-color: #1E3A5F;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      line-height: 1.6;
+    }
+
+    /* HEADER HERO */
+    .hero-section {
+      background: linear-gradient(135deg, #0A2540 0%, #071524 100%);
+      border-bottom: 3px solid var(--accent-orange);
+      padding: 60px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(242, 100, 25, 0.15);
+      border: 1px solid var(--accent-orange);
+      color: #FF7A00;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+    }
+
+    .hero-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 42px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .hero-subtitle {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin: 0 auto 30px auto;
+    }
+
+    .btn-action-group {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--accent-orange);
+      color: #ffffff;
+      font-weight: 700;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(242, 100, 25, 0.4);
+    }
+    .btn-cta:hover {
+      background: #e0540a;
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--border-color);
+      color: #fff;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: #254b7d;
+    }
+
+    /* CONTAINER */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 50px 24px;
+    }
+
+    .section-block {
+      margin-bottom: 70px;
+    }
+
+    .section-header {
+      margin-bottom: 30px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .section-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .section-title span {
+      color: var(--accent-orange);
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* CARDS GRID */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 24px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    /* PALETA DE CORES */
+    .color-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+    .color-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .color-preview {
+      height: 120px;
+      display: flex;
+      align-items: flex-end;
+      padding: 12px;
+      position: relative;
+    }
+
+    .color-info {
+      padding: 16px;
+    }
+
+    .color-name {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .color-hex {
+      font-family: monospace;
+      font-size: 14px;
+      color: var(--accent-cyan);
+      background: rgba(14, 165, 233, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .color-use {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* LOGO DISPLAY BOXES */
+    .logo-showcase {
+      border-radius: 10px;
+      padding: 36px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 180px;
+      border: 1px solid var(--border-color);
+    }
+
+    .logo-showcase.light {
+      background: #ffffff;
+    }
+
+    .logo-showcase.dark {
+      background: #0A2540;
+    }
+
+    .logo-showcase.orange {
+      background: #F26419;
+    }
+
+    /* TIPOGRAFIA */
+    .font-sample-montserrat {
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .font-sample-inter {
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* METADADOS CNPJ */
+    .cnpj-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .cnpj-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .cnpj-val {
+      font-weight: 600;
+      color: #fff;
+      font-size: 14px;
+      margin-top: 2px;
+    }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 40px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO HEADER -->
+  <header class="hero-section">
+    <div class="hero-badge">Manual de Marca & Identidade Visual v1.0</div>
+    <h1 class="hero-title">CONSTRUMAR <span style="color: var(--accent-orange);">LOCAÇÕES E SERVIÇOS</span></h1>
+    <p class="hero-subtitle">
+      Solidez construtiva, engenharia técnica e fluidez operacional. Diretrizes visuais completas baseadas no cadastro oficial da empresa ativa desde 2000.
+    </p>
+
+    <div class="btn-action-group">
+      <a href="papel_timbrado_construmar.html" target="_blank" class="btn-cta">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Abrir Modelo de Papel Timbrado A4
+      </a>
+
+      <a href="logo_construmar.svg" target="_blank" download="logo_construmar.svg" class="btn-secondary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Baixar Logotipo Vetorial (SVG)
+      </a>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- SEÇÃO 1: DIAGNÓSTICO & CADASTRO OFICIAL -->
+    <section class="section-block">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">01. <span>Diagnóstico Institucional</span></h2>
+          <div class="section-desc">Dados oficiais extraídos do Comprovante de Inscrição e Situação Cadastral (CNPJ)</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="color: var(--accent-cyan); font-size: 18px; margin-bottom: 16px; font-weight: 700;">Dados da Empresa</h3>
+          <div class="cnpj-pill">
+            <div class="cnpj-label">Razão Social</div>
+            <div class="cnpj-val">CONSTRUMAR LOCAÇÕES E SERVIÇOS LTDA</div>
+          </div>
+          <div class="cnpj-pill">
+            <div class="cnpj-label">CNPJ</div>
+            <div class="cnpj-val">03.795.674/0001-18 (Matriz - Situação: ATIVA)</div>
+          </div>
+          <div class="cnpj-pill">
+            <div class="cnpj-label">Data de Abertura / Fundação</div>
+            <div class="cnpj-val">18/04/2000 (Mais de 25 anos de solidez no Ceará)</div>
+          </div>
+          <div class="cnpj-pill">
+            <div class="cnpj-label">Endereço Registrado</div>
+            <div class="cnpj-val">Rua Senador Pompeu, 834, Sala 415 - Centro, Fortaleza/CE • CEP 60.025-000</div>
+          </div>
+          <div class="cnpj-pill">
+            <div class="cnpj-label">Contatos Oficiais</div>
+            <div class="cnpj-val">WhatsApp/Tel: (85) 98586-0730 • construmarlocacoes@gmail.com</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="color: var(--accent-orange); font-size: 18px; margin-bottom: 16px; font-weight: 700;">Pilares de Atuação</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+            <li style="display: flex; gap: 10px; align-items: flex-start;">
+              <span style="color: var(--accent-orange); font-weight: bold;">✔</span>
+              <div><strong>Construção Civil & Obras de Alvenaria:</strong> Edificação, fundações, estruturas metálicas, terraplenagem e pavimentação.</div>
+            </li>
+            <li style="display: flex; gap: 10px; align-items: flex-start;">
+              <span style="color: var(--accent-orange); font-weight: bold;">✔</span>
+              <div><strong>Locação de Máquinas e Andaimes:</strong> Montagem e desmontagem de estruturas tubulares, betoneiras e equipamentos sem operador.</div>
+            </li>
+            <li style="display: flex; gap: 10px; align-items: flex-start;">
+              <span style="color: var(--accent-orange); font-weight: bold;">✔</span>
+              <div><strong>Instalações & Acabamentos:</strong> Elétrica, hidráulica, ar condicionado central, impermeabilização e pintura predial.</div>
+            </li>
+            <li style="display: flex; gap: 10px; align-items: flex-start;">
+              <span style="color: var(--accent-orange); font-weight: bold;">✔</span>
+              <div><strong>Transportes & Logística de Cargas:</strong> Transporte rodoviário municipal e intermunicipal para suporte a obras.</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 2: CONCEITO & SEMIÓTICA DA MARCA -->
+    <section class="section-block">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">02. <span>Conceito & Semiótica</span></h2>
+          <div class="section-desc">A fusão de forças que compõe o nome e o arquétipo visual da CONSTRUMAR</div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card" style="border-top: 4px solid #0A2540;">
+          <h4 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #fff;">1. CONSTRU (Engenharia & Solidez)</h4>
+          <p style="font-size: 13.5px; color: var(--text-muted);">
+            Representado pelas torres verticais geométricas em perspectiva isométrica. Transmite sustentação, planejamento, rigor técnico e capacidade de erguer grandes projetos.
+          </p>
+        </div>
+
+        <div class="card" style="border-top: 4px solid var(--accent-cyan);">
+          <h4 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #fff;">2. MAR (Origem & Fluidez)</h4>
+          <p style="font-size: 13.5px; color: var(--text-muted);">
+            Representado pelas ondas estilizadas que formam a base do símbolo. Homenageia a sede no litoral cearense (Fortaleza) e simboliza a dinâmica contínua de locações e logística.
+          </p>
+        </div>
+
+        <div class="card" style="border-top: 4px solid var(--accent-orange);">
+          <h4 style="font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #fff;">3. LARANJA (Energia & Segurança)</h4>
+          <p style="font-size: 13.5px; color: var(--text-muted);">
+            A cor dos capacetes de segurança, máquinas pesadas e da produtividade no canteiro de obras. Cria contraste marcante sobre o azul marinho corporativo.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 3: PALETA DE CORES INSTITUCIONAL -->
+    <section class="section-block">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">03. <span>Paleta Cromática</span></h2>
+          <div class="section-desc">Cores oficiais para uso em materiais impressos, frotas, uniformes e canais digitais</div>
+        </div>
+      </div>
+
+      <div class="grid-4">
+        <!-- Azul Marinho -->
+        <div class="color-card">
+          <div class="color-preview" style="background: #0A2540;"></div>
+          <div class="color-info">
+            <div class="color-name">Azul Oceano Profundo</div>
+            <div class="color-hex" onclick="navigator.clipboard.writeText('#0A2540')">HEX: #0A2540</div>
+            <div class="color-use">Cor primária institucional. Logotipo, cabeçalhos, títulos nobres e fundos solenes.</div>
+          </div>
+        </div>
+
+        <!-- Laranja Construção -->
+        <div class="color-card">
+          <div class="color-preview" style="background: #F26419;"></div>
+          <div class="color-info">
+            <div class="color-name">Laranja Construtivo</div>
+            <div class="color-hex" onclick="navigator.clipboard.writeText('#F26419')">HEX: #F26419</div>
+            <div class="color-use">Cor de ação e destaque. EPIs, veículos, sinalização de obras e botões de chamada.</div>
+          </div>
+        </div>
+
+        <!-- Azul Turquesa / Técnico -->
+        <div class="color-card">
+          <div class="color-preview" style="background: #0EA5E9;"></div>
+          <div class="color-info">
+            <div class="color-name">Azul Técnico / Mar</div>
+            <div class="color-hex" onclick="navigator.clipboard.writeText('#0EA5E9')">HEX: #0EA5E9</div>
+            <div class="color-use">Cor de apoio. Linhas de corte, badges, gráficos de medição e detalhes náuticos.</div>
+          </div>
+        </div>
+
+        <!-- Cinza Titânio -->
+        <div class="color-card">
+          <div class="color-preview" style="background: #475569;"></div>
+          <div class="color-info">
+            <div class="color-name">Cinza Concreto</div>
+            <div class="color-hex" onclick="navigator.clipboard.writeText('#475569')">HEX: #475569</div>
+            <div class="color-use">Textos secundários, subtítulos 'Locações e Serviços', divisórias e tabelas.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 4: APLICAÇÕES DO LOGOTIPO -->
+    <section class="section-block">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">04. <span>Assinaturas do Logotipo</span></h2>
+          <div class="section-desc">Variações de aplicação sobre diferentes planos de fundo</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4 style="font-size: 14px; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase;">Versão Principal (Fundo Claro / Papel A4)</h4>
+          <div class="logo-showcase light">
+            <svg style="max-width: 380px; width: 100%; height: auto;" viewBox="0 0 520 120">
+              <defs>
+                <linearGradient id="cBlueMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#0A2540"/>
+                  <stop offset="100%" stop-color="#144272"/>
+                </linearGradient>
+                <linearGradient id="cOrangeMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FF7A00"/>
+                  <stop offset="100%" stop-color="#F26419"/>
+                </linearGradient>
+                <linearGradient id="cTealMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#00B4D8"/>
+                  <stop offset="100%" stop-color="#0077B6"/>
+                </linearGradient>
+              </defs>
+              <g transform="translate(10, 10)">
+                <path d="M 45 10 L 62 2 L 62 68 L 45 74 Z" fill="url(#cBlueMain)" />
+                <path d="M 45 10 L 28 2 L 28 68 L 45 74 Z" fill="#1B4965" />
+                <line x1="36" y1="18" x2="36" y2="58" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="3 3" opacity="0.6"/>
+                <line x1="54" y1="18" x2="54" y2="58" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="3 3" opacity="0.6"/>
+                <path d="M 24 28 L 12 22 L 12 70 L 24 73 Z" fill="#0A2540" />
+                <path d="M 24 28 L 26 29 L 26 73 L 24 73 Z" fill="#144272" opacity="0.8"/>
+                <path d="M 66 26 L 78 20 L 78 68 L 66 73 Z" fill="url(#cOrangeMain)" />
+                <line x1="72" y1="29" x2="72" y2="60" stroke="#ffffff" stroke-width="1.8" stroke-dasharray="3 3" opacity="0.8"/>
+                <path d="M 4 78 C 22 66, 44 86, 68 74 C 82 66, 92 72, 96 76 C 88 84, 68 92, 48 84 C 28 77, 14 86, 4 78 Z" fill="url(#cBlueMain)" />
+                <path d="M 12 88 C 30 76, 52 94, 76 82 C 86 77, 92 80, 94 82 C 86 91, 68 99, 46 92 C 28 86, 18 94, 12 88 Z" fill="url(#cTealMain)" />
+                <path d="M 64 71 C 76 63, 88 68, 94 74 C 91 78, 80 74, 70 79 Z" fill="url(#cOrangeMain)" />
+              </g>
+              <text x="125" y="62" font-family="'Montserrat', sans-serif" font-size="44" font-weight="900" letter-spacing="2.5" fill="#0A2540">
+                CONSTRU<tspan fill="#F26419">MAR</tspan>
+              </text>
+              <text x="128" y="86" font-family="'Inter', sans-serif" font-size="12.5" font-weight="700" letter-spacing="3.8" fill="#475569">
+                LOCAÇÕES E SERVIÇOS <tspan fill="#F26419" font-weight="800">LTDA</tspan>
+              </text>
+              <line x1="128" y1="96" x2="495" y2="96" stroke="url(#cOrangeMain)" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="card">
+          <h4 style="font-size: 14px; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase;">Versão Negativa (Fundo Escuro / Frotas)</h4>
+          <div class="logo-showcase dark">
+            <svg style="max-width: 380px; width: 100%; height: auto;" viewBox="0 0 520 120">
+              <defs>
+                <linearGradient id="cOrangeMainD" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#FF7A00"/>
+                  <stop offset="100%" stop-color="#F26419"/>
+                </linearGradient>
+                <linearGradient id="cTealMainD" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#00B4D8"/>
+                  <stop offset="100%" stop-color="#0077B6"/>
+                </linearGradient>
+              </defs>
+              <g transform="translate(10, 10)">
+                <path d="M 45 10 L 62 2 L 62 68 L 45 74 Z" fill="#ffffff" />
+                <path d="M 45 10 L 28 2 L 28 68 L 45 74 Z" fill="#CBD5E1" />
+                <path d="M 24 28 L 12 22 L 12 70 L 24 73 Z" fill="#94A3B8" />
+                <path d="M 66 26 L 78 20 L 78 68 L 66 73 Z" fill="url(#cOrangeMainD)" />
+                <path d="M 4 78 C 22 66, 44 86, 68 74 C 82 66, 92 72, 96 76 C 88 84, 68 92, 48 84 C 28 77, 14 86, 4 78 Z" fill="#ffffff" />
+                <path d="M 12 88 C 30 76, 52 94, 76 82 C 86 77, 92 80, 94 82 C 86 91, 68 99, 46 92 C 28 86, 18 94, 12 88 Z" fill="url(#cTealMainD)" />
+                <path d="M 64 71 C 76 63, 88 68, 94 74 C 91 78, 80 74, 70 79 Z" fill="url(#cOrangeMainD)" />
+              </g>
+              <text x="125" y="62" font-family="'Montserrat', sans-serif" font-size="44" font-weight="900" letter-spacing="2.5" fill="#ffffff">
+                CONSTRU<tspan fill="#F26419">MAR</tspan>
+              </text>
+              <text x="128" y="86" font-family="'Inter', sans-serif" font-size="12.5" font-weight="700" letter-spacing="3.8" fill="#CBD5E1">
+                LOCAÇÕES E SERVIÇOS <tspan fill="#F26419" font-weight="800">LTDA</tspan>
+              </text>
+              <line x1="128" y1="96" x2="495" y2="96" stroke="url(#cOrangeMainD)" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 5: TIPOGRAFIA INSTITUCIONAL -->
+    <section class="section-block">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">05. <span>Sistema Tipográfico</span></h2>
+          <div class="section-desc">Fontes modernas, gratuitas pelo Google Fonts, com máxima legibilidade</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <span class="hero-badge" style="margin-bottom: 10px;">Fonte para Títulos & Logotipo</span>
+          <h3 class="font-sample-montserrat" style="font-size: 28px; font-weight: 900; margin-bottom: 8px;">Montserrat Bold / Black</h3>
+          <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px;">
+            Geométrica, forte e imponente. Transmite segurança, escala de engenharia e autoridade corporativa.
+          </p>
+          <div style="background: rgba(0,0,0,0.2); padding: 14px; border-radius: 6px; font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 1px;">
+            ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>
+            0123456789 (85) 98586-0730
+          </div>
+        </div>
+
+        <div class="card">
+          <span class="hero-badge" style="margin-bottom: 10px; border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(14, 165, 233, 0.1);">Fonte para Textos & Contratos</span>
+          <h3 class="font-sample-inter" style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">Inter Regular / SemiBold</h3>
+          <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px;">
+            Criada para telas e leitura de alta precisão. Perfeita para propostas, orçamentos, contratos e medições de obra.
+          </p>
+          <div style="background: rgba(0,0,0,0.2); padding: 14px; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 15px;">
+            Proposta comercial de locação de andaimes e serviços de engenharia civil com suporte técnico continuado.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 6: GUIA RÁPIDO DE APLICAÇÃO NO PAPEL TIMBRADO -->
+    <section class="section-block">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">06. <span>Instruções do Papel Timbrado A4</span></h2>
+          <div class="section-desc">Como gerar documentos oficiais e salvar em PDF pelo seu navegador</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--accent-orange);">
+        <ol style="margin-left: 20px; display: flex; flex-direction: column; gap: 12px; font-size: 14.5px;">
+          <li>Abra o arquivo <a href="papel_timbrado_construmar.html" target="_blank" style="color: var(--accent-orange); font-weight: 600;">papel_timbrado_construmar.html</a> no Google Chrome, Firefox ou Edge.</li>
+          <li>No topo da página, escolha o modelo desejado (Proposta Comercial, Ofício Institucional, Medição de Obras ou Timbrado Livre).</li>
+          <li>Clique sobre qualquer texto na folha para editar diretamente os nomes de clientes, valores, quantidades e datas.</li>
+          <li>Clique no botão <strong>"Imprimir / Salvar PDF"</strong> ou pressione <code>Ctrl + P</code>.</li>
+          <li>Na janela de impressão, selecione o destino <strong>"Salvar como PDF"</strong>, marque a opção <strong>"Gráficos de segundo plano"</strong> e salve o arquivo pronto com altíssima qualidade vetorial!</li>
+        </ol>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <div style="font-weight: 700; color: #fff; margin-bottom: 6px;">CONSTRUMAR LOCAÇÕES E SERVIÇOS LTDA</div>
+    <div>CNPJ 03.795.674/0001-18 • Rua Senador Pompeu, 834, Sala 415 - Centro, Fortaleza - CE</div>
+    <div style="margin-top: 12px; font-size: 11px;">Identidade visual desenvolvida com padrões corporativos de engenharia e construção civil.</div>
+  </footer>
+
+</body>
+</html>
