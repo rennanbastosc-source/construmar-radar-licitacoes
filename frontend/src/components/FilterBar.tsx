@@ -26,6 +26,16 @@ const fieldStyle: React.CSSProperties = {
   outline: 'none',
 };
 
+const selectStyle: React.CSSProperties = {
+  ...fieldStyle,
+  padding: '8px 10px',
+  paddingLeft: '12px',
+  backgroundColor: 'var(--bg-surface-elevated)',
+  fontSize: '12px',
+  fontWeight: 500,
+  cursor: 'pointer',
+};
+
 export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
   const classificationOptions = [
     { label: 'Radar Ativo (Escopo + Revisão)', val: 'IN_SCOPE_AND_REVIEW' },
@@ -89,6 +99,12 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
   const maxExtenso = maxVal !== undefined ? valorPorExtenso(maxVal) : '';
   const rangeInvalid =
     minVal !== undefined && maxVal !== undefined && minVal > maxVal;
+
+  const handleDeadlineChange = (value: string) => {
+    onChange({ deadlinePreset: value === 'any' ? undefined : value, page: 1 });
+  };
+
+  const deadlinePreset = filters.deadlinePreset ?? 'any';
 
   return (
     <div
@@ -285,30 +301,126 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
           borderTop: '1px solid var(--border-subtle)',
         }}
       >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          {classificationOptions.map((opt) => {
-            const isActive = currentClassification === opt.val;
-            return (
-              <button
-                key={opt.val}
-                type="button"
-                onClick={() => onChange({ classification: opt.val, page: 1 })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 auto', minWidth: 0 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {classificationOptions.map((opt) => {
+              const isActive = currentClassification === opt.val;
+              return (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => onChange({ classification: opt.val, page: 1 })}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: `1px solid ${isActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
+                    backgroundColor: isActive ? 'var(--brand-primary-subtle)' : 'var(--bg-surface-elevated)',
+                    color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+            {filters.term ? (
+              <span
                 style={{
-                  padding: '6px 12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 8px 6px 12px',
                   borderRadius: 'var(--radius-sm)',
                   fontSize: '12px',
                   fontWeight: 600,
-                  cursor: 'pointer',
-                  border: `1px solid ${isActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
-                  backgroundColor: isActive ? 'var(--brand-primary-subtle)' : 'var(--bg-surface-elevated)',
-                  color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
-                  transition: 'all 0.15s ease',
+                  border: '1px solid var(--brand-primary)',
+                  backgroundColor: 'var(--brand-primary-subtle)',
+                  color: 'var(--brand-primary)',
                 }}
               >
-                {opt.label}
-              </button>
-            );
-          })}
+                <span>Termo: {filters.term}</span>
+                <button
+                  type="button"
+                  onClick={() => onChange({ term: '', page: 1 })}
+                  aria-label="Remover termo"
+                  style={{
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    fontSize: '15px',
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ) : null}
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <div style={{ flex: '0 1 140px', minWidth: '120px' }}>
+              <select
+                aria-label="Status"
+                value={filters.status || 'OPEN'}
+                onChange={(e) => onChange({ status: e.target.value, page: 1 })}
+                style={selectStyle}
+              >
+                <option value="OPEN">Abertas</option>
+                <option value="CLOSED">Encerradas</option>
+                <option value="ALL">Todas</option>
+              </select>
+            </div>
+
+            <div style={{ flex: '0 1 170px', minWidth: '150px' }}>
+              <select
+                aria-label="Prazo"
+                value={deadlinePreset}
+                onChange={(e) => handleDeadlineChange(e.target.value)}
+                style={selectStyle}
+              >
+                <option value="any">Prazo: qualquer</option>
+                <option value="7">Encerra em 7 dias</option>
+                <option value="15">Encerra em 15 dias</option>
+                <option value="30">Encerra em 30 dias</option>
+              </select>
+            </div>
+
+            <div style={{ flex: '0 1 170px', minWidth: '150px' }}>
+              <select
+                aria-label="Modalidade"
+                value={filters.modality || ''}
+                onChange={(e) => onChange({ modality: e.target.value, page: 1 })}
+                style={selectStyle}
+              >
+                <option value="">Modalidade: todas</option>
+                <option value="Pregão">Pregão</option>
+                <option value="Concorrência">Concorrência</option>
+                <option value="Dispensa">Dispensa</option>
+                <option value="Tomada de Preços">Tomada de Preços</option>
+                <option value="Credenciamento">Credenciamento</option>
+                <option value="Leilão">Leilão</option>
+                <option value="Inexigibilidade">Inexigibilidade</option>
+              </select>
+            </div>
+
+            <div style={{ flex: '0 1 170px', minWidth: '150px' }}>
+              <select
+                aria-label="Confiança"
+                value={filters.minScore !== undefined ? String(filters.minScore) : ''}
+                onChange={(e) => onChange({ minScore: e.target.value ? Number(e.target.value) : undefined, page: 1 })}
+                style={selectStyle}
+              >
+                <option value="">Confiança: qualquer</option>
+                <option value="4">Alta (score ≥ 4)</option>
+                <option value="6">Máxima (score ≥ 6)</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '280px' }}>

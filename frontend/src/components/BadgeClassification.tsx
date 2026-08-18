@@ -7,6 +7,7 @@ interface Props {
   score?: number;
   terms?: string[];
   showTerms?: boolean;
+  onTermClick?: (term: string) => void;
 }
 
 export const BadgeClassification: React.FC<Props> = ({
@@ -14,6 +15,7 @@ export const BadgeClassification: React.FC<Props> = ({
   score,
   terms = [],
   showTerms = false,
+  onTermClick,
 }) => {
   const isScope = classification === 'IN_SCOPE';
   const isReview = classification === 'REVIEW';
@@ -68,25 +70,57 @@ export const BadgeClassification: React.FC<Props> = ({
 
       {showTerms && terms.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
-          {terms.map((term, i) => (
-            <span
-              key={i}
-              style={{
-                fontSize: '11px',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                backgroundColor: term.startsWith('!')
-                  ? 'rgba(239, 68, 68, 0.15)'
-                  : 'rgba(59, 130, 246, 0.15)',
-                color: term.startsWith('!') ? '#f87171' : '#93c5fd',
-                border: `1px solid ${
-                  term.startsWith('!') ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'
-                }`,
-              }}
-            >
-              {term}
-            </span>
-          ))}
+          {terms.map((term, i) => {
+            const termBackground = term.startsWith('!')
+              ? 'rgba(239, 68, 68, 0.15)'
+              : 'rgba(59, 130, 246, 0.15)';
+
+            return (
+              <span
+                key={i}
+                role={onTermClick ? 'button' : undefined}
+                tabIndex={onTermClick ? 0 : undefined}
+                onClick={onTermClick ? () => onTermClick(term) : undefined}
+                onKeyDown={
+                  onTermClick
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onTermClick(term);
+                        }
+                      }
+                    : undefined
+                }
+                onMouseEnter={
+                  onTermClick
+                    ? (e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)';
+                      }
+                    : undefined
+                }
+                onMouseLeave={
+                  onTermClick
+                    ? (e) => {
+                        e.currentTarget.style.backgroundColor = termBackground;
+                      }
+                    : undefined
+                }
+                style={{
+                  fontSize: '11px',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  backgroundColor: termBackground,
+                  color: term.startsWith('!') ? '#f87171' : '#93c5fd',
+                  border: `1px solid ${
+                    term.startsWith('!') ? 'rgba(239, 68, 68, 0.3)' : 'rgba(59, 130, 246, 0.3)'
+                  }`,
+                  ...(onTermClick ? { cursor: 'pointer' } : {}),
+                }}
+              >
+                {term}
+              </span>
+            );
+          })}
         </div>
       )}
     </div>

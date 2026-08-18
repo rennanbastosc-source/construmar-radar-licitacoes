@@ -10,10 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/construmar/radar-licitacoes-backend/internal/ai"
 	"github.com/construmar/radar-licitacoes-backend/internal/api"
 	"github.com/construmar/radar-licitacoes-backend/internal/config"
 	"github.com/construmar/radar-licitacoes-backend/internal/pncp"
 	"github.com/construmar/radar-licitacoes-backend/internal/repository"
+	"github.com/construmar/radar-licitacoes-backend/internal/seobra"
 	"github.com/construmar/radar-licitacoes-backend/internal/service"
 )
 
@@ -32,18 +34,23 @@ func main() {
 	}
 	defer db.Close()
 
-	// 2. Initialize Repositories and PNCP Client
+	// 2. Initialize Repositories and Clients
 	oppRepo := repository.NewOpportunityRepository(db)
+	orcRepo := repository.NewOrcamentoRepository(db)
 	pncpClient := pncp.NewClient(cfg.PNCPBaseURL, 25*time.Second)
+	aiExtractor := ai.NewAIExtractor(cfg.AIAPIURL, cfg.AIAPIKey, cfg.AIModel)
+	seobraClient := seobra.NewClient(orcRepo)
 
 	// 3. Initialize Services
 	syncService := service.NewSyncService(oppRepo, pncpClient)
 	oppService := service.NewOpportunityService(oppRepo)
+	orcService := service.NewOrcamentoService(orcRepo, aiExtractor, seobraClient)
 
 	// 4. Initialize Handlers and Router
 	oppHandler := api.NewOpportunityHandler(oppService)
 	syncHandler := api.NewSyncHandler(syncService, oppService)
-	router := api.NewRouter(oppHandler, syncHandler)
+	orcHandler := api.NewOrcamentoHandler(orcService, seobraClient)
+	router := api.NewRouter(oppHandler, syncHandler, orcHandler)
 
 	// 5. Periodic Background Sync (optional ticker)
 	if cfg.SyncIntervalHours > 0 {
@@ -58,13 +65,13 @@ func main() {
 		}()
 	}
 
-	// 6. HTTP Server
+	// 6. HTTP Server (Configured for large AI document extraction & multimodal uploads)
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      router,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  180 * time.Second,
+		WriteTimeout: 300 * time.Second,
+		IdleTimeout:  300 * time.Second,
 	}
 
 	go func() {

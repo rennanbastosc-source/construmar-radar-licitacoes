@@ -148,6 +148,11 @@ export default function RadarDashboardPage() {
       classification: 'IN_SCOPE_AND_REVIEW',
       search: '',
       municipality: '',
+      modality: '',
+      deadlineTo: undefined,
+      deadlinePreset: undefined,
+      term: '',
+      minScore: undefined,
       page: 1,
       pageSize: 25,
     };
@@ -282,6 +287,7 @@ export default function RadarDashboardPage() {
             totalPages={totalPages}
             total={totalRecords}
             onPageChange={handlePageChange}
+            onTermClick={(term) => handleFilterChange({ term, page: 1 })}
           />
         )}
       </div>

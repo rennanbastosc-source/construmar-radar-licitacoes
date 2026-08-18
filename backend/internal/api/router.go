@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func NewRouter(oppHandler *OpportunityHandler, syncHandler *SyncHandler) http.Handler {
+func NewRouter(oppHandler *OpportunityHandler, syncHandler *SyncHandler, orcHandler *OrcamentoHandler) http.Handler {
 	r := chi.NewRouter()
 
 	// Standard middlewares
@@ -32,7 +32,7 @@ func NewRouter(oppHandler *OpportunityHandler, syncHandler *SyncHandler) http.Ha
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{
 			"status": "UP",
-			"app":    "Radar de Licitações PNCP",
+			"app":    "Radar de Licitações PNCP & Orçamentos SEOBRA",
 		})
 	})
 
@@ -46,6 +46,22 @@ func NewRouter(oppHandler *OpportunityHandler, syncHandler *SyncHandler) http.Ha
 		r.Get("/sync/status", syncHandler.GetSyncStatus)
 		r.Get("/sync/history", syncHandler.ListSyncHistory)
 	})
+
+	// Orçamentos Inteligentes & SEOBRA API
+	if orcHandler != nil {
+		r.Route("/api/orcamentos", func(r chi.Router) {
+			r.Post("/upload", orcHandler.UploadDocument)
+			r.Get("/", orcHandler.ListOrcamentos)
+			r.Get("/{id}", orcHandler.GetOrcamento)
+			r.Get("/{id}/exportar-seobra-xlsx", orcHandler.ExportSeobraXLSX)
+			r.Put("/{id}/itens", orcHandler.UpdateItens)
+			r.Post("/{id}/despachar-seobra", orcHandler.DespacharSeobra)
+		})
+
+		r.Route("/api/seobra", func(r chi.Router) {
+			r.Get("/status", orcHandler.SeobraStatus)
+		})
+	}
 
 	return r
 }

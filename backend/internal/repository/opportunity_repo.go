@@ -264,7 +264,7 @@ func (r *OpportunityRepository) ListOpportunities(ctx context.Context, filter do
 		args = append(args, filter.UF)
 	}
 
-	if filter.Status != "" {
+	if filter.Status != "" && filter.Status != "ALL" {
 		whereClauses = append(whereClauses, "status_normalized = ?")
 		args = append(args, filter.Status)
 	}
@@ -286,6 +286,16 @@ func (r *OpportunityRepository) ListOpportunities(ctx context.Context, filter do
 			whereClauses = append(whereClauses, "classification = ?")
 			args = append(args, filter.Classification)
 		}
+	}
+
+	if filter.Term != "" {
+		whereClauses = append(whereClauses, "LOWER(classification_terms) LIKE ?")
+		args = append(args, `%"`+strings.ToLower(filter.Term)+`"%`)
+	}
+
+	if filter.MinScore != nil {
+		whereClauses = append(whereClauses, "classification_score >= ?")
+		args = append(args, *filter.MinScore)
 	}
 
 	if filter.Municipality != "" {

@@ -15,6 +15,7 @@ interface Props {
   totalPages: number;
   total: number;
   onPageChange: (newPage: number) => void;
+  onTermClick?: (term: string) => void;
 }
 
 export const OpportunityTable: React.FC<Props> = ({
@@ -24,6 +25,7 @@ export const OpportunityTable: React.FC<Props> = ({
   totalPages,
   total,
   onPageChange,
+  onTermClick,
 }) => {
   if (loading) {
     return (
@@ -242,6 +244,7 @@ export const OpportunityTable: React.FC<Props> = ({
                     score={opp.classificationScore}
                     terms={opp.classificationTerms}
                     showTerms={true}
+                    onTermClick={onTermClick}
                   />
                 </td>
 
