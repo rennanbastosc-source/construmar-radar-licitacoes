@@ -27,6 +27,10 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to migrate orcamento progress: %w", err)
 	}
+	if err := migrateOrcamentoDescontos(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to migrate orcamento discounts: %w", err)
+	}
 
 	return db, nil
 }
@@ -36,6 +40,19 @@ func migrateOrcamentoProgress(db *sql.DB) error {
 		"ALTER TABLE orcamento ADD COLUMN progress_step TEXT DEFAULT ''",
 		"ALTER TABLE orcamento ADD COLUMN progress_percent INTEGER NOT NULL DEFAULT 0",
 		"ALTER TABLE orcamento ADD COLUMN progress_message TEXT DEFAULT ''",
+	}
+	for _, sqlStmt := range cols {
+		_, _ = db.Exec(sqlStmt)
+	}
+	return nil
+}
+
+func migrateOrcamentoDescontos(db *sql.DB) error {
+	cols := []string{
+		"ALTER TABLE orcamento ADD COLUMN desconto_geral REAL NOT NULL DEFAULT 0.0",
+		"ALTER TABLE orcamento ADD COLUMN desconto_mao_de_obra REAL NOT NULL DEFAULT 0.0",
+		"ALTER TABLE orcamento ADD COLUMN desconto_material REAL NOT NULL DEFAULT 0.0",
+		"ALTER TABLE orcamento_item ADD COLUMN categoria TEXT NOT NULL DEFAULT 'SERVICO'",
 	}
 	for _, sqlStmt := range cols {
 		_, _ = db.Exec(sqlStmt)
@@ -139,6 +156,9 @@ func createTables(db *sql.DB) error {
 		localidade TEXT NOT NULL,
 		data_preco_base TEXT NOT NULL,
 		bdi REAL NOT NULL DEFAULT 0.0,
+		desconto_geral REAL NOT NULL DEFAULT 0.0,
+		desconto_mao_de_obra REAL NOT NULL DEFAULT 0.0,
+		desconto_material REAL NOT NULL DEFAULT 0.0,
 		status TEXT NOT NULL,
 		original_file_name TEXT NOT NULL,
 		file_type TEXT NOT NULL,
@@ -169,6 +189,7 @@ func createTables(db *sql.DB) error {
 		fonte TEXT NOT NULL,
 		descricao TEXT NOT NULL,
 		unidade TEXT NOT NULL,
+		categoria TEXT NOT NULL DEFAULT 'SERVICO',
 		quantidade REAL NOT NULL,
 		preco_unitario REAL NOT NULL,
 		preco_total REAL NOT NULL,

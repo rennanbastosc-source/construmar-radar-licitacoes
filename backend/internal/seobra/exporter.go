@@ -11,6 +11,7 @@ import (
 
 // GenerateSeobraExcel creates an Excel spreadsheet (.xlsx) matching SEOBRA native import layout.
 func GenerateSeobraExcel(orc *domain.Orcamento) ([]byte, error) {
+	orc.RecalculateTotals()
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -26,8 +27,8 @@ func GenerateSeobraExcel(orc *domain.Orcamento) ([]byte, error) {
 		"UND",
 		"QUANTIDADE",
 		"BDI",
-		"PREÇO UNITÁRIO R$",
-		"PREÇO TOTAL R$",
+		"PREÇO\nUNITÁRIO R$",
+		"PREÇO\nTOTAL R$",
 	}
 
 	for colIdx, h := range headers {
@@ -37,8 +38,8 @@ func GenerateSeobraExcel(orc *domain.Orcamento) ([]byte, error) {
 
 	// Format header style
 	headerStyle, _ := f.NewStyle(&excelize.Style{
-		Font: &excelize.Font{Bold: true, Color: "#FFFFFF"},
-		Fill: excelize.Fill{Type: "pattern", Color: []string{"#0A2540"}, Pattern: 1},
+		Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#0A2540"}, Pattern: 1},
 		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
 	})
 	_ = f.SetRowStyle(sheetName, 1, 1, headerStyle)
@@ -46,6 +47,10 @@ func GenerateSeobraExcel(orc *domain.Orcamento) ([]byte, error) {
 	// Items
 	rowNum := 2
 	for _, item := range orc.Itens {
+		itemNumber := item.ItemNumero
+		if strings.TrimSpace(itemNumber) == "" {
+			itemNumber = fmt.Sprintf("%d", rowNum-1)
+		}
 		fonte := strings.ToUpper(item.Fonte)
 		if fonte == "" || strings.Contains(fonte, "PRÓPRIA") || strings.Contains(fonte, "PROPRIA") {
 			fonte = "PROPRIA"
@@ -55,7 +60,7 @@ func GenerateSeobraExcel(orc *domain.Orcamento) ([]byte, error) {
 			fonte = "SINAPI"
 		}
 
-		_ = f.SetCellValue(sheetName, fmt.Sprintf("A%d", rowNum), item.ItemNumero)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("A%d", rowNum), itemNumber)
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("B%d", rowNum), item.CodigoReferencia)
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("C%d", rowNum), item.Descricao)
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("D%d", rowNum), fonte)
@@ -64,7 +69,7 @@ func GenerateSeobraExcel(orc *domain.Orcamento) ([]byte, error) {
 		if orc.BDI > 0 {
 			_ = f.SetCellValue(sheetName, fmt.Sprintf("G%d", rowNum), orc.BDI)
 		}
-		_ = f.SetCellValue(sheetName, fmt.Sprintf("H%d", rowNum), item.PrecoUnitario)
+		_ = f.SetCellValue(sheetName, fmt.Sprintf("H%d", rowNum), item.PrecoUnitarioComDesconto(orc))
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("I%d", rowNum), item.PrecoTotal)
 
 		rowNum++

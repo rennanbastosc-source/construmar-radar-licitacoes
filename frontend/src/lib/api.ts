@@ -216,6 +216,20 @@ export async function updateOrcamentoItens(orcamento: Orcamento): Promise<Orcame
   return res.json();
 }
 
+export async function downloadOrcamentoSeobraXlsx(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/orcamentos/${id}/exportar-seobra-xlsx`);
+  if (!res.ok) {
+    throw new Error('Erro ao baixar planilha SEOBRA.');
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `orcamento_seobra_${id.slice(0, 8)}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function despacharParaSeobra(id: string): Promise<Orcamento> {
   const res = await fetch(`${API_BASE}/api/orcamentos/${id}/despachar-seobra`, {
     method: 'POST',

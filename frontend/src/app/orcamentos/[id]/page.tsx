@@ -29,6 +29,7 @@ import {
   fetchOrcamentoDetail,
   updateOrcamentoItens,
   despacharParaSeobra,
+  downloadOrcamentoSeobraXlsx,
 } from '@/lib/api';
 import { Orcamento, OrcamentoItem } from '@/lib/types';
 import { formatCurrency } from '@/lib/formatters';
@@ -49,6 +50,8 @@ export default function OrcamentoDetailPage({
   const [dispatchProgress, setDispatchProgress] = useState(0);
   const [dispatchMessage, setDispatchMessage] = useState('');
   const [filterReviewOnly, setFilterReviewOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState<'itens' | 'descontos'>('itens');
+  const [isDownloading, setIsDownloading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -131,20 +134,45 @@ export default function OrcamentoDetailPage({
       precoTotal: 0,
       confianca: 1.0,
       flagRevisao: false,
+      categoria: 'SERVICO',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     setItems([...items, newItem]);
   };
 
-  const handleRemoveItem = (idx: number) => {
+  const handleRemoveItem = (item: OrcamentoItem, fallbackIdx: number) => {
+    const realIdx = items.findIndex((i) => i.id === item.id);
+    const idx = realIdx >= 0 ? realIdx : fallbackIdx;
     setItems(items.filter((_, i) => i !== idx));
   };
 
-  // Compute live totals
-  const subtotal = items.reduce((acc, it) => acc + (it.precoTotal || 0), 0);
+  const descontoGeral = orcamento?.descontoGeral || 0;
+  const descontoMaoDeObra = orcamento?.descontoMaoDeObra || 0;
+  const descontoMaterial = orcamento?.descontoMaterial || 0;
+
+  const itemFator = (item: OrcamentoItem) => {
+    const cat = item.categoria || 'SERVICO';
+    return (
+      (1 - descontoGeral / 100) *
+      (cat === 'MAO_DE_OBRA' ? 1 - descontoMaoDeObra / 100 : 1) *
+      (cat === 'MATERIAL' ? 1 - descontoMaterial / 100 : 1)
+    );
+  };
+
+  const lineBase = (it: OrcamentoItem) => {
+    const qty = parseFloat(it.quantidade as any) || 0;
+    const unit = parseFloat(it.precoUnitario as any) || 0;
+    return qty * unit;
+  };
+
+  const subtotalBase = items.reduce((acc, it) => acc + lineBase(it), 0);
+  const subtotal = items.reduce((acc, it) => acc + lineBase(it) * itemFator(it), 0);
   const bdiPercent = orcamento?.bdi || 25.0;
   const totalComBdi = subtotal * (1 + bdiPercent / 100);
+  const countMo = items.filter((i) => (i.categoria || 'SERVICO') === 'MAO_DE_OBRA').length;
+  const countMat = items.filter((i) => i.categoria === 'MATERIAL').length;
+  const countServ = items.filter((i) => (i.categoria || 'SERVICO') === 'SERVICO').length;
 
   const handleSave = async () => {
     if (!orcamento) return;
@@ -154,6 +182,9 @@ export default function OrcamentoDetailPage({
       const payload: Orcamento = {
         ...orcamento,
         bdi: bdiPercent,
+        descontoGeral,
+        descontoMaoDeObra,
+        descontoMaterial,
         itens: items,
       };
       const updated = await updateOrcamentoItens(payload);
@@ -179,6 +210,9 @@ export default function OrcamentoDetailPage({
       const payload: Orcamento = {
         ...orcamento,
         bdi: bdiPercent,
+        descontoGeral,
+        descontoMaoDeObra,
+        descontoMaterial,
         itens: items,
       };
       await updateOrcamentoItens(payload);
@@ -196,6 +230,18 @@ export default function OrcamentoDetailPage({
       setFeedback({ type: 'error', message: err.message || 'Falha ao despachar orçamento para o SEOBRA.' });
     } finally {
       setIsDispatching(false);
+    }
+  };
+
+  const handleDownloadSeobra = async () => {
+    setIsDownloading(true);
+    setFeedback(null);
+    try {
+      await downloadOrcamentoSeobraXlsx(id);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Falha ao baixar planilha SEOBRA.' });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -604,6 +650,41 @@ export default function OrcamentoDetailPage({
           </div>
         )}
 
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('itens')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: activeTab === 'itens' ? '1px solid #f26419' : '1px solid var(--border-strong)',
+              backgroundColor: activeTab === 'itens' ? 'rgba(242, 100, 25, 0.15)' : 'var(--bg-surface)',
+              color: activeTab === 'itens' ? '#f26419' : 'var(--text-secondary)',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Itens
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('descontos')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: activeTab === 'descontos' ? '1px solid #f26419' : '1px solid var(--border-strong)',
+              backgroundColor: activeTab === 'descontos' ? 'rgba(242, 100, 25, 0.15)' : 'var(--bg-surface)',
+              color: activeTab === 'descontos' ? '#f26419' : 'var(--text-secondary)',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Descontos
+          </button>
+        </div>
+
         {/* BDI & Global Parameters Card */}
         <div
           style={{
@@ -707,7 +788,154 @@ export default function OrcamentoDetailPage({
           </div>
         </div>
 
-        {/* Items Data Grid */}
+        {activeTab === 'descontos' && (
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderRadius: '12px',
+              border: '1px solid var(--border-subtle)',
+              padding: '1.25rem',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            }}
+          >
+            <h2 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+              Descontos da proposta
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '6px 0 1.25rem' }}>
+              Aplicados em todo o orçamento. Preço unitário da grade permanece o valor-base.
+            </p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1.25rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                  DESCONTO GERAL (%)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={descontoGeral}
+                    onChange={(e) =>
+                      setOrcamento({ ...orcamento, descontoGeral: parseFloat(e.target.value) || 0 })
+                    }
+                    style={{
+                      width: '90px',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--bg-surface-elevated)',
+                      border: '1px solid var(--border-strong)',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  />
+                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>%</span>
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0' }}>Todos os itens</p>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                  DESCONTO EM MÃO DE OBRA (%)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={descontoMaoDeObra}
+                    onChange={(e) =>
+                      setOrcamento({ ...orcamento, descontoMaoDeObra: parseFloat(e.target.value) || 0 })
+                    }
+                    style={{
+                      width: '90px',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--bg-surface-elevated)',
+                      border: '1px solid var(--border-strong)',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  />
+                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>%</span>
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0' }}>Só itens de mão de obra</p>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                  DESCONTO EM MATERIAL (%)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={descontoMaterial}
+                    onChange={(e) =>
+                      setOrcamento({ ...orcamento, descontoMaterial: parseFloat(e.target.value) || 0 })
+                    }
+                    style={{
+                      width: '90px',
+                      padding: '8px 10px',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--bg-surface-elevated)',
+                      border: '1px solid var(--border-strong)',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  />
+                  <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>%</span>
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0' }}>Só itens de material</p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1.5rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid var(--border-subtle)',
+              }}
+            >
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                  SUBTOTAL BASE
+                </label>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                  {formatCurrency(subtotalBase)}
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                  APÓS DESCONTOS
+                </label>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  {formatCurrency(subtotal)}
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                  TOTAL COM BDI
+                </label>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-mono)' }}>
+                  {formatCurrency(totalComBdi)}
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '1rem 0 0' }}>
+              {countMo} mão de obra · {countMat} material · {countServ} serviço
+            </p>
+          </div>
+        )}
+
+        {activeTab === 'itens' && (
         <div
           style={{
             backgroundColor: 'var(--bg-surface)',
@@ -744,6 +972,7 @@ export default function OrcamentoDetailPage({
                   <th style={{ padding: '10px 12px', width: '60px' }}>ITEM</th>
                   <th style={{ padding: '10px 12px', width: '100px' }}>CÓDIGO</th>
                   <th style={{ padding: '10px 12px', width: '90px' }}>FONTE</th>
+                  <th style={{ padding: '10px 12px', width: '120px' }}>CATEGORIA</th>
                   <th style={{ padding: '10px 12px' }}>DESCRIÇÃO DO SERVIÇO</th>
                   <th style={{ padding: '10px 12px', width: '70px', textAlign: 'center' }}>UND</th>
                   <th style={{ padding: '10px 12px', width: '100px', textAlign: 'right' }}>QTD</th>
@@ -755,6 +984,8 @@ export default function OrcamentoDetailPage({
               </thead>
               <tbody>
                 {displayedItems.map((item, idx) => {
+                  const realIdx = items.findIndex((i) => i.id === item.id);
+                  const itemIdx = realIdx >= 0 ? realIdx : idx;
                   const isLowConf = item.confianca < 0.85 || item.flagRevisao;
 
                   return (
@@ -771,7 +1002,7 @@ export default function OrcamentoDetailPage({
                         <input
                           type="text"
                           value={item.itemNumero}
-                          onChange={(e) => handleItemChange(idx, 'itemNumero', e.target.value)}
+                          onChange={(e) => handleItemChange(itemIdx, 'itemNumero', e.target.value)}
                           style={{
                             width: '100%',
                             padding: '4px 6px',
@@ -790,7 +1021,7 @@ export default function OrcamentoDetailPage({
                         <input
                           type="text"
                           value={item.codigoReferencia}
-                          onChange={(e) => handleItemChange(idx, 'codigoReferencia', e.target.value)}
+                          onChange={(e) => handleItemChange(itemIdx, 'codigoReferencia', e.target.value)}
                           style={{
                             width: '100%',
                             padding: '4px 6px',
@@ -809,7 +1040,7 @@ export default function OrcamentoDetailPage({
                       <td style={{ padding: '8px 12px' }}>
                         <select
                           value={item.fonte}
-                          onChange={(e) => handleItemChange(idx, 'fonte', e.target.value)}
+                          onChange={(e) => handleItemChange(itemIdx, 'fonte', e.target.value)}
                           style={{
                             width: '100%',
                             padding: '4px 6px',
@@ -829,12 +1060,33 @@ export default function OrcamentoDetailPage({
                         </select>
                       </td>
 
+                      <td style={{ padding: '8px 12px' }}>
+                        <select
+                          value={item.categoria || 'SERVICO'}
+                          onChange={(e) => handleItemChange(itemIdx, 'categoria', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '4px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: 'var(--bg-surface-elevated)',
+                            border: '1px solid var(--border-subtle)',
+                            color: 'var(--text-primary)',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <option value="SERVICO">Serviço</option>
+                          <option value="MAO_DE_OBRA">Mão de obra</option>
+                          <option value="MATERIAL">Material</option>
+                        </select>
+                      </td>
+
                       {/* Description */}
                       <td style={{ padding: '8px 12px' }}>
                         <input
                           type="text"
                           value={item.descricao}
-                          onChange={(e) => handleItemChange(idx, 'descricao', e.target.value)}
+                          onChange={(e) => handleItemChange(itemIdx, 'descricao', e.target.value)}
                           style={{
                             width: '100%',
                             padding: '4px 8px',
@@ -852,7 +1104,7 @@ export default function OrcamentoDetailPage({
                         <input
                           type="text"
                           value={item.unidade}
-                          onChange={(e) => handleItemChange(idx, 'unidade', e.target.value)}
+                          onChange={(e) => handleItemChange(itemIdx, 'unidade', e.target.value)}
                           style={{
                             width: '100%',
                             padding: '4px 4px',
@@ -872,7 +1124,7 @@ export default function OrcamentoDetailPage({
                           type="number"
                           step="0.01"
                           value={item.quantidade}
-                          onChange={(e) => handleItemChange(idx, 'quantidade', e.target.value)}
+                          onChange={(e) => handleItemChange(itemIdx, 'quantidade', e.target.value)}
                           style={{
                             width: '90px',
                             padding: '4px 6px',
@@ -893,7 +1145,7 @@ export default function OrcamentoDetailPage({
                           type="number"
                           step="0.01"
                           value={item.precoUnitario}
-                          onChange={(e) => handleItemChange(idx, 'precoUnitario', e.target.value)}
+                          onChange={(e) => handleItemChange(itemIdx, 'precoUnitario', e.target.value)}
                           style={{
                             width: '105px',
                             padding: '4px 6px',
@@ -918,7 +1170,7 @@ export default function OrcamentoDetailPage({
                           color: '#ffffff',
                         }}
                       >
-                        {formatCurrency(item.precoTotal)}
+                        {formatCurrency(lineBase(item) * itemFator(item))}
                       </td>
 
                       {/* Confidence */}
@@ -952,7 +1204,7 @@ export default function OrcamentoDetailPage({
                       {/* Actions */}
                       <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                         <button
-                          onClick={() => handleRemoveItem(idx)}
+                          onClick={() => handleRemoveItem(item, idx)}
                           style={{
                             background: 'none',
                             border: 'none',
@@ -972,6 +1224,7 @@ export default function OrcamentoDetailPage({
             </table>
           </div>
         </div>
+        )}
       </main>
 
       {/* Floating Bottom Bar with Exclusive Actions */}
@@ -1001,6 +1254,27 @@ export default function OrcamentoDetailPage({
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              onClick={handleDownloadSeobra}
+              disabled={isCurrentlyWorking || isDownloading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-strong)',
+                color: 'var(--text-primary)',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: isCurrentlyWorking || isDownloading ? 'default' : 'pointer',
+              }}
+            >
+              <Download size={15} />
+              {isDownloading ? 'Baixando...' : 'Baixar planilha SEOBRA'}
+            </button>
+
             <button
               onClick={handleSave}
               disabled={isSaving || isCurrentlyWorking}

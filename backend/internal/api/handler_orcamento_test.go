@@ -17,6 +17,7 @@ import (
 )
 
 func TestOrcamentoAPIWorkflow(t *testing.T) {
+	t.Setenv("SEOBRA_MOCK", "1")
 	db, err := repository.InitDB(":memory:")
 	if err != nil {
 		t.Fatalf("InitDB failed: %v", err)
@@ -113,6 +114,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 	}
 
 	// 4. Test Update Items
+	created.DescontoGeral = 10
 	created.Itens[0].Quantidade = 150.0
 	created.Itens[0].PrecoTotal = 150.0 * 20.00 // 3000.0
 
@@ -128,8 +130,8 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 
 	var updated domain.Orcamento
 	_ = json.NewDecoder(recPut.Body).Decode(&updated)
-	if updated.ValorTotalEstimado != 3000.0 {
-		t.Errorf("expected updated ValorTotalEstimado 3000.0, got %f", updated.ValorTotalEstimado)
+	if updated.ValorTotalEstimado != 2700.0 {
+		t.Errorf("expected updated ValorTotalEstimado 2700.0 after 10%% discount, got %f", updated.ValorTotalEstimado)
 	}
 
 	// 5. Test SEOBRA Dispatch
@@ -148,5 +150,16 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 	}
 	if dispatched.SeobraBudgetId == "" {
 		t.Errorf("expected non-empty SeobraBudgetId")
+	}
+
+	// 6. Test SEOBRA XLSX export
+	reqExport := httptest.NewRequest("GET", "/api/orcamentos/"+created.ID+"/exportar-seobra-xlsx", nil)
+	recExport := httptest.NewRecorder()
+	router.ServeHTTP(recExport, reqExport)
+	if recExport.Code != http.StatusOK {
+		t.Fatalf("GET /api/orcamentos/{id}/exportar-seobra-xlsx failed with %d: %s", recExport.Code, recExport.Body.String())
+	}
+	if !bytes.HasPrefix(recExport.Body.Bytes(), []byte("PK")) {
+		t.Fatalf("expected XLSX zip body to start with PK")
 	}
 }

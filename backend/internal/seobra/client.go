@@ -3,6 +3,7 @@ package seobra
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,9 +23,182 @@ import (
 )
 
 var (
-	reViewState       = regexp.MustCompile(`name=["']javax\.faces\.ViewState["'][^>]*value=["']([^"']+)["']`)
-	reBudgetIDFromURL = regexp.MustCompile(`/orcamento/(\d+)`)
+	reViewState        = regexp.MustCompile(`name=["']javax\.faces\.ViewState["'][^>]*value=["']([^"']+)["']`)
+	reBudgetIDFromURL  = regexp.MustCompile(`/orcamento/(\d+)`)
+	reSaveButton       = regexp.MustCompile(`(?i)name\s*=\s*["'](formulario:[^"']*button-salvar[^"']*)["']`)
+	reInfoField        = regexp.MustCompile(`(?i)name\s*=\s*["'](formulario:table-informacao:\d+:subview-in-inf-valor:in-inf-valor)["']`)
+	reInputTag         = regexp.MustCompile(`(?is)<input\b[^>]*>`)
+	reInputType        = regexp.MustCompile(`(?i)\btype\s*=\s*["']([^"']+)["']`)
+	reInputName        = regexp.MustCompile(`(?i)\bname\s*=\s*["']([^"']+)["']`)
+	reCompanyParam     = regexp.MustCompile(`view-login-empresas:j_idt\d+:j_idt\d+:\d+:j_idt\d+`)
+	reFormularioForm   = regexp.MustCompile(`(?s)<form[^>]*id="formulario"[^>]*>.*?</form>`)
+	rePartialViewState = regexp.MustCompile(`(?is)<update[^>]*id=["'][^"']*ViewState[^"']*["'][^>]*>\s*(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?\s*</update>`)
+	reJSFErrorTag      = regexp.MustCompile(`(?i)<error[\s>]`)
+	reJSFErrorName     = regexp.MustCompile(`(?is)<error-name[^>]*>(.*?)</error-name>`)
+	reJSFErrorMessage  = regexp.MustCompile(`(?is)<error-message[^>]*>(.*?)</error-message>`)
+	reJSFRedirect      = regexp.MustCompile(`(?is)<redirect\b[^>]*\burl\s*=\s*["']([^"']+)["'][^>]*>`)
+	reBudgetRedirect   = regexp.MustCompile(`(?i)/orcamento/(\d+)/itens`)
+	reImportProgress   = regexp.MustCompile(`(?i)processando[^0-9]{0,80}(\d+)\s*/\s*(\d+)`)
+	reDivTag           = regexp.MustCompile(`(?is)<div\b[^>]*>`)
+	reDivAttribute     = regexp.MustCompile(`(?i)(?:^|\s)(id|class)\s*=\s*["']([^"']*)["']`)
 )
+
+var errSeobraSessionInvalidated = errors.New("SEOBRA session invalidated after redirect to login/entrar")
+
+var errSeobraImportIDUnconfirmed = errors.New("SEOBRA import finished but the new SEOBRA budget ID could not be confirmed; verify it before trying again")
+
+func extractFormularioViewState(html string) string {
+	if strings.Contains(strings.ToLower(html), "<partial-response") {
+		if m := rePartialViewState.FindStringSubmatch(html); len(m) > 1 {
+			return strings.TrimSpace(m[1])
+		}
+	}
+	if block := reFormularioForm.FindString(html); block != "" {
+		if m := reViewState.FindStringSubmatch(block); len(m) > 1 {
+			return m[1]
+		}
+	}
+	if m := rePartialViewState.FindStringSubmatch(html); len(m) > 1 {
+		return strings.TrimSpace(m[1])
+	}
+	if m := reViewState.FindStringSubmatch(html); len(m) > 1 {
+		return m[1]
+	}
+	return ""
+}
+
+func latestBudgetID(html string) string {
+	matches := reBudgetIDFromURL.FindAllStringSubmatch(html, -1)
+	best, bestS := 0, ""
+	for _, m := range matches {
+		n, err := strconv.Atoi(m[1])
+		if err == nil && n > best {
+			best, bestS = n, m[1]
+		}
+	}
+	return bestS
+}
+
+func jsfHardError(body string) bool {
+	lowerBody := strings.ToLower(body)
+	return reJSFErrorTag.MatchString(body) ||
+		strings.Contains(lowerBody, "viewexpiredexception") ||
+		strings.Contains(lowerBody, "facesexception")
+}
+
+func jsfErrorDetails(body string) string {
+	name := ""
+	if match := reJSFErrorName.FindStringSubmatch(body); len(match) > 1 {
+		name = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(match[1]), "<![CDATA["), "]]>"))
+	}
+	message := ""
+	if match := reJSFErrorMessage.FindStringSubmatch(body); len(match) > 1 {
+		message = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(match[1]), "<![CDATA["), "]]>"))
+	}
+	if name != "" && message != "" {
+		return fmt.Sprintf("SEOBRA JSF error: %s: %s", name, message)
+	}
+	if name != "" {
+		return fmt.Sprintf("SEOBRA JSF error: %s", name)
+	}
+	if message != "" {
+		return fmt.Sprintf("SEOBRA JSF error: %s", message)
+	}
+	return "SEOBRA JSF error response"
+}
+
+func isSessionInvalidationRedirect(location string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(location))
+	if err != nil {
+		return false
+	}
+	path := parsed.Path
+	if separator := strings.IndexByte(path, ';'); separator >= 0 {
+		path = path[:separator]
+	}
+	return strings.EqualFold(path, "/seobra2/login") || strings.EqualFold(path, "/seobra2/entrar")
+}
+
+func pollRedirectResult(location string) (string, error) {
+	if isSessionInvalidationRedirect(location) {
+		return "", fmt.Errorf("%w: credentials were used in another session/computer; close the other session and check SEOBRA before dispatching again", errSeobraSessionInvalidated)
+	}
+	if match := reBudgetRedirect.FindStringSubmatch(location); len(match) > 1 {
+		return match[1], nil
+	}
+	return "", fmt.Errorf("SEOBRA import polling redirected to unexpected location: %s", location)
+}
+
+func (c *Client) clearSessionIfInvalidated(err error) {
+	if !errors.Is(err, errSeobraSessionInvalidated) {
+		return
+	}
+	c.mu.Lock()
+	c.session = nil
+	c.mu.Unlock()
+}
+
+func jsfPollRedirect(body string) (string, error, bool) {
+	match := reJSFRedirect.FindStringSubmatch(body)
+	if len(match) < 2 {
+		return "", nil, false
+	}
+	id, err := pollRedirectResult(match[1])
+	return id, err, true
+}
+
+func isLoginHTML(body string) bool {
+	lowerBody := strings.ToLower(body)
+	return strings.Contains(lowerBody, "logininput") ||
+		strings.Contains(lowerBody, "senhainput") ||
+		strings.Contains(lowerBody, "<title>login")
+}
+
+func budgetIDIsGreater(id, baseline string) bool {
+	current, currentErr := strconv.Atoi(id)
+	previous, previousErr := strconv.Atoi(baseline)
+	return currentErr == nil && previousErr == nil && current > previous
+}
+
+func importProgress(body string) (int, int, bool) {
+	match := reImportProgress.FindStringSubmatch(body)
+	if len(match) < 3 {
+		return 0, 0, false
+	}
+	current, currentErr := strconv.Atoi(match[1])
+	total, totalErr := strconv.Atoi(match[2])
+	if currentErr != nil || totalErr != nil {
+		return 0, 0, false
+	}
+	return current, total, true
+}
+
+func importHasProcessedPanel(body string) bool {
+	for _, tag := range reDivTag.FindAllString(body, -1) {
+		id := ""
+		className := ""
+		for _, match := range reDivAttribute.FindAllStringSubmatch(tag, -1) {
+			if len(match) < 3 {
+				continue
+			}
+			switch strings.ToLower(match[1]) {
+			case "id":
+				id = match[2]
+			case "class":
+				className = match[2]
+			}
+		}
+		if id != "formulario:panel-status" {
+			continue
+		}
+		for _, token := range strings.Fields(className) {
+			if strings.EqualFold(token, "processado") {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 type ProgressCallback func(step string, percent int, message string)
 
@@ -50,6 +225,7 @@ func NewClient(repo *repository.OrcamentoRepository) *Client {
 	if senha == "" {
 		senha = "Renova2016."
 	}
+	mockMode := os.Getenv("SEOBRA_MOCK") == "1" || strings.EqualFold(os.Getenv("SEOBRA_MOCK"), "true")
 
 	jar, _ := cookiejar.New(nil)
 
@@ -65,7 +241,7 @@ func NewClient(repo *repository.OrcamentoRepository) *Client {
 			URLBase:     urlBase,
 			Usuario:     usuario,
 			Senha:       senha,
-			MockMode:    false,
+			MockMode:    mockMode,
 			TimeoutSecs: 45,
 		},
 		httpClient: &http.Client{
@@ -129,30 +305,55 @@ func (c *Client) Authenticate(ctx context.Context) (*domain.SeobraSession, error
 	}
 	defer postResp.Body.Close()
 
-	postHTML, _ := io.ReadAll(postResp.Body)
+	postHTML, err := io.ReadAll(postResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read SEOBRA login response: %w", err)
+	}
 	postHTMLStr := string(postHTML)
+	lowerPostHTML := strings.ToLower(postHTMLStr)
+	hasCompanyPicker := strings.Contains(postHTMLStr, "view-login-empresas") || strings.Contains(lowerPostHTML, "selecione uma empresa")
+	explicitReject := strings.Contains(lowerPostHTML, "usuário ou senha") || strings.Contains(lowerPostHTML, "usuario ou senha") || strings.Contains(lowerPostHTML, "credenciais inválidas") || strings.Contains(lowerPostHTML, "credenciais invalidas")
+	// ponytail: SEOBRA keeps loginInput on the company-picker page; that is not a failed login
+	if postResp.StatusCode >= 400 || explicitReject || (!hasCompanyPicker && strings.Contains(lowerPostHTML, "logininput") && !strings.Contains(lowerPostHTML, "orcamento")) {
+		return nil, fmt.Errorf("SEOBRA login failed: invalid credentials or rejected login")
+	}
 
 	// 3. Step 2 of Login: Select Company / Profile if prompted
-	if strings.Contains(postHTMLStr, "view-login-empresas") {
+	if hasCompanyPicker {
 		compVSMatches := reViewState.FindStringSubmatch(postHTMLStr)
-		if len(compVSMatches) >= 2 {
-			compVS := compVSMatches[1]
+		if len(compVSMatches) < 2 {
+			return nil, fmt.Errorf("SEOBRA login ok, but company picker has no ViewState")
+		}
+		compVS := compVSMatches[1]
+		companyField := "view-login-empresas:j_idt27:j_idt29:0:j_idt31"
+		if match := reCompanyParam.FindString(postHTMLStr); match != "" {
+			companyField = match
+		}
 
-			formComp := url.Values{}
-			formComp.Set("view-login-empresas:j_idt27", "view-login-empresas:j_idt27")
-			formComp.Set("view-login-empresas:j_idt27:j_idt29:0:j_idt31", "view-login-empresas:j_idt27:j_idt29:0:j_idt31")
-			formComp.Set("javax.faces.ViewState", compVS)
+		formComp := url.Values{}
+		formComp.Set("view-login-empresas:j_idt27", "view-login-empresas:j_idt27")
+		formComp.Set(companyField, companyField)
+		formComp.Set("javax.faces.ViewState", compVS)
 
-			compReq, err := http.NewRequestWithContext(ctx, "POST", loginURL, strings.NewReader(formComp.Encode()))
-			if err == nil {
-				compReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-				compReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-				compReq.Header.Set("Referer", loginURL)
-				compResp, err := c.httpClient.Do(compReq)
-				if err == nil {
-					_ = compResp.Body.Close()
-				}
-			}
+		compReq, err := http.NewRequestWithContext(ctx, "POST", loginURL, strings.NewReader(formComp.Encode()))
+		if err != nil {
+			return nil, fmt.Errorf("failed to build SEOBRA company selection: %w", err)
+		}
+		compReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		compReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+		compReq.Header.Set("Referer", loginURL)
+		compResp, err := c.httpClient.Do(compReq)
+		if err != nil {
+			return nil, fmt.Errorf("SEOBRA company selection failed: %w", err)
+		}
+		compBody, _ := io.ReadAll(compResp.Body)
+		_ = compResp.Body.Close()
+		if compResp.StatusCode >= 400 {
+			return nil, fmt.Errorf("SEOBRA company selection returned status %d", compResp.StatusCode)
+		}
+		compLower := strings.ToLower(string(compBody))
+		if strings.Contains(compLower, "usuário ou senha") || strings.Contains(compLower, "usuario ou senha") {
+			return nil, fmt.Errorf("SEOBRA rejected company/profile selection")
 		}
 	}
 
@@ -194,6 +395,31 @@ func (c *Client) DispatchOrcamentoWithProgress(
 	orc *domain.Orcamento,
 	onProgress ProgressCallback,
 ) (string, string, error) {
+	if c.config.MockMode {
+		itemCount := 0
+		bdi := 0.0
+		if orc != nil {
+			itemCount = len(orc.Itens)
+			bdi = orc.BDI
+		}
+		if onProgress != nil {
+			onProgress("AUTH", 15, "Autenticando sessão exclusiva e selecionando perfil no SEOBRA...")
+			onProgress("CREATING_HEADER", 35, "Criando cabeçalho da obra e vinculando dados da licitação...")
+			onProgress("INJECTING_ITEMS", 65, fmt.Sprintf("Injetando %d itens SEINFRA/SINAPI na árvore do projeto MOCK...", itemCount))
+			onProgress("FINALIZING", 90, fmt.Sprintf("Aplicando BDI de %.2f%% e totalizadores da proposta...", bdi))
+			onProgress("COMPLETED", 100, "Orçamento MOCK 100% concluído e pronto para acesso!")
+		}
+		id := ""
+		if orc != nil {
+			id = orc.ID
+		}
+		if len(id) > 8 {
+			id = id[:8]
+		}
+		base := strings.TrimRight(c.config.URLBase, "/")
+		return "MOCK-" + id, base + "/orcamento/MOCK/itens", nil
+	}
+
 	if onProgress != nil {
 		onProgress("AUTH", 15, "Autenticando sessão exclusiva e selecionando perfil no SEOBRA...")
 	}
@@ -209,133 +435,30 @@ func (c *Client) DispatchOrcamentoWithProgress(
 	}
 
 	baseClean := strings.TrimRight(sess.URLBase, "/")
-
 	if onProgress != nil {
-		onProgress("CREATING_HEADER", 35, "Criando cabeçalho da obra e vinculando dados da licitação...")
+		onProgress("INJECTING_ITEMS", 40, fmt.Sprintf("Importando %d itens na planilha oficial do SEOBRA...", len(orc.Itens)))
 	}
 
-	// 1. GET /orcamento/novo to obtain form ViewState
-	novoURL := fmt.Sprintf("%s/orcamento/novo", baseClean)
-	getReq, err := http.NewRequestWithContext(ctx, "GET", novoURL, nil)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to build GET novo orcamento: %w", err)
-	}
-	getReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-
-	getResp, err := c.httpClient.Do(getReq)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to fetch /orcamento/novo: %w", err)
-	}
-	defer getResp.Body.Close()
-
-	getHTMLBytes, _ := io.ReadAll(getResp.Body)
-	vsMatches := reViewState.FindStringSubmatch(string(getHTMLBytes))
-	if len(vsMatches) < 2 {
-		return "", "", fmt.Errorf("failed to extract ViewState for new budget form")
-	}
-	novoViewState := vsMatches[1]
-
-	titulo := orc.Titulo
-	if !strings.HasPrefix(titulo, "[RADAR]") {
-		titulo = fmt.Sprintf("[RADAR] %s", titulo)
-	}
-
-	objeto := orc.Objeto
-	if objeto == "" {
-		objeto = titulo
-	}
-
-	local := orc.Localidade
-	if local == "" {
-		local = "CE"
-	}
-
-	orgao := orc.Orgao
-	if orgao == "" {
-		orgao = "Órgão Licitante"
-	}
-
-	formNew := url.Values{}
-	formNew.Set("formulario", "formulario")
-	formNew.Set("formulario:j_idt2157:button-salvar", "formulario:j_idt2157:button-salvar")
-	formNew.Set("formulario:table-informacao:1:subview-in-inf-valor:in-inf-valor", titulo)
-	formNew.Set("formulario:table-informacao:2:subview-in-inf-valor:in-inf-valor", objeto)
-	formNew.Set("formulario:table-informacao:3:subview-in-inf-valor:in-inf-valor", local)
-	formNew.Set("formulario:table-informacao:4:subview-in-inf-valor:in-inf-valor", orgao)
-	formNew.Set("javax.faces.ViewState", novoViewState)
-
-	postReq, err := http.NewRequestWithContext(ctx, "POST", novoURL, strings.NewReader(formNew.Encode()))
-	if err != nil {
-		return "", "", fmt.Errorf("failed to build POST create budget: %w", err)
-	}
-	postReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	postReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-	postReq.Header.Set("Referer", novoURL)
-
-	postResp, err := c.httpClient.Do(postReq)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to create budget in SEOBRA: %w", err)
-	}
-	defer postResp.Body.Close()
-
-	var createdID string
-	locationHeader := postResp.Header.Get("Location")
-	if locationHeader != "" {
-		matches := reBudgetIDFromURL.FindStringSubmatch(locationHeader)
-		if len(matches) > 1 {
-			createdID = matches[1]
-		}
-	}
-
-	if createdID == "" {
-		postBody, _ := io.ReadAll(postResp.Body)
-		matches := reBudgetIDFromURL.FindStringSubmatch(string(postBody))
-		if len(matches) > 1 {
-			createdID = matches[1]
-		}
-	}
-
-	if createdID == "" {
-		listURL := fmt.Sprintf("%s/orcamentos", baseClean)
-		listReq, _ := http.NewRequestWithContext(ctx, "GET", listURL, nil)
-		listResp, err := c.httpClient.Do(listReq)
-		if err == nil {
-			defer listResp.Body.Close()
-			listHTML, _ := io.ReadAll(listResp.Body)
-			matches := reBudgetIDFromURL.FindStringSubmatch(string(listHTML))
-			if len(matches) > 1 {
-				createdID = matches[1]
-			}
-		}
-	}
-
-	if createdID == "" {
-		return "", "", fmt.Errorf("orçamento criado, mas ID não retornado")
-	}
-
-	if onProgress != nil {
-		onProgress("INJECTING_ITEMS", 65, fmt.Sprintf("Injetando %d itens SEINFRA/SINAPI na árvore do projeto %s...", len(orc.Itens), createdID))
-	}
-
-	// 2. Generate and upload standard spreadsheet to populate items
 	excelBytes, err := GenerateSeobraExcel(orc)
-	if err == nil && len(excelBytes) > 0 {
-		_ = c.uploadPlanilhaSeobra(ctx, excelBytes, fmt.Sprintf("orcamento_%s.xlsx", createdID))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate SEOBRA spreadsheet: %w", err)
+	}
+	if len(excelBytes) == 0 {
+		return "", "", fmt.Errorf("generated SEOBRA spreadsheet is empty")
 	}
 
-	if onProgress != nil {
-		onProgress("FINALIZING", 90, fmt.Sprintf("Aplicando BDI de %.2f%% e totalizadores da proposta...", orc.BDI))
+	createdID, err := c.importPlanilhaSeobra(ctx, excelBytes, "orcamento_radar.xlsx", onProgress)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to import SEOBRA spreadsheet: %w", err)
 	}
-
-	// Brief settling time to let SEOBRA server persist calculations
-	time.Sleep(600 * time.Millisecond)
+	if createdID == "" {
+		return "", "", fmt.Errorf("planilha importada, mas ID do orçamento não retornado")
+	}
 
 	if onProgress != nil {
 		onProgress("COMPLETED", 100, fmt.Sprintf("Orçamento %s 100%% concluído e pronto para acesso!", createdID))
 	}
-
-	budgetURL := fmt.Sprintf("%s/orcamento/%s/itens", baseClean, createdID)
-	return createdID, budgetURL, nil
+	return createdID, fmt.Sprintf("%s/orcamento/%s/itens", baseClean, createdID), nil
 }
 
 // DispatchOrcamento wraps DispatchOrcamentoWithProgress without callback.
@@ -343,49 +466,188 @@ func (c *Client) DispatchOrcamento(ctx context.Context, orc *domain.Orcamento) (
 	return c.DispatchOrcamentoWithProgress(ctx, orc, nil)
 }
 
-func (c *Client) uploadPlanilhaSeobra(ctx context.Context, excelBytes []byte, filename string) error {
+func (c *Client) snapshotBudgetID(ctx context.Context, baseClean string) string {
+	listReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseClean+"/orcamentos", nil)
+	if err != nil {
+		return ""
+	}
+	listResp, err := c.httpClient.Do(listReq)
+	if err != nil {
+		return ""
+	}
+	body, readErr := io.ReadAll(listResp.Body)
+	_ = listResp.Body.Close()
+	if readErr != nil || listResp.StatusCode >= 400 {
+		return ""
+	}
+	return latestBudgetID(string(body))
+}
+
+type budgetListSnapshotKind uint8
+
+const (
+	budgetListSnapshotEmpty budgetListSnapshotKind = iota
+	budgetListSnapshotFound
+	budgetListSnapshotSessionInvalid
+)
+
+func (c *Client) snapshotBudgetIDWithoutRedirect(ctx context.Context, baseClean string) (string, budgetListSnapshotKind) {
+	listReq, err := http.NewRequestWithContext(ctx, http.MethodGet, baseClean+"/orcamentos", nil)
+	if err != nil {
+		return "", budgetListSnapshotEmpty
+	}
+
+	listClient := *c.httpClient
+	listClient.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	listResp, err := listClient.Do(listReq)
+	if err != nil {
+		return "", budgetListSnapshotEmpty
+	}
+	location := listResp.Header.Get("Location")
+	body, readErr := io.ReadAll(listResp.Body)
+	_ = listResp.Body.Close()
+	if isSessionInvalidationRedirect(location) || isLoginHTML(string(body)) {
+		return "", budgetListSnapshotSessionInvalid
+	}
+	if readErr != nil || listResp.StatusCode >= 400 || (listResp.StatusCode >= 300 && listResp.StatusCode < 400) {
+		return "", budgetListSnapshotEmpty
+	}
+	if id := latestBudgetID(string(body)); id != "" {
+		return id, budgetListSnapshotFound
+	}
+	return "", budgetListSnapshotEmpty
+}
+
+func (c *Client) newlyCreatedBudgetID(ctx context.Context, baseClean, baselineID string) string {
+	if baselineID == "" {
+		return ""
+	}
+	currentID := c.snapshotBudgetID(ctx, baseClean)
+	if budgetIDIsGreater(currentID, baselineID) {
+		return currentID
+	}
+	return ""
+}
+
+func (c *Client) reconcileProcessedImport(ctx context.Context, importURL, baselineID string) (string, error) {
+	const reconcileWindow = 12 * time.Second
+	const retryInterval = 500 * time.Millisecond
+
+	if baselineID == "" {
+		return "", errSeobraImportIDUnconfirmed
+	}
+
+	baseClean := strings.TrimSuffix(importURL, "/orcamento/importar")
+	reconcileCtx, cancel := context.WithTimeout(ctx, reconcileWindow)
+	defer cancel()
+	reauthenticated := false
+	for {
+		currentID, snapshotKind := c.snapshotBudgetIDWithoutRedirect(reconcileCtx, baseClean)
+		if budgetIDIsGreater(currentID, baselineID) {
+			return currentID, nil
+		}
+		if snapshotKind == budgetListSnapshotSessionInvalid && !reauthenticated {
+			c.mu.Lock()
+			c.session = nil
+			c.mu.Unlock()
+			if _, err := c.Authenticate(reconcileCtx); err != nil {
+				return "", fmt.Errorf("%w: reauthentication failed: %v", errSeobraImportIDUnconfirmed, err)
+			}
+			reauthenticated = true
+			continue
+		}
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
+		if reconcileCtx.Err() != nil {
+			return "", errSeobraImportIDUnconfirmed
+		}
+		timer := time.NewTimer(retryInterval)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return "", ctx.Err()
+		case <-reconcileCtx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return "", errSeobraImportIDUnconfirmed
+		case <-timer.C:
+		}
+	}
+}
+
+func (c *Client) importPlanilhaSeobra(ctx context.Context, excelBytes []byte, filename string, onProgress ProgressCallback) (string, error) {
 	baseClean := strings.TrimRight(c.config.URLBase, "/")
 	importURL := fmt.Sprintf("%s/orcamento/importar", baseClean)
+	baselineID := c.snapshotBudgetID(ctx, baseClean)
 
 	getReq, err := http.NewRequestWithContext(ctx, "GET", importURL, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	getReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 	getResp, err := c.httpClient.Do(getReq)
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer getResp.Body.Close()
+	getHTML, err := io.ReadAll(getResp.Body)
+	_ = getResp.Body.Close()
+	if err != nil {
+		return "", fmt.Errorf("failed to read import page: %w", err)
+	}
+	if getResp.StatusCode >= 400 {
+		return "", fmt.Errorf("import page returned status %d", getResp.StatusCode)
+	}
 
-	getHTML, _ := io.ReadAll(getResp.Body)
-	vsMatches := reViewState.FindStringSubmatch(string(getHTML))
-	if len(vsMatches) < 2 {
-		return fmt.Errorf("could not find ViewState on import page")
+	viewState := extractFormularioViewState(string(getHTML))
+	if viewState == "" {
+		return "", fmt.Errorf("could not find ViewState on import form")
 	}
-	viewState := vsMatches[1]
+	fileInputName := "formulario:j_idt2505_input"
+	for _, tag := range reInputTag.FindAllString(string(getHTML), -1) {
+		typeMatch := reInputType.FindStringSubmatch(tag)
+		nameMatch := reInputName.FindStringSubmatch(tag)
+		if len(typeMatch) > 1 && len(nameMatch) > 1 && strings.EqualFold(typeMatch[1], "file") {
+			fileInputName = nameMatch[1]
+			break
+		}
+	}
+	componentName := strings.TrimSuffix(fileInputName, "_input")
 
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
-
-	_ = writer.WriteField("javax.faces.partial.ajax", "true")
-	_ = writer.WriteField("javax.faces.partial.execute", "formulario:j_idt2505")
-	_ = writer.WriteField("javax.faces.partial.render", "formulario")
-	_ = writer.WriteField("javax.faces.source", "formulario:j_idt2505")
-	_ = writer.WriteField("javax.faces.ViewState", viewState)
-	_ = writer.WriteField("formulario", "formulario")
-
-	part1, _ := writer.CreateFormFile("formulario:j_idt2505", filename)
-	_, _ = part1.Write(excelBytes)
-
-	part2, _ := writer.CreateFormFile("formulario:j_idt2505_input", filename)
-	_, _ = part2.Write(excelBytes)
-
-	_ = writer.Close()
+	for _, field := range [][2]string{
+		{"javax.faces.partial.ajax", "true"},
+		{"javax.faces.partial.execute", componentName},
+		{"javax.faces.partial.render", "formulario"},
+		{"javax.faces.source", componentName},
+		{"javax.faces.ViewState", viewState},
+		{"formulario", "formulario"},
+		{componentName, componentName},
+	} {
+		if err := writer.WriteField(field[0], field[1]); err != nil {
+			return "", fmt.Errorf("failed to write upload field %s: %w", field[0], err)
+		}
+	}
+	part, err := writer.CreateFormFile(componentName, filename)
+	if err != nil {
+		return "", fmt.Errorf("failed to create spreadsheet upload part: %w", err)
+	}
+	if _, err := part.Write(excelBytes); err != nil {
+		return "", fmt.Errorf("failed to write spreadsheet upload: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return "", fmt.Errorf("failed to close spreadsheet upload: %w", err)
+	}
 
 	postReq, err := http.NewRequestWithContext(ctx, "POST", importURL, &body)
 	if err != nil {
-		return err
+		return "", err
 	}
 	postReq.Header.Set("Content-Type", writer.FormDataContentType())
 	postReq.Header.Set("Faces-Request", "partial/ajax")
@@ -395,9 +657,193 @@ func (c *Client) uploadPlanilhaSeobra(ctx context.Context, excelBytes []byte, fi
 
 	postResp, err := c.httpClient.Do(postReq)
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer postResp.Body.Close()
+	postBody, err := io.ReadAll(postResp.Body)
+	_ = postResp.Body.Close()
+	if err != nil {
+		return "", fmt.Errorf("failed to read spreadsheet upload response: %w", err)
+	}
+	respText := string(postBody)
+	if jsfHardError(respText) {
+		return "", fmt.Errorf("%s", jsfErrorDetails(respText))
+	}
+	if postResp.StatusCode >= 400 {
+		return "", fmt.Errorf("spreadsheet upload returned status %d", postResp.StatusCode)
+	}
+	if vs := extractFormularioViewState(respText); vs != "" {
+		viewState = vs
+	}
+	if onProgress != nil && strings.Contains(respText, "Planilha aberta") {
+		onProgress("INJECTING_ITEMS", 70, "Planilha aceita. Processando etapas e serviços...")
+	}
 
-	return nil
+	createdID, err := c.pollImportUntilDoneWithBaseline(ctx, importURL, viewState, onProgress, baselineID)
+	if err != nil {
+		if strings.Contains(err.Error(), "timeout waiting") {
+			if fallbackID := c.newlyCreatedBudgetID(ctx, baseClean, baselineID); fallbackID != "" {
+				return fallbackID, nil
+			}
+		}
+		return "", err
+	}
+	if createdID == "" {
+		createdID = c.newlyCreatedBudgetID(ctx, baseClean, baselineID)
+		if createdID == "" {
+			return "", fmt.Errorf("SEOBRA import finished without a newly-created budget ID")
+		}
+	}
+	return createdID, nil
+}
+
+func (c *Client) pollImportUntilDone(ctx context.Context, importURL, viewState string, onProgress ProgressCallback) (string, error) {
+	return c.pollImportUntilDoneWithBaseline(ctx, importURL, viewState, onProgress, "")
+}
+
+func (c *Client) pollImportUntilDoneWithBaseline(ctx context.Context, importURL, viewState string, onProgress ProgressCallback, baselineID string) (string, error) {
+	deadline := time.Now().Add(240 * time.Second)
+	pollClient := *c.httpClient
+	pollClient.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(800 * time.Millisecond):
+		}
+
+		form := url.Values{}
+		form.Set("javax.faces.partial.ajax", "true")
+		form.Set("javax.faces.source", "formulario:pollProcessamento")
+		form.Set("javax.faces.partial.execute", "formulario:pollProcessamento")
+		form.Set("javax.faces.partial.render", "formulario:pollProcessamento formulario:panel-status")
+		form.Set("formulario", "formulario")
+		form.Set("formulario:pollProcessamento", "formulario:pollProcessamento")
+		form.Set("javax.faces.ViewState", viewState)
+
+		req, err := http.NewRequestWithContext(ctx, "POST", importURL, strings.NewReader(form.Encode()))
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Faces-Request", "partial/ajax")
+		req.Header.Set("X-Requested-With", "XMLHttpRequest")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+		req.Header.Set("Referer", importURL)
+
+		resp, err := pollClient.Do(req)
+		if err != nil {
+			return "", err
+		}
+		statusCode := resp.StatusCode
+		location := resp.Header.Get("Location")
+		raw, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		body := string(raw)
+		if statusCode >= 300 && statusCode < 400 {
+			if location == "" {
+				return "", fmt.Errorf("SEOBRA import polling returned redirect status %d without Location", statusCode)
+			}
+			id, redirectErr := pollRedirectResult(location)
+			c.clearSessionIfInvalidated(redirectErr)
+			return id, redirectErr
+		}
+		if vs := extractFormularioViewState(body); vs != "" {
+			viewState = vs
+		}
+		if jsfHardError(body) {
+			return "", fmt.Errorf("%s", jsfErrorDetails(body))
+		}
+		if statusCode >= 400 {
+			return "", fmt.Errorf("SEOBRA import polling returned status %d", statusCode)
+		}
+		if isLoginHTML(body) {
+			return "", fmt.Errorf("SEOBRA session expired during import polling: login HTML returned")
+		}
+		if id, redirectErr, redirected := jsfPollRedirect(body); redirected {
+			if redirectErr != nil {
+				c.clearSessionIfInvalidated(redirectErr)
+				return "", redirectErr
+			}
+			if onProgress != nil {
+				onProgress("FINALIZING", 90, "Importação concluída no SEOBRA.")
+			}
+			return id, nil
+		}
+		if importHasProcessedPanel(body) {
+			id, reconcileErr := c.reconcileProcessedImport(ctx, importURL, baselineID)
+			if reconcileErr != nil {
+				return "", reconcileErr
+			}
+			if onProgress != nil {
+				onProgress("FINALIZING", 90, "Importação concluída no SEOBRA.")
+			}
+			return id, nil
+		}
+		if current, total, ok := importProgress(body); ok && onProgress != nil {
+			percent := 70
+			if total > 0 {
+				percent += current * 18 / total
+			}
+			if percent < 70 {
+				percent = 70
+			}
+			if percent > 88 {
+				percent = 88
+			}
+			onProgress("INJECTING_ITEMS", percent, fmt.Sprintf("SEOBRA processando etapas e serviços: %d/%d", current, total))
+		}
+	}
+	if fallbackID := c.newlyCreatedBudgetID(ctx, strings.TrimSuffix(importURL, "/orcamento/importar"), baselineID); fallbackID != "" {
+		return fallbackID, nil
+	}
+	return "", fmt.Errorf("timeout waiting for SEOBRA import to finish")
+}
+
+// DownloadPlanilha downloads the spreadsheet stored by SEOBRA, if available.
+func (c *Client) DownloadPlanilha(ctx context.Context, budgetID string) ([]byte, error) {
+	sess, err := c.EnsureActiveSession(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao autenticar no SEOBRA: %w", err)
+	}
+
+	base := strings.TrimRight(sess.URLBase, "/")
+	id := url.PathEscape(budgetID)
+	paths := []string{
+		fmt.Sprintf("%s/orcamento/%s/exportar", base, id),
+		fmt.Sprintf("%s/orcamento/%s/planilha", base, id),
+		fmt.Sprintf("%s/orcamento/%s/download", base, id),
+		fmt.Sprintf("%s/orcamento/%s.xlsx", base, id),
+	}
+	var lastErr error
+	for _, downloadURL := range paths {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		body, readErr := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if readErr != nil {
+			lastErr = readErr
+			continue
+		}
+		contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+		if resp.StatusCode == http.StatusOK && (bytes.HasPrefix(body, []byte("PK")) || strings.Contains(contentType, "spreadsheet") || strings.Contains(contentType, "excel")) {
+			return body, nil
+		}
+		lastErr = fmt.Errorf("SEOBRA download returned status %d from %s", resp.StatusCode, downloadURL)
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no SEOBRA spreadsheet download succeeded")
+	}
+	return nil, fmt.Errorf("failed to download SEOBRA spreadsheet for budget %s: %w", budgetID, lastErr)
 }

@@ -139,6 +139,7 @@ export interface OrcamentoItem {
   confianca: number;
   flagRevisao: boolean;
   observacaoIa?: string;
+  categoria?: 'MAO_DE_OBRA' | 'MATERIAL' | 'SERVICO';
   createdAt: string;
   updatedAt: string;
 }
@@ -152,6 +153,9 @@ export interface Orcamento {
   localidade: string;
   dataPrecoBase: string;
   bdi: number;
+  descontoGeral?: number;
+  descontoMaoDeObra?: number;
+  descontoMaterial?: number;
   status: OrcamentoStatusType;
   originalFileName: string;
   fileType: string;

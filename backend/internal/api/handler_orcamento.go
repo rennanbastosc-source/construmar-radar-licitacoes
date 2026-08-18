@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/construmar/radar-licitacoes-backend/internal/domain"
 	"github.com/construmar/radar-licitacoes-backend/internal/seobra"
@@ -112,10 +113,10 @@ func (h *OrcamentoHandler) ListOrcamentos(w http.ResponseWriter, r *http.Request
 	}
 
 	response := map[string]interface{}{
-		"total": total,
-		"limit": limit,
+		"total":  total,
+		"limit":  limit,
 		"offset": offset,
-		"items": list,
+		"items":  list,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -180,7 +181,7 @@ func (h *OrcamentoHandler) SeobraStatus(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "ONLINE",
+		"status":        "ONLINE",
 		"activeSession": sess,
 	})
 }
@@ -199,10 +200,17 @@ func (h *OrcamentoHandler) ExportSeobraXLSX(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	xlsxBytes, err := seobra.GenerateSeobraExcel(orc)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to generate Excel: %v", err), http.StatusInternalServerError)
-		return
+	var xlsxBytes []byte
+	if orc.SeobraBudgetId != "" && !strings.HasPrefix(orc.SeobraBudgetId, "MOCK-") && h.seobraClient != nil {
+		xlsxBytes, _ = h.seobraClient.DownloadPlanilha(r.Context(), orc.SeobraBudgetId)
+	}
+	if len(xlsxBytes) == 0 {
+		orc.RecalculateTotals()
+		xlsxBytes, err = seobra.GenerateSeobraExcel(orc)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to generate Excel: %v", err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

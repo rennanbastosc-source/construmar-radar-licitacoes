@@ -36,15 +36,15 @@ func (r *OrcamentoRepository) CreateOrcamento(ctx context.Context, o *domain.Orc
 	insertOrcamentoSQL := `
 		INSERT INTO orcamento (
 			id, oportunidade_id, titulo, objeto, orgao, localidade, data_preco_base,
-			bdi, status, original_file_name, file_type, valor_total_estimado, valor_total_com_bdi,
+			bdi, desconto_geral, desconto_mao_de_obra, desconto_material, status, original_file_name, file_type, valor_total_estimado, valor_total_com_bdi,
 			total_itens, confianca_media, seobra_budget_id, seobra_budget_url, progress_step,
 			progress_percent, progress_message, erro_mensagem, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err = tx.ExecContext(ctx, insertOrcamentoSQL,
 		o.ID, o.OportunidadeID, o.Titulo, o.Objeto, o.Orgao, o.Localidade, o.DataPrecoBase,
-		o.BDI, string(o.Status), o.OriginalFileName, o.FileType, o.ValorTotalEstimado, o.ValorTotalComBDI,
+		o.BDI, o.DescontoGeral, o.DescontoMaoDeObra, o.DescontoMaterial, string(o.Status), o.OriginalFileName, o.FileType, o.ValorTotalEstimado, o.ValorTotalComBDI,
 		o.TotalItens, o.ConfiancaMedia, o.SeobraBudgetId, o.SeobraBudgetURL, o.ProgressStep,
 		o.ProgressPercent, o.ProgressMessage, o.ErroMensagem, o.CreatedAt, o.UpdatedAt,
 	)
@@ -55,9 +55,9 @@ func (r *OrcamentoRepository) CreateOrcamento(ctx context.Context, o *domain.Orc
 	insertItemSQL := `
 		INSERT INTO orcamento_item (
 			id, orcamento_id, item_numero, codigo_referencia, fonte, descricao,
-			unidade, quantidade, preco_unitario, preco_total, confianca,
+			unidade, categoria, quantidade, preco_unitario, preco_total, confianca,
 			flag_revisao, observacao_ia, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	for _, item := range o.Itens {
@@ -71,10 +71,14 @@ func (r *OrcamentoRepository) CreateOrcamento(ctx context.Context, o *domain.Orc
 		if item.FlagRevisao {
 			flagRevInt = 1
 		}
+		categoria := item.Categoria
+		if categoria == "" {
+			categoria = domain.InferCategoria(item.Descricao, item.Unidade)
+		}
 
 		_, err = tx.ExecContext(ctx, insertItemSQL,
 			item.ID, o.ID, item.ItemNumero, item.CodigoReferencia, item.Fonte, item.Descricao,
-			item.Unidade, item.Quantidade, item.PrecoUnitario, item.PrecoTotal, item.Confianca,
+			item.Unidade, categoria, item.Quantidade, item.PrecoUnitario, item.PrecoTotal, item.Confianca,
 			flagRevInt, item.ObservacaoIA, itemCreatedAt, itemUpdatedAt,
 		)
 		if err != nil {
@@ -93,7 +97,7 @@ func (r *OrcamentoRepository) CreateOrcamento(ctx context.Context, o *domain.Orc
 func (r *OrcamentoRepository) GetOrcamentoByID(ctx context.Context, id string) (*domain.Orcamento, error) {
 	queryOrcamento := `
 		SELECT id, oportunidade_id, titulo, objeto, orgao, localidade, data_preco_base,
-		       bdi, status, original_file_name, file_type, valor_total_estimado, valor_total_com_bdi,
+		       bdi, desconto_geral, desconto_mao_de_obra, desconto_material, status, original_file_name, file_type, valor_total_estimado, valor_total_com_bdi,
 		       total_itens, confianca_media, seobra_budget_id, seobra_budget_url,
 		       progress_step, progress_percent, progress_message, erro_mensagem,
 		       created_at, updated_at
@@ -107,7 +111,7 @@ func (r *OrcamentoRepository) GetOrcamentoByID(ctx context.Context, id string) (
 
 	err := r.db.QueryRowContext(ctx, queryOrcamento, id).Scan(
 		&o.ID, &oportID, &o.Titulo, &o.Objeto, &o.Orgao, &o.Localidade, &o.DataPrecoBase,
-		&o.BDI, &statusStr, &o.OriginalFileName, &o.FileType, &o.ValorTotalEstimado, &o.ValorTotalComBDI,
+		&o.BDI, &o.DescontoGeral, &o.DescontoMaoDeObra, &o.DescontoMaterial, &statusStr, &o.OriginalFileName, &o.FileType, &o.ValorTotalEstimado, &o.ValorTotalComBDI,
 		&o.TotalItens, &o.ConfiancaMedia, &seobraID, &seobraURL,
 		&progStep, &o.ProgressPercent, &progMsg, &erroMsg,
 		&o.CreatedAt, &o.UpdatedAt,
@@ -141,7 +145,7 @@ func (r *OrcamentoRepository) GetOrcamentoByID(ctx context.Context, id string) (
 
 	queryItems := `
 		SELECT id, orcamento_id, item_numero, codigo_referencia, fonte, descricao,
-		       unidade, quantidade, preco_unitario, preco_total, confianca,
+		       unidade, categoria, quantidade, preco_unitario, preco_total, confianca,
 		       flag_revisao, observacao_ia, created_at, updated_at
 		FROM orcamento_item
 		WHERE orcamento_id = ?
@@ -164,7 +168,7 @@ func (r *OrcamentoRepository) GetOrcamentoByID(ctx context.Context, id string) (
 
 		err := rows.Scan(
 			&item.ID, &item.OrcamentoID, &item.ItemNumero, &item.CodigoReferencia, &item.Fonte, &item.Descricao,
-			&item.Unidade, &item.Quantidade, &item.PrecoUnitario, &item.PrecoTotal, &item.Confianca,
+			&item.Unidade, &item.Categoria, &item.Quantidade, &item.PrecoUnitario, &item.PrecoTotal, &item.Confianca,
 			&flagRevInt, &obsIA, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err != nil {
@@ -202,7 +206,7 @@ func (r *OrcamentoRepository) ListOrcamentos(ctx context.Context, limit, offset 
 
 	query := `
 		SELECT id, oportunidade_id, titulo, objeto, orgao, localidade, data_preco_base,
-		       bdi, status, original_file_name, file_type, valor_total_estimado, valor_total_com_bdi,
+		       bdi, desconto_geral, desconto_mao_de_obra, desconto_material, status, original_file_name, file_type, valor_total_estimado, valor_total_com_bdi,
 		       total_itens, confianca_media, seobra_budget_id, seobra_budget_url,
 		       progress_step, progress_percent, progress_message, erro_mensagem,
 		       created_at, updated_at
@@ -227,7 +231,7 @@ func (r *OrcamentoRepository) ListOrcamentos(ctx context.Context, limit, offset 
 
 		err := rows.Scan(
 			&o.ID, &oportID, &o.Titulo, &o.Objeto, &o.Orgao, &o.Localidade, &o.DataPrecoBase,
-			&o.BDI, &statusStr, &o.OriginalFileName, &o.FileType, &o.ValorTotalEstimado, &o.ValorTotalComBDI,
+			&o.BDI, &o.DescontoGeral, &o.DescontoMaoDeObra, &o.DescontoMaterial, &statusStr, &o.OriginalFileName, &o.FileType, &o.ValorTotalEstimado, &o.ValorTotalComBDI,
 			&o.TotalItens, &o.ConfiancaMedia, &seobraID, &seobraURL,
 			&progStep, &o.ProgressPercent, &progMsg, &erroMsg,
 			&o.CreatedAt, &o.UpdatedAt,
@@ -280,13 +284,13 @@ func (r *OrcamentoRepository) UpdateOrcamentoItens(ctx context.Context, o *domai
 	updateOrcamentoSQL := `
 		UPDATE orcamento
 		SET titulo = ?, objeto = ?, orgao = ?, localidade = ?, data_preco_base = ?,
-		    bdi = ?, status = ?, valor_total_estimado = ?, valor_total_com_bdi = ?,
+		    bdi = ?, desconto_geral = ?, desconto_mao_de_obra = ?, desconto_material = ?, status = ?, valor_total_estimado = ?, valor_total_com_bdi = ?,
 		    total_itens = ?, confianca_media = ?, updated_at = ?
 		WHERE id = ?
 	`
 	_, err = tx.ExecContext(ctx, updateOrcamentoSQL,
 		o.Titulo, o.Objeto, o.Orgao, o.Localidade, o.DataPrecoBase,
-		o.BDI, string(o.Status), o.ValorTotalEstimado, o.ValorTotalComBDI,
+		o.BDI, o.DescontoGeral, o.DescontoMaoDeObra, o.DescontoMaterial, string(o.Status), o.ValorTotalEstimado, o.ValorTotalComBDI,
 		o.TotalItens, o.ConfiancaMedia, o.UpdatedAt, o.ID,
 	)
 	if err != nil {
@@ -303,14 +307,18 @@ func (r *OrcamentoRepository) UpdateOrcamentoItens(ctx context.Context, o *domai
 	insertItemSQL := `
 		INSERT INTO orcamento_item (
 			id, orcamento_id, item_numero, codigo_referencia, fonte, descricao,
-			unidade, quantidade, preco_unitario, preco_total, confianca,
+			unidade, categoria, quantidade, preco_unitario, preco_total, confianca,
 			flag_revisao, observacao_ia, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	for _, item := range o.Itens {
 		flagRevInt := 0
 		if item.FlagRevisao {
 			flagRevInt = 1
+		}
+		categoria := item.Categoria
+		if categoria == "" {
+			categoria = domain.InferCategoria(item.Descricao, item.Unidade)
 		}
 		itemCreatedAt := item.CreatedAt
 		if itemCreatedAt.IsZero() {
@@ -319,7 +327,7 @@ func (r *OrcamentoRepository) UpdateOrcamentoItens(ctx context.Context, o *domai
 
 		_, err = tx.ExecContext(ctx, insertItemSQL,
 			item.ID, o.ID, item.ItemNumero, item.CodigoReferencia, item.Fonte, item.Descricao,
-			item.Unidade, item.Quantidade, item.PrecoUnitario, item.PrecoTotal, item.Confianca,
+			item.Unidade, categoria, item.Quantidade, item.PrecoUnitario, item.PrecoTotal, item.Confianca,
 			flagRevInt, item.ObservacaoIA, itemCreatedAt, now,
 		)
 		if err != nil {

@@ -254,6 +254,7 @@ func parseRowToItem(row []string, cols map[string]int, orcamentoID string, fallb
 		Fonte:            fonte,
 		Descricao:        desc,
 		Unidade:          und,
+		Categoria:        domain.InferCategoria(desc, und),
 		Quantidade:       qty,
 		PrecoUnitario:    unitPrice,
 		PrecoTotal:       totalPrice,
