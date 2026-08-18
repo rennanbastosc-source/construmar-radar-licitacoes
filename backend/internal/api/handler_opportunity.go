@@ -75,9 +75,17 @@ func (h *OpportunityHandler) ListOpportunities(w http.ResponseWriter, r *http.Re
 		}
 	}
 
+	var minScore *float64
+	minScoreStr := q.Get("minScore")
+	if minScoreStr != "" {
+		if val, err := strconv.ParseFloat(minScoreStr, 64); err == nil {
+			minScore = &val
+		}
+	}
+
 	classification := q.Get("classification")
 	if classification == "" {
-		classification = domain.ClassificationInScope
+		classification = "IN_SCOPE_AND_REVIEW"
 	}
 
 	page := 1
@@ -112,6 +120,8 @@ func (h *OpportunityHandler) ListOpportunities(w http.ResponseWriter, r *http.Re
 		MinValue:       minValue,
 		MaxValue:       maxValue,
 		Classification: classification,
+		Term:           q.Get("term"),
+		MinScore:       minScore,
 		Municipality:   q.Get("municipality"),
 		Modality:       q.Get("modality"),
 		Search:         q.Get("search"),

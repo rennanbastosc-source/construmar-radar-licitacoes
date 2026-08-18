@@ -119,6 +119,8 @@ type OpportunityFilter struct {
 	MinValue       *float64
 	MaxValue       *float64
 	Classification string
+	Term           string   // filter by classification term (matched in classification_terms JSON)
+	MinScore       *float64 // minimum classification_score
 	Municipality   string
 	Modality       string
 	Search         string

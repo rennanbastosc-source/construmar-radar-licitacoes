@@ -36,6 +36,8 @@ export async function fetchOpportunities(
   if (params.municipality) query.set('municipality', params.municipality);
   if (params.modality) query.set('modality', params.modality);
   if (params.search) query.set('search', params.search);
+  if (params.term) query.set('term', params.term);
+  if (params.minScore !== undefined) query.set('minScore', params.minScore.toString());
   if (params.deadlineFrom) query.set('deadlineFrom', params.deadlineFrom);
   if (params.deadlineTo) query.set('deadlineTo', params.deadlineTo);
   if (params.page) query.set('page', params.page.toString());

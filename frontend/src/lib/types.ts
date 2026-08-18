@@ -112,6 +112,8 @@ export interface OpportunityFilterParams {
   municipality?: string;
   modality?: string;
   search?: string;
+  term?: string;
+  minScore?: number;
   deadlineFrom?: string;
   deadlineTo?: string;
   page?: number;
