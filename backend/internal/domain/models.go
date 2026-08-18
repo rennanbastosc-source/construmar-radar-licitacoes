@@ -117,6 +117,7 @@ type OpportunityFilter struct {
 	UF             string
 	Status         string
 	MinValue       *float64
+	MaxValue       *float64
 	Classification string
 	Municipality   string
 	Modality       string

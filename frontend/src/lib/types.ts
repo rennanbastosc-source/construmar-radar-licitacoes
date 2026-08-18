@@ -107,6 +107,7 @@ export interface OpportunityFilterParams {
   uf?: string;
   status?: string;
   minValue?: number;
+  maxValue?: number;
   classification?: string;
   municipality?: string;
   modality?: string;

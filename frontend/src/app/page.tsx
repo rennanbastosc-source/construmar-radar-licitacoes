@@ -19,6 +19,17 @@ import {
 } from '@/lib/types';
 import { Radio, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 
+function brl(n: number) {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function describeValueRange(min?: number, max?: number) {
+  if (min !== undefined && max !== undefined) return `Valor estimado entre ${brl(min)} e ${brl(max)}`;
+  if (min !== undefined) return `Valor estimado ≥ ${brl(min)}`;
+  if (max !== undefined) return `Valor estimado ≤ ${brl(max)}`;
+  return 'Qualquer valor estimado';
+}
+
 export default function RadarDashboardPage() {
   const [opportunities, setOpportunities] = useState<LicitacaoOportunidade[]>([]);
   const [stats, setStats] = useState<StatsOverviewData | null>(null);
@@ -37,6 +48,7 @@ export default function RadarDashboardPage() {
     uf: 'CE',
     status: 'OPEN',
     minValue: 900000.0,
+    maxValue: undefined,
     classification: 'IN_SCOPE_AND_REVIEW',
     search: '',
     municipality: '',
@@ -132,6 +144,7 @@ export default function RadarDashboardPage() {
       uf: 'CE',
       status: 'OPEN',
       minValue: 900000.0,
+      maxValue: undefined,
       classification: 'IN_SCOPE_AND_REVIEW',
       search: '',
       municipality: '',
@@ -240,7 +253,7 @@ export default function RadarDashboardPage() {
             Oportunidades em Obras, Construção Civil & Engenharia
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Filtro ativo: Recebimento de propostas aberto • Valor estimado &ge; R$ 900.000,00 • Classificação determinística auditável
+            Filtro ativo: Recebimento de propostas aberto • {describeValueRange(filters.minValue, filters.maxValue)} • Classificação determinística auditável
           </p>
         </div>
 

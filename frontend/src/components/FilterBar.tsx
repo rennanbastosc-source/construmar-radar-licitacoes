@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { OpportunityFilterParams } from '@/lib/types';
-import { Search, Filter, RotateCcw, MapPin } from 'lucide-react';
+import { MUNICIPIOS_CE } from '@/lib/municipios-ce';
+import { valorPorExtenso } from '@/lib/valorPorExtenso';
+import { Search, RotateCcw, MapPin, Check } from 'lucide-react';
 
 interface Props {
   filters: OpportunityFilterParams;
@@ -10,15 +12,21 @@ interface Props {
   onReset: () => void;
 }
 
-export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
-  const valuePresets = [
-    { label: 'R$ 900 mil+', val: 900000 },
-    { label: 'R$ 2 mi+', val: 2000000 },
-    { label: 'R$ 5 mi+', val: 5000000 },
-    { label: 'R$ 10 mi+', val: 10000000 },
-    { label: 'Todos os valores', val: 0 },
-  ];
+function fold(s: string) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
 
+const fieldStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px 10px 36px',
+  backgroundColor: 'var(--bg-surface-elevated)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-sm)',
+  color: 'var(--text-primary)',
+  outline: 'none',
+};
+
+export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
   const classificationOptions = [
     { label: 'Radar Ativo (Escopo + Revisão)', val: 'IN_SCOPE_AND_REVIEW' },
     { label: 'Obras & Engenharia (Escopo)', val: 'IN_SCOPE' },
@@ -26,8 +34,61 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
     { label: 'Todas as Licitações', val: 'ALL' },
   ];
 
-  const currentMinValue = filters.minValue ?? 900000;
   const currentClassification = filters.classification ?? 'IN_SCOPE';
+  const selectedCity = filters.municipality || '';
+
+  const [cityOpen, setCityOpen] = useState(false);
+  const [cityQuery, setCityQuery] = useState('');
+  const [hoveredCity, setHoveredCity] = useState<string | null>(null);
+  const cityWrapRef = useRef<HTMLDivElement>(null);
+
+  const filteredCities = useMemo(() => {
+    const q = fold(cityQuery.trim());
+    if (!q) return MUNICIPIOS_CE;
+    return MUNICIPIOS_CE.filter((m) => fold(m).includes(q));
+  }, [cityQuery]);
+
+  useEffect(() => {
+    if (!cityOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (cityWrapRef.current && !cityWrapRef.current.contains(e.target as Node)) {
+        setCityOpen(false);
+        setCityQuery('');
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCityOpen(false);
+        setCityQuery('');
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [cityOpen]);
+
+  const pickCity = (name: string) => {
+    onChange({ municipality: name, page: 1 });
+    setCityOpen(false);
+    setCityQuery('');
+  };
+
+  const clearCity = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange({ municipality: '', page: 1 });
+    setCityQuery('');
+    setCityOpen(false);
+  };
+
+  const minVal = filters.minValue;
+  const maxVal = filters.maxValue;
+  const minExtenso = minVal !== undefined ? valorPorExtenso(minVal) : '';
+  const maxExtenso = maxVal !== undefined ? valorPorExtenso(maxVal) : '';
+  const rangeInvalid =
+    minVal !== undefined && maxVal !== undefined && minVal > maxVal;
 
   return (
     <div
@@ -42,9 +103,7 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
         gap: '1rem',
       }}
     >
-      {/* Top row: Search & Municipality */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-        {/* Search */}
         <div style={{ flex: '1 1 320px', position: 'relative' }}>
           <Search
             size={16}
@@ -54,6 +113,7 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
               top: '50%',
               transform: 'translateY(-50%)',
               color: 'var(--text-muted)',
+              pointerEvents: 'none',
             }}
           />
           <input
@@ -61,20 +121,11 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
             placeholder="Buscar por objeto, órgão, número PNCP..."
             value={filters.search || ''}
             onChange={(e) => onChange({ search: e.target.value, page: 1 })}
-            style={{
-              width: '100%',
-              padding: '10px 12px 10px 36px',
-              backgroundColor: 'var(--bg-surface-elevated)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-            }}
+            style={fieldStyle}
           />
         </div>
 
-        {/* Municipality */}
-        <div style={{ flex: '0 1 240px', position: 'relative' }}>
+        <div ref={cityWrapRef} style={{ flex: '0 1 280px', position: 'relative' }}>
           <MapPin
             size={16}
             style={{
@@ -83,27 +134,126 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
               top: '50%',
               transform: 'translateY(-50%)',
               color: 'var(--text-muted)',
+              pointerEvents: 'none',
+              zIndex: 1,
             }}
           />
           <input
             type="text"
-            placeholder="Município (ex: Fortaleza)"
-            value={filters.municipality || ''}
-            onChange={(e) => onChange({ municipality: e.target.value, page: 1 })}
+            role="combobox"
+            aria-expanded={cityOpen}
+            aria-controls="municipio-listbox"
+            aria-autocomplete="list"
+            placeholder="Todas as cidades"
+            value={cityOpen ? cityQuery : selectedCity}
+            onFocus={() => {
+              setCityOpen(true);
+              setCityQuery('');
+            }}
+            onChange={(e) => {
+              setCityQuery(e.target.value);
+              if (!cityOpen) setCityOpen(true);
+            }}
             style={{
-              width: '100%',
-              padding: '10px 12px 10px 36px',
-              backgroundColor: 'var(--bg-surface-elevated)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              outline: 'none',
+              ...fieldStyle,
+              paddingRight: selectedCity ? '36px' : '12px',
+              borderColor: cityOpen ? 'var(--border-focus)' : 'var(--border-subtle)',
+              cursor: 'pointer',
             }}
           />
+          {selectedCity ? (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={clearCity}
+              aria-label="Limpar município"
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '22px',
+                height: '22px',
+                border: 'none',
+                borderRadius: '4px',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '16px',
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          ) : null}
+
+          {cityOpen && (
+            <ul
+              id="municipio-listbox"
+              role="listbox"
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 4px)',
+                left: 0,
+                right: 0,
+                zIndex: 30,
+                maxHeight: '280px',
+                overflowY: 'auto',
+                margin: 0,
+                padding: '4px 0',
+                listStyle: 'none',
+                backgroundColor: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: 'var(--shadow-lg)',
+              }}
+            >
+              <li role="option" aria-selected={!selectedCity}>
+                <button
+                  type="button"
+                  onClick={() => pickCity('')}
+                  onMouseEnter={() => setHoveredCity('')}
+                  onMouseLeave={() => setHoveredCity(null)}
+                  style={optionStyle(!selectedCity, hoveredCity === '')}
+                >
+                  <span>Todas as cidades</span>
+                  {!selectedCity ? <Check size={14} color="var(--brand-primary)" /> : null}
+                </button>
+              </li>
+              {filteredCities.map((name) => {
+                const active = selectedCity === name;
+                return (
+                  <li key={name} role="option" aria-selected={active}>
+                    <button
+                      type="button"
+                      onClick={() => pickCity(name)}
+                      onMouseEnter={() => setHoveredCity(name)}
+                      onMouseLeave={() => setHoveredCity(null)}
+                      style={optionStyle(active, hoveredCity === name)}
+                    >
+                      <span>{name}</span>
+                      {active ? <Check size={14} color="var(--brand-primary)" /> : null}
+                    </button>
+                  </li>
+                );
+              })}
+              {filteredCities.length === 0 && (
+                <li
+                  style={{
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  Nenhum município encontrado
+                </li>
+              )}
+            </ul>
+          )}
         </div>
 
-        {/* Reset Button */}
         <button
+          type="button"
           onClick={onReset}
           title="Restaurar filtros padrão"
           style={{
@@ -124,25 +274,24 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
         </button>
       </div>
 
-      {/* Bottom row: Classification Tabs & Value Presets */}
       <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'space-between',
           gap: '1rem',
           paddingTop: '0.75rem',
           borderTop: '1px solid var(--border-subtle)',
         }}
       >
-        {/* Classification Filters */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {classificationOptions.map((opt) => {
             const isActive = currentClassification === opt.val;
             return (
               <button
                 key={opt.val}
+                type="button"
                 onClick={() => onChange({ classification: opt.val, page: 1 })}
                 style={{
                   padding: '6px 12px',
@@ -162,36 +311,104 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
           })}
         </div>
 
-        {/* Value Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
-            Valor mín:
-          </span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {valuePresets.map((vp) => {
-              const isSelected = currentMinValue === vp.val;
-              return (
-                <button
-                  key={vp.val}
-                  onClick={() => onChange({ minValue: vp.val, page: 1 })}
-                  style={{
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                    border: `1px solid ${isSelected ? '#3b82f6' : 'var(--border-subtle)'}`,
-                    backgroundColor: isSelected ? 'var(--accent-blue-subtle)' : 'transparent',
-                    color: isSelected ? '#93c5fd' : 'var(--text-muted)',
-                  }}
-                >
-                  {vp.label}
-                </button>
-              );
-            })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '280px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <MoneyField
+              label="Valor mín."
+              placeholder="R$ mín."
+              value={minVal}
+              extenso={minExtenso}
+              onValue={(n) => onChange({ minValue: n, page: 1 })}
+            />
+            <MoneyField
+              label="Valor máx."
+              placeholder="R$ máx."
+              value={maxVal}
+              extenso={maxExtenso}
+              onValue={(n) => onChange({ maxValue: n, page: 1 })}
+            />
           </div>
+          {rangeInvalid && (
+            <span style={{ fontSize: '11px', color: '#f87171', fontWeight: 500 }}>
+              Mínimo maior que máximo
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
 };
+
+function optionStyle(active: boolean, hovered: boolean): React.CSSProperties {
+  return {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+    padding: '8px 12px',
+    border: 'none',
+    backgroundColor: active
+      ? 'var(--brand-primary-subtle)'
+      : hovered
+        ? 'var(--bg-surface-hover)'
+        : 'transparent',
+    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+    fontSize: '13px',
+    fontWeight: active ? 600 : 500,
+    textAlign: 'left',
+    cursor: 'pointer',
+  };
+}
+
+function MoneyField({
+  label,
+  placeholder,
+  value,
+  extenso,
+  onValue,
+}: {
+  label: string;
+  placeholder: string;
+  value?: number;
+  extenso: string;
+  onValue: (n: number | undefined) => void;
+}) {
+  return (
+    <label style={{ flex: 1, minWidth: '120px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+        {label}
+      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={value !== undefined ? String(value) : ''}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, '');
+          onValue(digits ? Number(digits) : undefined);
+        }}
+        style={{
+          width: '100%',
+          padding: '8px 10px',
+          backgroundColor: 'var(--bg-surface-elevated)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-sm)',
+          color: 'var(--text-primary)',
+          outline: 'none',
+          fontFamily: 'var(--font-mono)',
+        }}
+      />
+      <span
+        style={{
+          fontSize: '10px',
+          color: 'var(--text-muted)',
+          lineHeight: 1.3,
+          minHeight: '1.3em',
+        }}
+      >
+        {extenso || '\u00a0'}
+      </span>
+    </label>
+  );
+}

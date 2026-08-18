@@ -110,6 +110,76 @@ func TestOpportunityRepository(t *testing.T) {
 	}
 }
 
+func TestListOpportunitiesValueInterval(t *testing.T) {
+	testDBPath := "./test_radar_interval.db"
+	defer os.Remove(testDBPath)
+
+	db, err := InitDB(testDBPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewOpportunityRepository(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	newOpportunity := func(externalID string, value float64) *domain.LicitacaoOportunidade {
+		return &domain.LicitacaoOportunidade{
+			Source:              "PNCP",
+			SourceExternalID:    externalID,
+			OrganizationCNPJ:    "07954480000179",
+			OrganizationName:    "ESTADO DO CEARA",
+			UnitName:            "SECRETARIA DA INFRAESTRUTURA",
+			MunicipalityName:    "Fortaleza",
+			UF:                  "CE",
+			StatusSource:        "Divulgada no PNCP",
+			StatusNormalized:    domain.StatusNormalizedOpen,
+			ObjectRaw:           "OBRAS DE CONSTRUÇÃO",
+			ObjectNormalized:    "obras de construcao",
+			EstimatedTotalValue: &value,
+			ValueStatus:         domain.ValueStatusKnown,
+			Classification:      domain.ClassificationInScope,
+			ClassificationScore: 1,
+			ClassifierVersion:   "v1",
+			SourceURL:           "https://pncp.gov.br/edital/" + externalID,
+			LastSeenAt:          now,
+			CreatedAt:           now,
+			UpdatedAt:           now,
+		}
+	}
+
+	for _, opportunity := range []*domain.LicitacaoOportunidade{
+		newOpportunity("opportunity-1000000", 1000000),
+		newOpportunity("opportunity-2500000", 2500000),
+	} {
+		if _, err := repo.UpsertOpportunity(ctx, opportunity); err != nil {
+			t.Fatalf("UpsertOpportunity failed: %v", err)
+		}
+	}
+
+	minValue := 900000.0
+	maxValue := 2000000.0
+	list, total, err := repo.ListOpportunities(ctx, domain.OpportunityFilter{
+		UF:             "CE",
+		Status:         domain.StatusNormalizedOpen,
+		MinValue:       &minValue,
+		MaxValue:       &maxValue,
+		Classification: domain.ClassificationInScope,
+		Page:           1,
+		PageSize:       10,
+	})
+	if err != nil {
+		t.Fatalf("ListOpportunities failed: %v", err)
+	}
+	if total != 1 || len(list) != 1 {
+		t.Fatalf("expected 1 opportunity in value interval, got total=%d, len=%d", total, len(list))
+	}
+	if list[0].EstimatedTotalValue == nil || *list[0].EstimatedTotalValue != 1000000 {
+		t.Errorf("expected opportunity valued at 1000000, got %+v", list[0].EstimatedTotalValue)
+	}
+}
+
 func TestOpportunityRepositoryDeduplicatesByProcess(t *testing.T) {
 	testDBPath := "./test_radar_dedup.db"
 	defer os.Remove(testDBPath)
@@ -170,5 +240,66 @@ func TestOpportunityRepositoryDeduplicatesByProcess(t *testing.T) {
 	}
 	if list[0].SourceExternalID != second.SourceExternalID {
 		t.Errorf("expected newest source external ID %q, got %q", second.SourceExternalID, list[0].SourceExternalID)
+	}
+}
+
+func TestUpsertBumpsLastSeenOnSkip(t *testing.T) {
+	testDBPath := "./test_radar_lastseen.db"
+	defer os.Remove(testDBPath)
+
+	db, err := InitDB(testDBPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewOpportunityRepository(db)
+	ctx := context.Background()
+
+	base := time.Now().UTC().Add(-2 * time.Hour)
+	mk := func(externalID string, sourceUpdatedAt, lastSeenAt time.Time) *domain.LicitacaoOportunidade {
+		return &domain.LicitacaoOportunidade{
+			Source:              "PNCP",
+			SourceExternalID:    externalID,
+			DedupKey:            "07954480000179|22001114447202473",
+			OrganizationCNPJ:    "07954480000179",
+			OrganizationName:    "ESTADO DO CEARA",
+			UnitName:            "SECRETARIA DA INFRAESTRUTURA",
+			MunicipalityName:    "Fortaleza",
+			UF:                  "CE",
+			StatusSource:        "Divulgada no PNCP",
+			StatusNormalized:    domain.StatusNormalizedOpen,
+			ObjectRaw:           "OBRAS DE CONSTRUÇÃO",
+			ObjectNormalized:    "obras de construcao",
+			ValueStatus:         domain.ValueStatusUnknown,
+			Classification:      domain.ClassificationInScope,
+			ClassificationScore: 1,
+			ClassifierVersion:   "v1",
+			SourceURL:           "https://pncp.gov.br/old",
+			SourceUpdatedAt:     &sourceUpdatedAt,
+			LastSeenAt:          lastSeenAt,
+			CreatedAt:           base,
+			UpdatedAt:           base,
+		}
+	}
+
+	first := mk("07954480000179-1-020427/2026", base, base)
+	if _, err := repo.UpsertOpportunity(ctx, first); err != nil {
+		t.Fatalf("first UpsertOpportunity failed: %v", err)
+	}
+
+	// Same content (source_updated_at not newer) but seen again later:
+	// last_seen_at must be bumped even though content is skipped.
+	seenAgain := mk("07954480000179-1-020427/2026", base, base.Add(time.Hour))
+	if _, err := repo.UpsertOpportunity(ctx, seenAgain); err != nil {
+		t.Fatalf("second UpsertOpportunity failed: %v", err)
+	}
+
+	fetched, err := repo.GetOpportunityByID(ctx, first.ID)
+	if err != nil || fetched == nil {
+		t.Fatalf("GetOpportunityByID failed: %v", err)
+	}
+	if !fetched.LastSeenAt.Equal(base.Add(time.Hour)) {
+		t.Errorf("expected last_seen_at bumped to %v, got %v", base.Add(time.Hour), fetched.LastSeenAt)
 	}
 }

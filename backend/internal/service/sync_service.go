@@ -40,10 +40,35 @@ func (s *SyncService) IsRunning() bool {
 	return s.isRunning
 }
 
+// cloneSyncRun deep-copies a run so shared snapshots are never aliased by live mutations.
+func cloneSyncRun(run *domain.LicitacaoSyncRun) *domain.LicitacaoSyncRun {
+	if run == nil {
+		return nil
+	}
+	clone := *run
+	if run.FinishedAt != nil {
+		finished := *run.FinishedAt
+		clone.FinishedAt = &finished
+	}
+	if run.ErrorMessage != nil {
+		msg := *run.ErrorMessage
+		clone.ErrorMessage = &msg
+	}
+	return &clone
+}
+
+// publishRun atomically replaces the shared snapshot with an immutable copy of run.
+// The published snapshot is never mutated afterwards, so readers can hold it safely.
+func (s *SyncService) publishRun(run *domain.LicitacaoSyncRun) {
+	s.mu.Lock()
+	s.currentRun = cloneSyncRun(run)
+	s.mu.Unlock()
+}
+
 func (s *SyncService) GetCurrentRun() *domain.LicitacaoSyncRun {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.currentRun
+	return cloneSyncRun(s.currentRun)
 }
 
 func (s *SyncService) RunSync(ctx context.Context, uf string, minEstimatedValue float64) (*domain.LicitacaoSyncRun, error) {
@@ -80,7 +105,7 @@ func (s *SyncService) RunSync(ctx context.Context, uf string, minEstimatedValue 
 		CorrelationID: correlationID,
 	}
 
-	s.currentRun = run
+	s.currentRun = cloneSyncRun(run)
 	s.mu.Unlock()
 
 	defer func() {
@@ -167,6 +192,9 @@ func (s *SyncService) RunSync(ctx context.Context, uf string, minEstimatedValue 
 
 		// Optional: save page raw payload snapshot
 		_ = s.repo.SaveSnapshot(ctx, run.ID, "page_envelope", rawJSON)
+
+		// Publish progress snapshot (immutable copy); readers never see in-flight mutations
+		s.publishRun(run)
 
 		currentPage++
 	}

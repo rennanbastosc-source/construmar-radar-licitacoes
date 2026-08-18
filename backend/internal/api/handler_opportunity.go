@@ -67,6 +67,14 @@ func (h *OpportunityHandler) ListOpportunities(w http.ResponseWriter, r *http.Re
 		minValue = &defaultMin
 	}
 
+	var maxValue *float64
+	maxValStr := q.Get("maxValue")
+	if maxValStr != "" {
+		if val, err := strconv.ParseFloat(maxValStr, 64); err == nil {
+			maxValue = &val
+		}
+	}
+
 	classification := q.Get("classification")
 	if classification == "" {
 		classification = domain.ClassificationInScope
@@ -102,6 +110,7 @@ func (h *OpportunityHandler) ListOpportunities(w http.ResponseWriter, r *http.Re
 		UF:             uf,
 		Status:         status,
 		MinValue:       minValue,
+		MaxValue:       maxValue,
 		Classification: classification,
 		Municipality:   q.Get("municipality"),
 		Modality:       q.Get("modality"),

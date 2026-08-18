@@ -55,6 +55,14 @@ func (r *OpportunityRepository) UpsertOpportunity(ctx context.Context, opp *doma
 			}
 
 			if !incomingIsNewer(opp.SourceUpdatedAt, existingUpdatedAt) {
+				// Content is up to date, but the item was seen in this sync:
+				// bump last_seen_at so staleness tracking stays accurate.
+				if _, err := r.db.ExecContext(ctx,
+					"UPDATE licitacao_oportunidade SET last_seen_at = ? WHERE id = ?",
+					opp.LastSeenAt, existingID,
+				); err != nil {
+					return false, fmt.Errorf("failed to bump last_seen_at: %w", err)
+				}
 				return false, nil
 			}
 
@@ -264,6 +272,11 @@ func (r *OpportunityRepository) ListOpportunities(ctx context.Context, filter do
 	if filter.MinValue != nil && *filter.MinValue > 0 {
 		whereClauses = append(whereClauses, "(estimated_total_value IS NOT NULL AND estimated_total_value >= ?)")
 		args = append(args, *filter.MinValue)
+	}
+
+	if filter.MaxValue != nil && *filter.MaxValue > 0 {
+		whereClauses = append(whereClauses, "(estimated_total_value IS NOT NULL AND estimated_total_value <= ?)")
+		args = append(args, *filter.MaxValue)
 	}
 
 	if filter.Classification != "" && filter.Classification != "ALL" {

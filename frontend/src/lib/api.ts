@@ -27,6 +27,7 @@ export async function fetchOpportunities(
   if (params.uf) query.set('uf', params.uf);
   if (params.status) query.set('status', params.status);
   if (params.minValue !== undefined) query.set('minValue', params.minValue.toString());
+  if (params.maxValue !== undefined) query.set('maxValue', params.maxValue.toString());
   if (params.classification) query.set('classification', params.classification);
   if (params.municipality) query.set('municipality', params.municipality);
   if (params.modality) query.set('modality', params.modality);
