@@ -2,8 +2,10 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
+	"github.com/construmar/radar-licitacoes-backend/internal/domain"
 	_ "modernc.org/sqlite"
 )
 
@@ -17,6 +19,10 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to create database tables: %w", err)
 	}
+	if err := migrateDedup(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to migrate deduplication: %w", err)
+	}
 
 	return db, nil
 }
@@ -27,6 +33,7 @@ func createTables(db *sql.DB) error {
 		id TEXT PRIMARY KEY,
 		source TEXT NOT NULL,
 		source_external_id TEXT NOT NULL,
+		dedup_key TEXT NOT NULL DEFAULT '',
 		organization_cnpj TEXT NOT NULL,
 		organization_name TEXT NOT NULL,
 		unit_name TEXT NOT NULL,
@@ -110,4 +117,172 @@ func createTables(db *sql.DB) error {
 
 	_, err := db.Exec(schema)
 	return err
+}
+
+func migrateDedup(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	rollback := func(err error) error {
+		_ = tx.Rollback()
+		return err
+	}
+
+	columns, err := tx.Query("PRAGMA table_info(licitacao_oportunidade)")
+	if err != nil {
+		return rollback(err)
+	}
+	hasDedupKey := false
+	for columns.Next() {
+		var cid, notNull, pk int
+		var name, columnType string
+		var defaultValue sql.NullString
+		if err := columns.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &pk); err != nil {
+			_ = columns.Close()
+			return rollback(err)
+		}
+		if name == "dedup_key" {
+			hasDedupKey = true
+		}
+	}
+	if err := columns.Close(); err != nil {
+		return rollback(err)
+	}
+	if err := columns.Err(); err != nil {
+		return rollback(err)
+	}
+
+	if !hasDedupKey {
+		if _, err := tx.Exec("ALTER TABLE licitacao_oportunidade ADD COLUMN dedup_key TEXT NOT NULL DEFAULT ''"); err != nil {
+			return rollback(err)
+		}
+	}
+
+	type opportunityIdentity struct {
+		id   string
+		cnpj string
+	}
+	opportunitiesRows, err := tx.Query("SELECT id, organization_cnpj FROM licitacao_oportunidade")
+	if err != nil {
+		return rollback(err)
+	}
+	var opportunities []opportunityIdentity
+	for opportunitiesRows.Next() {
+		var opportunity opportunityIdentity
+		if err := opportunitiesRows.Scan(&opportunity.id, &opportunity.cnpj); err != nil {
+			_ = opportunitiesRows.Close()
+			return rollback(err)
+		}
+		opportunities = append(opportunities, opportunity)
+	}
+	if err := opportunitiesRows.Close(); err != nil {
+		return rollback(err)
+	}
+	if err := opportunitiesRows.Err(); err != nil {
+		return rollback(err)
+	}
+
+	for _, opportunity := range opportunities {
+		var rawJSON string
+		err := tx.QueryRow(`
+			SELECT raw_json
+			FROM licitacao_payload_snapshot
+			WHERE opportunity_id = ? AND resource_type = 'list'
+			ORDER BY created_at DESC, id DESC
+			LIMIT 1`, opportunity.id).Scan(&rawJSON)
+		if err == sql.ErrNoRows {
+			continue
+		}
+		if err != nil {
+			return rollback(err)
+		}
+
+		var payload struct {
+			Processo string `json:"processo"`
+		}
+		if err := json.Unmarshal([]byte(rawJSON), &payload); err != nil {
+			continue
+		}
+		key := domain.BuildDedupKey(opportunity.cnpj, payload.Processo)
+		if key == "" {
+			continue
+		}
+		if _, err := tx.Exec("UPDATE licitacao_oportunidade SET dedup_key = ? WHERE id = ?", key, opportunity.id); err != nil {
+			return rollback(err)
+		}
+	}
+
+	type dedupGroup struct {
+		source   string
+		dedupKey string
+	}
+	groupsRows, err := tx.Query(`
+		SELECT source, dedup_key
+		FROM licitacao_oportunidade
+		WHERE dedup_key <> ''
+		GROUP BY source, dedup_key
+		HAVING COUNT(*) > 1`)
+	if err != nil {
+		return rollback(err)
+	}
+	var groups []dedupGroup
+	for groupsRows.Next() {
+		var group dedupGroup
+		if err := groupsRows.Scan(&group.source, &group.dedupKey); err != nil {
+			_ = groupsRows.Close()
+			return rollback(err)
+		}
+		groups = append(groups, group)
+	}
+	if err := groupsRows.Close(); err != nil {
+		return rollback(err)
+	}
+	if err := groupsRows.Err(); err != nil {
+		return rollback(err)
+	}
+
+	for _, group := range groups {
+		rows, err := tx.Query(`
+			SELECT id
+			FROM licitacao_oportunidade
+			WHERE source = ? AND dedup_key = ?
+			ORDER BY
+				CASE WHEN source_updated_at IS NULL THEN 1 ELSE 0 END,
+				source_updated_at DESC,
+				CASE WHEN updated_at IS NULL THEN 1 ELSE 0 END,
+				updated_at DESC,
+				id DESC`, group.source, group.dedupKey)
+		if err != nil {
+			return rollback(err)
+		}
+		var ids []string
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				_ = rows.Close()
+				return rollback(err)
+			}
+			ids = append(ids, id)
+		}
+		if err := rows.Close(); err != nil {
+			return rollback(err)
+		}
+		if err := rows.Err(); err != nil {
+			return rollback(err)
+		}
+
+		for _, id := range ids[1:] {
+			if _, err := tx.Exec("DELETE FROM licitacao_oportunidade WHERE id = ?", id); err != nil {
+				return rollback(err)
+			}
+		}
+	}
+
+	if _, err := tx.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_opp_dedup ON licitacao_oportunidade(source, dedup_key) WHERE dedup_key <> ''"); err != nil {
+		return rollback(err)
+	}
+
+	return tx.Commit()
 }

@@ -109,3 +109,66 @@ func TestOpportunityRepository(t *testing.T) {
 		t.Errorf("unexpected stats: %+v", stats)
 	}
 }
+
+func TestOpportunityRepositoryDeduplicatesByProcess(t *testing.T) {
+	testDBPath := "./test_radar_dedup.db"
+	defer os.Remove(testDBPath)
+
+	db, err := InitDB(testDBPath)
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewOpportunityRepository(db)
+	ctx := context.Background()
+	firstUpdatedAt := time.Now().UTC().Add(-time.Hour)
+	secondUpdatedAt := firstUpdatedAt.Add(time.Hour)
+
+	newOpportunity := func(externalID string, sourceUpdatedAt time.Time) *domain.LicitacaoOportunidade {
+		return &domain.LicitacaoOportunidade{
+			Source:              "PNCP",
+			SourceExternalID:    externalID,
+			DedupKey:            "07954480000179|22001114447202473",
+			OrganizationCNPJ:    "07954480000179",
+			OrganizationName:    "ESTADO DO CEARA",
+			UnitName:            "SECRETARIA DA INFRAESTRUTURA",
+			MunicipalityName:    "Fortaleza",
+			UF:                  "CE",
+			StatusSource:        "Divulgada no PNCP",
+			StatusNormalized:    domain.StatusNormalizedOpen,
+			ObjectRaw:           "OBRAS DE CONSTRUÇÃO",
+			ObjectNormalized:    "obras de construcao",
+			ValueStatus:         domain.ValueStatusUnknown,
+			Classification:      domain.ClassificationInScope,
+			ClassificationScore: 1,
+			ClassifierVersion:   "v1",
+			SourceURL:           "https://pncp.gov.br/old",
+			SourceUpdatedAt:     &sourceUpdatedAt,
+			LastSeenAt:          sourceUpdatedAt,
+			CreatedAt:           sourceUpdatedAt,
+			UpdatedAt:           sourceUpdatedAt,
+		}
+	}
+
+	first := newOpportunity("07954480000179-1-020427/2026", firstUpdatedAt)
+	second := newOpportunity("07954480000179-1-020559/2026", secondUpdatedAt)
+
+	if _, err := repo.UpsertOpportunity(ctx, first); err != nil {
+		t.Fatalf("first UpsertOpportunity failed: %v", err)
+	}
+	if _, err := repo.UpsertOpportunity(ctx, second); err != nil {
+		t.Fatalf("second UpsertOpportunity failed: %v", err)
+	}
+
+	list, total, err := repo.ListOpportunities(ctx, domain.OpportunityFilter{Page: 1, PageSize: 10})
+	if err != nil {
+		t.Fatalf("ListOpportunities failed: %v", err)
+	}
+	if total != 1 || len(list) != 1 {
+		t.Fatalf("expected one deduplicated opportunity, got total=%d, len=%d", total, len(list))
+	}
+	if list[0].SourceExternalID != second.SourceExternalID {
+		t.Errorf("expected newest source external ID %q, got %q", second.SourceExternalID, list[0].SourceExternalID)
+	}
+}

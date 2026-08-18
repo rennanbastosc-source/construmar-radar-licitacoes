@@ -27,7 +27,7 @@ func TestNormalizeContratacao(t *testing.T) {
 			UFSigla:       "CE",
 			CodigoIBGE:    "2304400",
 		},
-		ModalidadeNome:   "Concorrência - Eletrônica",
+		ModalidadeNome:     "Concorrência - Eletrônica",
 		SituacaoCompraNome: "Divulgada no PNCP",
 	}
 
@@ -71,5 +71,19 @@ func TestNormalizeContratacaoSigiloso(t *testing.T) {
 	opp := NormalizeContratacao(dto, time.Now())
 	if opp.ValueStatus != domain.ValueStatusConfidential {
 		t.Errorf("expected VALUE_CONFIDENTIAL, got %s", opp.ValueStatus)
+	}
+}
+
+func TestNormalizeContratacaoBuildsDedupKey(t *testing.T) {
+	dto := pncp.PNCPContratacaoDTO{
+		Processo: "22001.114447/2024-73",
+		OrgaoEntidade: pncp.PNCPEntidadeDTO{
+			CNPJ: "07954480000179",
+		},
+	}
+
+	opp := NormalizeContratacao(dto, time.Now())
+	if opp.DedupKey != "07954480000179|22001114447202473" {
+		t.Errorf("unexpected dedup key: %s", opp.DedupKey)
 	}
 }

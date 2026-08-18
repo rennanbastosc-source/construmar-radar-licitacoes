@@ -35,9 +35,11 @@ const (
 
 // LicitacaoOportunidade represents a normalized public bidding opportunity.
 type LicitacaoOportunidade struct {
-	ID                  string     `json:"id"`
-	Source              string     `json:"source"`
-	SourceExternalID    string     `json:"sourceExternalId"`
+	ID               string `json:"id"`
+	Source           string `json:"source"`
+	SourceExternalID string `json:"sourceExternalId"`
+	// DedupKey is the stable identity (cnpj|processo_digitos); empty means deduplicate by source_external_id.
+	DedupKey            string     `json:"-"`
 	OrganizationCNPJ    string     `json:"organizationCnpj"`
 	OrganizationName    string     `json:"organizationName"`
 	UnitName            string     `json:"unitName"`
@@ -142,11 +144,11 @@ type OpportunityMeta struct {
 }
 
 type StatsOverviewData struct {
-	TotalOpportunities     int        `json:"totalOpportunities"`
-	TotalInScope           int        `json:"totalInScope"`
-	TotalReview            int        `json:"totalReview"`
-	TotalEstimatedValue    float64    `json:"totalEstimatedValue"`
-	TotalUrgent            int        `json:"totalUrgent"` // Ends in <= 3 days
-	LastSuccessfulSyncAt   *time.Time `json:"lastSuccessfulSyncAt,omitempty"`
-	LastSyncStatus         string     `json:"lastSyncStatus"`
+	TotalOpportunities   int        `json:"totalOpportunities"`
+	TotalInScope         int        `json:"totalInScope"`
+	TotalReview          int        `json:"totalReview"`
+	TotalEstimatedValue  float64    `json:"totalEstimatedValue"`
+	TotalUrgent          int        `json:"totalUrgent"` // Ends in <= 3 days
+	LastSuccessfulSyncAt *time.Time `json:"lastSuccessfulSyncAt,omitempty"`
+	LastSyncStatus       string     `json:"lastSyncStatus"`
 }

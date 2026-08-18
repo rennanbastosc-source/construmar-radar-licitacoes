@@ -126,6 +126,7 @@ func NormalizeContratacao(dto pncp.PNCPContratacaoDTO, now time.Time) domain.Lic
 		ID:                  uuid.New().String(),
 		Source:              "PNCP",
 		SourceExternalID:    dto.NumeroControlePNCP,
+		DedupKey:            domain.BuildDedupKey(dto.OrgaoEntidade.CNPJ, dto.Processo),
 		OrganizationCNPJ:    dto.OrgaoEntidade.CNPJ,
 		OrganizationName:    dto.OrgaoEntidade.RazaoSocial,
 		UnitName:            dto.UnidadeOrgao.NomeUnidade,

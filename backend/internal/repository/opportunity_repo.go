@@ -22,14 +22,78 @@ func NewOpportunityRepository(db *sql.DB) *OpportunityRepository {
 	return &OpportunityRepository{db: db}
 }
 
-// UpsertOpportunity inserts or updates an opportunity idempotently using source + source_external_id.
+func incomingIsNewer(incoming, existing *time.Time) bool {
+	if incoming == nil {
+		return false
+	}
+	if existing == nil {
+		return true
+	}
+	return incoming.After(*existing)
+}
+
+// UpsertOpportunity inserts or updates an opportunity idempotently using the stable deduplication key when available.
 func (r *OpportunityRepository) UpsertOpportunity(ctx context.Context, opp *domain.LicitacaoOportunidade) (bool, error) {
 	termsJSON, err := json.Marshal(opp.ClassificationTerms)
 	if err != nil {
 		termsJSON = []byte("[]")
 	}
 
-	// Check if already exists
+	if opp.DedupKey != "" {
+		var existingID string
+		var existingSourceUpdatedAt sql.NullTime
+		err = r.db.QueryRowContext(ctx,
+			"SELECT id, source_updated_at FROM licitacao_oportunidade WHERE source = ? AND dedup_key = ?",
+			opp.Source, opp.DedupKey,
+		).Scan(&existingID, &existingSourceUpdatedAt)
+
+		if err == nil {
+			opp.ID = existingID
+			var existingUpdatedAt *time.Time
+			if existingSourceUpdatedAt.Valid {
+				existingUpdatedAt = &existingSourceUpdatedAt.Time
+			}
+
+			if !incomingIsNewer(opp.SourceUpdatedAt, existingUpdatedAt) {
+				return false, nil
+			}
+
+			query := `
+			UPDATE licitacao_oportunidade SET
+				source_external_id = ?, organization_cnpj = ?, organization_name = ?, unit_name = ?,
+				municipality_name = ?, municipality_ibge_code = ?, uf = ?,
+				purchase_number = ?, purchase_year = ?, modality_name = ?,
+				dispute_mode_name = ?, status_source = ?, status_normalized = ?,
+				object_raw = ?, object_normalized = ?, estimated_total_value = ?,
+				value_status = ?, proposal_start_at = ?, proposal_end_at = ?,
+				published_at = ?, source_updated_at = ?, classification = ?,
+				classification_score = ?, classification_terms = ?, classifier_version = ?,
+				source_url = ?, dedup_key = ?, last_seen_at = ?, updated_at = ?
+			WHERE id = ?`
+
+			_, err = r.db.ExecContext(ctx, query,
+				opp.SourceExternalID, opp.OrganizationCNPJ, opp.OrganizationName, opp.UnitName,
+				opp.MunicipalityName, opp.MunicipalityIBGE, opp.UF,
+				opp.PurchaseNumber, opp.PurchaseYear, opp.ModalityName,
+				opp.DisputeModeName, opp.StatusSource, opp.StatusNormalized,
+				opp.ObjectRaw, opp.ObjectNormalized, opp.EstimatedTotalValue,
+				opp.ValueStatus, opp.ProposalStartAt, opp.ProposalEndAt,
+				opp.PublishedAt, opp.SourceUpdatedAt, opp.Classification,
+				opp.ClassificationScore, string(termsJSON), opp.ClassifierVersion,
+				opp.SourceURL, opp.DedupKey, opp.LastSeenAt, opp.UpdatedAt,
+				opp.ID,
+			)
+			if err != nil {
+				return false, fmt.Errorf("failed to update opportunity: %w", err)
+			}
+			return false, nil
+		}
+		if err != sql.ErrNoRows {
+			return false, fmt.Errorf("failed to check existing opportunity by dedup key: %w", err)
+		}
+	}
+
+	// Check if already exists by source + source_external_id.
 	var existingID string
 	err = r.db.QueryRowContext(ctx,
 		"SELECT id FROM licitacao_oportunidade WHERE source = ? AND source_external_id = ?",
@@ -44,7 +108,7 @@ func (r *OpportunityRepository) UpsertOpportunity(ctx context.Context, opp *doma
 		}
 		query := `
 		INSERT INTO licitacao_oportunidade (
-			id, source, source_external_id, organization_cnpj, organization_name,
+			id, source, source_external_id, dedup_key, organization_cnpj, organization_name,
 			unit_name, municipality_name, municipality_ibge_code, uf,
 			purchase_number, purchase_year, modality_name, dispute_mode_name,
 			status_source, status_normalized, object_raw, object_normalized,
@@ -52,10 +116,14 @@ func (r *OpportunityRepository) UpsertOpportunity(ctx context.Context, opp *doma
 			published_at, source_updated_at, classification, classification_score,
 			classification_terms, classifier_version, source_url, last_seen_at,
 			created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		) VALUES (
+			?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?, ?, ?)`
 
 		_, err = r.db.ExecContext(ctx, query,
-			opp.ID, opp.Source, opp.SourceExternalID, opp.OrganizationCNPJ, opp.OrganizationName,
+			opp.ID, opp.Source, opp.SourceExternalID, opp.DedupKey, opp.OrganizationCNPJ, opp.OrganizationName,
 			opp.UnitName, opp.MunicipalityName, opp.MunicipalityIBGE, opp.UF,
 			opp.PurchaseNumber, opp.PurchaseYear, opp.ModalityName, opp.DisputeModeName,
 			opp.StatusSource, opp.StatusNormalized, opp.ObjectRaw, opp.ObjectNormalized,
@@ -79,7 +147,7 @@ func (r *OpportunityRepository) UpsertOpportunity(ctx context.Context, opp *doma
 			value_status = ?, proposal_start_at = ?, proposal_end_at = ?,
 			published_at = ?, source_updated_at = ?, classification = ?,
 			classification_score = ?, classification_terms = ?, classifier_version = ?,
-			source_url = ?, last_seen_at = ?, updated_at = ?
+			source_url = ?, dedup_key = ?, last_seen_at = ?, updated_at = ?
 		WHERE id = ?`
 
 		_, err = r.db.ExecContext(ctx, query,
@@ -91,7 +159,7 @@ func (r *OpportunityRepository) UpsertOpportunity(ctx context.Context, opp *doma
 			opp.ValueStatus, opp.ProposalStartAt, opp.ProposalEndAt,
 			opp.PublishedAt, opp.SourceUpdatedAt, opp.Classification,
 			opp.ClassificationScore, string(termsJSON), opp.ClassifierVersion,
-			opp.SourceURL, opp.LastSeenAt, opp.UpdatedAt,
+			opp.SourceURL, opp.DedupKey, opp.LastSeenAt, opp.UpdatedAt,
 			opp.ID,
 		)
 		if err != nil {
