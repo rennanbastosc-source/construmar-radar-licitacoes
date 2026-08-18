@@ -15,6 +15,10 @@ function getApiBase(): string {
     }
     return `https://${trimmed}`;
   }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname || 'localhost';
+    return `http://${host}:8080`;
+  }
   return 'http://localhost:8080';
 }
 
@@ -134,4 +138,105 @@ export async function fetchSyncHistory(limit: number = 20): Promise<LicitacaoSyn
 
   const json = await res.json();
   return json.data;
+}
+
+// -------------------------------------------------------------
+// ORÇAMENTOS INTELIGENTES & SEOBRA API
+// -------------------------------------------------------------
+
+import {
+  Orcamento,
+  PaginatedOrcamentosResponse,
+  SeobraStatusResponse,
+} from './types';
+
+export async function uploadEditalOrcamento(
+  file: File,
+  oportunidadeId?: string
+): Promise<Orcamento> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (oportunidadeId) {
+    formData.append('oportunidadeId', oportunidadeId);
+  }
+
+  const res = await fetch(`${API_BASE}/api/orcamentos/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'Falha no upload/processamento');
+    throw new Error(errText || 'Falha ao processar e extrair itens do documento.');
+  }
+
+  return res.json();
+}
+
+export async function fetchOrcamentos(
+  limit: number = 20,
+  offset: number = 0
+): Promise<PaginatedOrcamentosResponse> {
+  const res = await fetch(`${API_BASE}/api/orcamentos?limit=${limit}&offset=${offset}`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error('Erro ao carregar lista de orçamentos.');
+  }
+
+  return res.json();
+}
+
+export async function fetchOrcamentoDetail(id: string): Promise<Orcamento> {
+  const res = await fetch(`${API_BASE}/api/orcamentos/${id}`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error('Erro ao carregar detalhes do orçamento.');
+  }
+
+  return res.json();
+}
+
+export async function updateOrcamentoItens(orcamento: Orcamento): Promise<Orcamento> {
+  const res = await fetch(`${API_BASE}/api/orcamentos/${orcamento.id}/itens`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(orcamento),
+  });
+
+  if (!res.ok) {
+    throw new Error('Erro ao salvar alterações na planilha orçamentária.');
+  }
+
+  return res.json();
+}
+
+export async function despacharParaSeobra(id: string): Promise<Orcamento> {
+  const res = await fetch(`${API_BASE}/api/orcamentos/${id}/despachar-seobra`, {
+    method: 'POST',
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'Erro ao despachar para SEOBRA');
+    throw new Error(errText || 'Falha na comunicação com o SEOBRA.');
+  }
+
+  return res.json();
+}
+
+export async function fetchSeobraStatus(): Promise<SeobraStatusResponse> {
+  const res = await fetch(`${API_BASE}/api/seobra/status`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    return { status: 'OFFLINE' };
+  }
+
+  return res.json();
 }

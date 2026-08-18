@@ -12,6 +12,9 @@ type Config struct {
 	MinEstimatedValue float64
 	DefaultUF         string
 	SyncIntervalHours int
+	AIAPIURL          string
+	AIAPIKey          string
+	AIModel           string
 }
 
 func LoadConfig() *Config {
@@ -32,6 +35,10 @@ func LoadConfig() *Config {
 		syncHours = 6
 	}
 
+	aiURL := getEnv("AI_API_URL", "https://rennan.tail814f6b.ts.net/v1")
+	aiKey := getEnv("AI_API_KEY", "sk-a96069847efa2519-c5e93r-9ff7bea2")
+	aiModel := getEnv("AI_MODEL", "GeMiNi")
+
 	return &Config{
 		Port:              port,
 		DBPath:            dbPath,
@@ -39,6 +46,9 @@ func LoadConfig() *Config {
 		MinEstimatedValue: minVal,
 		DefaultUF:         defaultUF,
 		SyncIntervalHours: syncHours,
+		AIAPIURL:          aiURL,
+		AIAPIKey:          aiKey,
+		AIModel:           aiModel,
 	}
 }
 

@@ -120,6 +120,24 @@ export const Header: React.FC<HeaderProps> = ({
               Oportunidades
             </Link>
             <Link
+              href="/orcamentos"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: pathname.startsWith('/orcamentos') ? '#ffffff' : 'var(--text-secondary)',
+                backgroundColor: pathname.startsWith('/orcamentos') ? 'var(--bg-surface-elevated)' : 'transparent',
+                border: `1px solid ${pathname.startsWith('/orcamentos') ? 'rgba(242, 100, 25, 0.4)' : 'transparent'}`,
+              }}
+            >
+              <span style={{ color: '#f26419', fontWeight: 800 }}>⚡</span>
+              Orçamentos SEOBRA
+            </Link>
+            <Link
               href="/sync"
               style={{
                 display: 'flex',
@@ -135,7 +153,7 @@ export const Header: React.FC<HeaderProps> = ({
               }}
             >
               <History size={15} />
-              Histórico de Sincronizações
+              Histórico PNCP
             </Link>
           </nav>
         </div>

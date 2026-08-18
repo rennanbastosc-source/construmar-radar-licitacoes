@@ -1,0 +1,1732 @@
+{
+  "schemaVersion": 1,
+  "runId": "20260814-221427-470",
+  "strategy": "merge",
+  "toolkitVersion": "2026.7.27",
+  "createdAt": "2026-08-14T22:14:27.905Z",
+  "backupDir": "/home/rennanbastos/Documentos/almoxarifado/.ag-kit-backups/20260814-221427-470",
+  "summary": {
+    "actions": 221,
+    "conflicts": 0,
+    "preserved": 152,
+    "unchanged": 0
+  },
+  "actions": [
+    {
+      "type": "add",
+      "file": "ARCHITECTURE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "CHANGELOG.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "DEPENDENCY_GRAPH.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "README.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "VERSION",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/backend-specialist.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/code-archaeologist.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/database-architect.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/debugger.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/devops-engineer.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/documentation-writer.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/explorer-agent.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/frontend-specialist.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/game-developer.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/mobile-developer.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/orchestrator.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/penetration-tester.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/performance-optimizer.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/product-manager.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/product-owner.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/project-planner.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/qa-automation-engineer.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/security-auditor.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/seo-specialist.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "agent/test-engineer.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "antigravity.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/README.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/antigravity-contract.schema.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/antigravity-doctor.mjs",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/antigravity-hooks.schema.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/build-plugin.mjs",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/plugin/GEMINI.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/plugin/gemini-extension.template.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/sync-mcp.mjs",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/tests/antigravity.test.mjs",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "hooks/validate-tool-call.mjs",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "manifest.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "manifest.lock.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "mcp_config.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "memory/MEMORY.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "memory/feedback-history.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "memory/project-conventions.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "memory/tech-decisions.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "memory/user-preferences.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "rules/code-rules.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "rules/core-protocol.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "rules/design-rules.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "rules/quick-reference.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "rules/request-routing.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "rules/universal-rules.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "schemas/component-frontmatter.schema.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "schemas/manifest-lock.schema.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "schemas/manifest.schema.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "schemas/memory.schema.json",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/README.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/auto_preview.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/checklist.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/component_registry.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/dependency_graph.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/generate_manifest.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/session_manager.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/tests/test_toolkit.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/validate_kit.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/validation_runner.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "scripts/verify_all.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/api-style.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/auth.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/documentation.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/graphql.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/rate-limiting.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/response.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/rest.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/scripts/api_validator.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/security-testing.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/trpc.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/api-patterns/versioning.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/agent-coordination.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/feature-building.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/project-detection.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/scaffolding.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/tech-stack.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/astro-static/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/chrome-extension/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/cli-tool/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/electron-desktop/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/express-api/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/flutter-app/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/monorepo-turborepo/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/nextjs-fullstack/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/nextjs-saas/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/nextjs-static/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/nuxt-app/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/python-fastapi/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/app-builder/templates/react-native-app/TEMPLATE.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/architecture/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/architecture/context-discovery.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/architecture/examples.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/architecture/pattern-selection.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/architecture/patterns-reference.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/architecture/trade-off-analysis.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/bash-linux/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/batch-operations/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/behavioral-modes/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/brainstorming/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/brainstorming/dynamic-questioning.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/clean-code/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/code-review-checklist/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/code-review-graph/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/context-compression/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/coordinator-mode/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/database-design/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/database-design/database-selection.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/database-design/indexing.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/database-design/migrations.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/database-design/optimization.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/database-design/orm-selection.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/database-design/schema-design.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/database-design/scripts/schema_validator.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/deployment-procedures/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/design-spec/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/design-spec/collection.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/documentation-templates/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/frontend-architecture/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/frontend-design/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/frontend-design/redesign.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/frontend-design/scripts/accessibility_checker.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/frontend-design/scripts/ux_audit.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/frontend-design/style-brutalist.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/frontend-design/style-minimalist.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/2d-games/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/3d-games/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/game-art/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/game-audio/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/game-design/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/mobile-games/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/multiplayer/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/pc-games/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/vr-ar/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/game-development/web-games/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/geo-fundamentals/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/geo-fundamentals/scripts/geo_checker.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/i18n-localization/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/i18n-localization/scripts/i18n_checker.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/intelligent-routing/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/lint-and-validate/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/lint-and-validate/scripts/lint_runner.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/lint-and-validate/scripts/type_coverage.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mcp-builder/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/memory-system/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/decision-trees.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/mobile-backend.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/mobile-color-system.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/mobile-debugging.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/mobile-design-thinking.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/mobile-navigation.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/mobile-performance.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/mobile-testing.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/mobile-typography.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/platform-android.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/platform-ios.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/scripts/mobile_audit.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/mobile-design/touch-psychology.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/1-async-eliminating-waterfalls.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/2-bundle-bundle-size-optimization.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/3-server-server-side-performance.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/4-client-client-side-data-fetching.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/5-rerender-re-render-optimization.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/6-rendering-rendering-performance.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/7-js-javascript-performance.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/8-advanced-advanced-patterns.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/9-cache-components.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/scripts/convert_rules.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nextjs-react-expert/scripts/react_performance_checker.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/nodejs-best-practices/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/parallel-agents/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/performance-profiling/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/performance-profiling/scripts/bundle_analyzer.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/performance-profiling/scripts/lighthouse_audit.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/plan-writing/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/powershell-windows/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/python-patterns/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/red-team-tactics/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/rust-pro/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/seo-fundamentals/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/seo-fundamentals/scripts/seo_checker.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/server-management/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/simplify-code/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/skillify/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/systematic-debugging/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/tailwind-patterns/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/tdd-workflow/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/testing-patterns/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/testing-patterns/scripts/test_runner.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/verify-changes/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/vulnerability-scanner/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/vulnerability-scanner/checklists.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/vulnerability-scanner/scripts/dependency_analyzer.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/vulnerability-scanner/scripts/security_scan.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/web-design-guidelines/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/webapp-testing/SKILL.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "skills/webapp-testing/scripts/playwright_runner.py",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/brainstorm.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/coordinate.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/create.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/debug.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/deploy.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/enhance.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/orchestrate.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/plan.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/preview.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/remember.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/status.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/test.md",
+      "reason": "new incoming file on legacy installation"
+    },
+    {
+      "type": "add",
+      "file": "workflows/verify.md",
+      "reason": "new incoming file on legacy installation"
+    }
+  ],
+  "conflicts": [],
+  "preserved": [
+    {
+      "file": "skills/impeccable/SKILL.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/agents/impeccable_asset_producer.toml",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/agents/impeccable_documenter.toml",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/agents/impeccable_finish_reviewer.toml",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/agents/impeccable_manual_edit_applier.toml",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/agents/openai.yaml",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/adapt.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/adapt.native.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/android.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/animate.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/audit.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/audit.native.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/bolder.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/clarify.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/colorize.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/craft-floor.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/craft.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/critique.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/degraded/asset-producer.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/degraded/documenter.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/degraded/finish-reviewer.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/degraded/manual-edit-applier.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/delight.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/distill.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/doctor.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/document.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/extract.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/harden.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/hooks.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/init.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/ios.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/layout.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/live-setup.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/live.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/new-work.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/onboard.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/operate.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/optimize.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/overdrive.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/polish.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/quieter.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/routing.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/shape.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/typeset.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/reference/visualize.md",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/command-metadata.json",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/concept-seed.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/context-signals.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/context.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/critique-storage.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detect-csp.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detect.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/browser/injected/index.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/cli/main.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/design-system.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/detect-antipatterns-browser.js",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/detect-antipatterns.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/engines/browser/detect-url.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/engines/regex/detect-text.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/engines/static-html/css-cascade.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/engines/static-html/detect-html.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/engines/visual/screenshot-contrast.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/findings.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/node/file-system.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/profile/profiler.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/registry/antipatterns.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/rules/checks.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/shared/color.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/shared/constants.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/shared/fonts.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/shared/inline-ignores.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/detector/shared/page.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/doctor.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/embed-prompt.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/generate-image.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/hook-admin.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/hook-before-edit.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/hook-lib.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/hook.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/artifact-schema.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/composition-catalog.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/concept-catalog.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/design-parser.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/impeccable-config.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/impeccable-paths.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/is-generated.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/provider.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/roll-selection.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/staleness-deep.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/staleness-notice.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/staleness.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/surface-briefs.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/target-args.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/target-slug.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/lib/template-extensions.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-accept.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-browser-dom.js",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-browser-session.js",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-browser.js",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-commit-manual-edits.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-complete.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-copy-edit-agent.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-discard-manual-edits.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-inject.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-insert.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-manual-edit-evidence.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-poll.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-resume.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-server.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-status.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-target.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live-wrap.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/accept-css.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/accept-verify.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/browser-script-parts.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/completion.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/event-validation.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/astro.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/detect-utils.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/index.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/journal.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/nextjs.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/nuxt.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/script-src.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/static-html.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/sveltekit.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/tag-strategy.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/tanstack-start.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/frameworks/vite-generic.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/generation-preflight.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/insert-ui.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/instructions.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/manual-apply.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/manual-edit-routes.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/manual-edits-buffer.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/poll-lanes.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/roots.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/session-store.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/source-lock.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/source-search.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/svelte-ast.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/svelte-component.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/sveltekit-adapter.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/tanstack-adapter.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/ui-core.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/live/vocabulary.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/modern-screenshot.umd.js",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/palette.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/pin.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/serve-question.mjs",
+      "reason": "local-only file on legacy installation"
+    },
+    {
+      "file": "skills/impeccable/scripts/surface-brief.mjs",
+      "reason": "local-only file on legacy installation"
+    }
+  ]
+}

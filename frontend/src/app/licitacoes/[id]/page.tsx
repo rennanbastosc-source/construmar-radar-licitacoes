@@ -176,27 +176,49 @@ export default function OpportunityDetailPage({ params }: Props) {
               </span>
             </div>
 
-            {/* Official PNCP Link */}
-            <a
-              href={opportunity.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--brand-primary)',
-                color: '#090e17',
-                fontWeight: 700,
-                fontSize: '13px',
-                textDecoration: 'none',
-              }}
-            >
-              <span>Abrir no Portal PNCP</span>
-              <ExternalLink size={15} />
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {/* Generate SEOBRA Budget Link */}
+              <Link
+                href="/orcamentos"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'rgba(242, 100, 25, 0.15)',
+                  border: '1px solid rgba(242, 100, 25, 0.4)',
+                  color: '#f26419',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  textDecoration: 'none',
+                }}
+              >
+                <span>⚡ Gerar Orçamento no SEOBRA</span>
+              </Link>
+
+              {/* Official PNCP Link */}
+              <a
+                href={opportunity.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--brand-primary)',
+                  color: '#090e17',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  textDecoration: 'none',
+                }}
+              >
+                <span>Abrir no Portal PNCP</span>
+                <ExternalLink size={15} />
+              </a>
+            </div>
           </div>
 
           <h1

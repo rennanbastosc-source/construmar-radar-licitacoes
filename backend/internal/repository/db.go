@@ -23,8 +23,24 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to migrate deduplication: %w", err)
 	}
+	if err := migrateOrcamentoProgress(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to migrate orcamento progress: %w", err)
+	}
 
 	return db, nil
+}
+
+func migrateOrcamentoProgress(db *sql.DB) error {
+	cols := []string{
+		"ALTER TABLE orcamento ADD COLUMN progress_step TEXT DEFAULT ''",
+		"ALTER TABLE orcamento ADD COLUMN progress_percent INTEGER NOT NULL DEFAULT 0",
+		"ALTER TABLE orcamento ADD COLUMN progress_message TEXT DEFAULT ''",
+	}
+	for _, sqlStmt := range cols {
+		_, _ = db.Exec(sqlStmt)
+	}
+	return nil
 }
 
 func createTables(db *sql.DB) error {
@@ -113,6 +129,71 @@ func createTables(db *sql.DB) error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_sync_started_at ON licitacao_sync_run(started_at DESC);
+
+	CREATE TABLE IF NOT EXISTS orcamento (
+		id TEXT PRIMARY KEY,
+		oportunidade_id TEXT,
+		titulo TEXT NOT NULL,
+		objeto TEXT NOT NULL,
+		orgao TEXT NOT NULL,
+		localidade TEXT NOT NULL,
+		data_preco_base TEXT NOT NULL,
+		bdi REAL NOT NULL DEFAULT 0.0,
+		status TEXT NOT NULL,
+		original_file_name TEXT NOT NULL,
+		file_type TEXT NOT NULL,
+		valor_total_estimado REAL NOT NULL DEFAULT 0.0,
+		valor_total_com_bdi REAL NOT NULL DEFAULT 0.0,
+		total_itens INTEGER NOT NULL DEFAULT 0,
+		confianca_media REAL NOT NULL DEFAULT 0.0,
+		seobra_budget_id TEXT,
+		seobra_budget_url TEXT,
+		progress_step TEXT DEFAULT '',
+		progress_percent INTEGER NOT NULL DEFAULT 0,
+		progress_message TEXT DEFAULT '',
+		erro_mensagem TEXT,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL,
+		FOREIGN KEY(oportunidade_id) REFERENCES licitacao_oportunidade(id) ON DELETE SET NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_orcamento_status ON orcamento(status);
+	CREATE INDEX IF NOT EXISTS idx_orcamento_oportunidade ON orcamento(oportunidade_id);
+	CREATE INDEX IF NOT EXISTS idx_orcamento_created_at ON orcamento(created_at DESC);
+
+	CREATE TABLE IF NOT EXISTS orcamento_item (
+		id TEXT PRIMARY KEY,
+		orcamento_id TEXT NOT NULL,
+		item_numero TEXT NOT NULL,
+		codigo_referencia TEXT NOT NULL,
+		fonte TEXT NOT NULL,
+		descricao TEXT NOT NULL,
+		unidade TEXT NOT NULL,
+		quantidade REAL NOT NULL,
+		preco_unitario REAL NOT NULL,
+		preco_total REAL NOT NULL,
+		confianca REAL NOT NULL,
+		flag_revisao INTEGER NOT NULL DEFAULT 0,
+		observacao_ia TEXT,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL,
+		FOREIGN KEY(orcamento_id) REFERENCES orcamento(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_item_orcamento ON orcamento_item(orcamento_id);
+
+	CREATE TABLE IF NOT EXISTS seobra_session (
+		id TEXT PRIMARY KEY,
+		usuario TEXT NOT NULL,
+		url_base TEXT NOT NULL,
+		cookies TEXT NOT NULL,
+		auth_token TEXT,
+		is_active INTEGER NOT NULL DEFAULT 1,
+		ultimo_ping DATETIME NOT NULL,
+		ultimo_login DATETIME NOT NULL,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL
+	);
 	`
 
 	_, err := db.Exec(schema)
