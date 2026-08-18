@@ -116,6 +116,7 @@ export interface OpportunityFilterParams {
   minScore?: number;
   deadlineFrom?: string;
   deadlineTo?: string;
+  deadlinePreset?: string; // '7' | '15' | '30' — deadlineTo derivado na requisição
   page?: number;
   pageSize?: number;
 }

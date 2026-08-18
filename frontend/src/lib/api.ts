@@ -40,6 +40,10 @@ export async function fetchOpportunities(
   if (params.minScore !== undefined) query.set('minScore', params.minScore.toString());
   if (params.deadlineFrom) query.set('deadlineFrom', params.deadlineFrom);
   if (params.deadlineTo) query.set('deadlineTo', params.deadlineTo);
+  if (!params.deadlineTo && params.deadlinePreset) {
+    const days = Number(params.deadlinePreset);
+    if (days > 0) query.set('deadlineTo', new Date(Date.now() + days * 86400000).toISOString());
+  }
   if (params.page) query.set('page', params.page.toString());
   if (params.pageSize) query.set('pageSize', params.pageSize.toString());
 

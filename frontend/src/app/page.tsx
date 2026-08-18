@@ -150,6 +150,7 @@ export default function RadarDashboardPage() {
       municipality: '',
       modality: '',
       deadlineTo: undefined,
+      deadlinePreset: undefined,
       term: '',
       minScore: undefined,
       page: 1,

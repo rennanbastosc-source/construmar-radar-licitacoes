@@ -101,24 +101,10 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
     minVal !== undefined && maxVal !== undefined && minVal > maxVal;
 
   const handleDeadlineChange = (value: string) => {
-    if (value === 'any') {
-      onChange({ deadlineTo: undefined, page: 1 });
-      return;
-    }
-
-    const days = Number(value);
-    onChange({
-      deadlineTo: new Date(Date.now() + days * 86400000).toISOString(),
-      page: 1,
-    });
+    onChange({ deadlinePreset: value === 'any' ? undefined : value, page: 1 });
   };
 
-  const deadlinePreset = filters.deadlineTo
-    ? ([7, 15, 30].find((days) => {
-        const deadline = new Date(filters.deadlineTo as string).getTime();
-        return Math.abs(deadline - (Date.now() + days * 86400000)) < 60000;
-      })?.toString() ?? 'any')
-    : 'any';
+  const deadlinePreset = filters.deadlinePreset ?? 'any';
 
   return (
     <div
