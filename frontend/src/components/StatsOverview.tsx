@@ -18,42 +18,30 @@ export const StatsOverview: React.FC<Props> = ({
 }) => {
   if (loading) {
     return (
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(12, 1fr)',
-          gap: '16px',
-          marginBottom: '32px',
-        }}
-      >
-        <div style={{ gridColumn: 'span 5', height: '140px' }} className="wishlabs-card shimmer-box" />
-        <div style={{ gridColumn: 'span 3', height: '140px' }} className="wishlabs-card shimmer-box" />
-        <div style={{ gridColumn: 'span 2', height: '140px' }} className="wishlabs-card shimmer-box" />
-        <div style={{ gridColumn: 'span 2', height: '140px' }} className="wishlabs-card shimmer-box" />
+      <div className="grid-matrix" style={{ marginBottom: '32px' }}>
+        {[1, 2, 3, 4].map((idx) => (
+          <div key={idx} style={{ height: '140px' }} className="wishlabs-card shimmer-box" />
+        ))}
       </div>
     );
   }
 
-  if (!stats) {
-    return null;
-  }
+  const currentStats = stats || {
+    totalOpportunities: 0,
+    totalEstimatedValue: 0,
+    totalInScope: 0,
+    totalReview: 0,
+    totalUrgent: 0,
+  };
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(12, 1fr)',
-        gap: '16px',
-        marginBottom: '32px',
-      }}
-    >
-      {/* Bento Card 1: Pipeline BRL Featured (Col 1-5) */}
+    <div className="grid-matrix" style={{ marginBottom: '32px' }}>
+      {/* Grid Card 1: Volume Total em Aberto */}
       <div
         onClick={() => onSelectCategory && onSelectCategory('ALL')}
         className="wishlabs-card wishlabs-card-interactive"
         style={{
-          gridColumn: 'span 5',
-          padding: '24px',
+          padding: '22px 24px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -64,30 +52,31 @@ export const StatsOverview: React.FC<Props> = ({
         <div
           style={{
             position: 'absolute',
-            top: '-40px',
-            right: '-40px',
-            width: '130px',
-            height: '130px',
+            top: '-30px',
+            right: '-30px',
+            width: '100px',
+            height: '100px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(192, 255, 115, 0.08)',
-            filter: 'blur(32px)',
+            backgroundColor: 'rgba(192, 255, 115, 0.06)',
+            filter: 'blur(28px)',
             pointerEvents: 'none',
           }}
         />
 
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
               Volume Total em Aberto
             </span>
             <span
               style={{
-                fontSize: '11px',
+                fontSize: '10.5px',
                 fontWeight: 800,
-                padding: '3px 8px',
+                padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
                 backgroundColor: 'var(--brand-primary-bg)',
                 color: 'var(--brand-primary)',
+                letterSpacing: '0.03em',
               }}
             >
               PIPELINE CE
@@ -96,14 +85,14 @@ export const StatsOverview: React.FC<Props> = ({
           <div
             style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: '28px',
+              fontSize: '24px',
               fontWeight: 900,
               color: '#FFFFFF',
-              letterSpacing: '-0.04em',
+              letterSpacing: '-0.03em',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {formatCurrency(stats.totalEstimatedValue)}
+            {formatCurrency(currentStats.totalEstimatedValue)}
           </div>
         </div>
 
@@ -111,41 +100,40 @@ export const StatsOverview: React.FC<Props> = ({
           style={{
             fontSize: '12px',
             color: 'var(--text-secondary)',
-            paddingTop: '14px',
+            paddingTop: '12px',
             borderTop: '1px solid var(--border-subtle)',
-            marginTop: '14px',
+            marginTop: '12px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
-          <span>{stats.totalOpportunities} oportunidades ativas</span>
-          <span style={{ color: 'var(--brand-primary)', fontWeight: 600 }}>≥ R$ 900k</span>
+          <span>{currentStats.totalOpportunities} ativas</span>
+          <span style={{ color: 'var(--brand-primary)', fontWeight: 700, fontSize: '11px' }}>≥ R$ 900k</span>
         </div>
       </div>
 
-      {/* Bento Card 2: Escopo Direto (Col 6-8) */}
+      {/* Grid Card 2: Escopo Construmar */}
       <div
         onClick={() => onSelectCategory && onSelectCategory('IN_SCOPE')}
         className="wishlabs-card wishlabs-card-interactive"
         style={{
-          gridColumn: 'span 3',
-          padding: '24px',
+          padding: '22px 24px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
               Escopo Construmar
             </span>
             <div
               style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '8px',
+                width: '24px',
+                height: '24px',
+                borderRadius: '6px',
                 backgroundColor: 'var(--brand-primary-bg)',
                 display: 'flex',
                 alignItems: 'center',
@@ -153,88 +141,93 @@ export const StatsOverview: React.FC<Props> = ({
                 color: 'var(--brand-primary)',
               }}
             >
-              <Check size={16} />
+              <Check size={14} />
             </div>
           </div>
           <div
             style={{
-              fontSize: '34px',
+              fontFamily: 'var(--font-heading)',
+              fontSize: '32px',
               fontWeight: 900,
               color: '#FFFFFF',
               letterSpacing: '-0.04em',
             }}
           >
-            {stats.totalInScope}
+            {currentStats.totalInScope}
           </div>
         </div>
-        <div style={{ fontSize: '12.5px', color: 'var(--brand-primary)', fontWeight: 600 }}>
+        <div style={{ fontSize: '12px', color: 'var(--brand-primary)', fontWeight: 600, paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
           Alta aderência técnica
         </div>
       </div>
 
-      {/* Bento Card 3: Revisão Técnica (Col 9-10) */}
+      {/* Grid Card 3: Revisão Técnica */}
       <div
         onClick={() => onSelectCategory && onSelectCategory('REVIEW')}
         className="wishlabs-card wishlabs-card-interactive"
         style={{
-          gridColumn: 'span 2',
-          padding: '24px',
+          padding: '22px 24px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Revisão</span>
-            <AlertTriangle size={16} color="var(--status-review)" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Revisão Técnica
+            </span>
+            <AlertTriangle size={15} color="var(--status-review)" />
           </div>
           <div
             style={{
-              fontSize: '34px',
+              fontFamily: 'var(--font-heading)',
+              fontSize: '32px',
               fontWeight: 900,
               color: '#FFFFFF',
               letterSpacing: '-0.04em',
             }}
           >
-            {stats.totalReview}
+            {currentStats.totalReview}
           </div>
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--status-review)', fontWeight: 600 }}>
+        <div style={{ fontSize: '12px', color: 'var(--status-review)', fontWeight: 600, paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
           Análise necessária
         </div>
       </div>
 
-      {/* Bento Card 4: Urgentes (Col 11-12) */}
+      {/* Grid Card 4: Críticos <= 72h */}
       <div
         onClick={() => onSelectCategory && onSelectCategory('URGENT')}
         className="wishlabs-card wishlabs-card-interactive"
         style={{
-          gridColumn: 'span 2',
-          padding: '24px',
+          padding: '22px 24px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Críticos</span>
-            <Clock size={16} color="var(--status-urgent)" />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Críticos ≤ 72h
+            </span>
+            <Clock size={15} color="var(--status-urgent)" />
           </div>
           <div
             style={{
-              fontSize: '34px',
+              fontFamily: 'var(--font-heading)',
+              fontSize: '32px',
               fontWeight: 900,
               color: '#FFFFFF',
               letterSpacing: '-0.04em',
             }}
           >
-            {stats.totalUrgent}
+            {currentStats.totalUrgent}
           </div>
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--status-urgent)', fontWeight: 600 }}>
-          Encerram em ≤ 72h
+        <div style={{ fontSize: '12px', color: 'var(--status-urgent)', fontWeight: 600, paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+          Encerramento próximo
         </div>
       </div>
     </div>

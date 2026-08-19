@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { OpportunityFilterParams } from '@/lib/types';
 import { MUNICIPIOS_CE } from '@/lib/municipios-ce';
-import { Search, RotateCcw, MapPin, Check, LayoutGrid, List, Filter, ChevronDown } from 'lucide-react';
+import { Search, RotateCcw, MapPin, Check, LayoutGrid, List, Filter, ChevronDown, Layers } from 'lucide-react';
 
 interface Props {
   filters: OpportunityFilterParams;
@@ -24,6 +24,160 @@ function formatBrlInput(raw: string | number | undefined): string {
   return `R$ ${Number(digits).toLocaleString('pt-BR')}`;
 }
 
+interface DropdownOption {
+  label: string;
+  value: string;
+  dotColor?: string;
+}
+
+function DropdownPill({
+  value,
+  options,
+  onChange,
+  placeholder,
+  icon,
+}: {
+  value: string;
+  options: DropdownOption[];
+  onChange: (val: string) => void;
+  placeholder?: string;
+  icon?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = options.find((o) => o.value === value) || options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '10px',
+          height: '40px',
+          padding: '0 16px',
+          backgroundColor: '#101012',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-full)',
+          color: 'var(--text-primary)',
+          fontSize: '12.5px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          outline: 'none',
+          transition: 'all 0.15s ease',
+          whiteSpace: 'nowrap',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)')}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {selected?.dotColor && (
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: selected.dotColor,
+                boxShadow: selected.dotColor === 'var(--brand-primary)' ? '0 0 6px var(--brand-primary)' : 'none',
+                flexShrink: 0,
+              }}
+            />
+          )}
+          {icon}
+          <span>{selected?.label || placeholder}</span>
+        </div>
+        <ChevronDown size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            left: 0,
+            zIndex: 70,
+            minWidth: '200px',
+            backgroundColor: 'var(--bg-surface-elevated)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: 'var(--shadow-lg)',
+            padding: '6px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+          }}
+        >
+          {options.map((opt) => {
+            const isOptActive = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: isOptActive ? 'var(--brand-primary-bg)' : 'transparent',
+                  color: isOptActive ? 'var(--brand-primary)' : 'var(--text-primary)',
+                  fontSize: '12.5px',
+                  fontWeight: isOptActive ? 700 : 500,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.12s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isOptActive) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isOptActive) e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {opt.dotColor && (
+                    <span
+                      style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        backgroundColor: opt.dotColor,
+                      }}
+                    />
+                  )}
+                  <span>{opt.label}</span>
+                </div>
+                {isOptActive && <Check size={14} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const FilterBar: React.FC<Props> = ({
   filters,
   onChange,
@@ -36,6 +190,19 @@ export const FilterBar: React.FC<Props> = ({
     { label: 'Escopo Direto', val: 'IN_SCOPE' },
     { label: 'Revisão Técnica', val: 'REVIEW' },
     { label: 'Todas as Oportunidades', val: 'ALL' },
+  ];
+
+  const statusOptions: DropdownOption[] = [
+    { label: 'Abertas (Recebendo)', value: 'OPEN', dotColor: '#C0FF73' },
+    { label: 'Encerradas', value: 'CLOSED', dotColor: '#636366' },
+    { label: 'Todas as Situações', value: 'ALL', dotColor: '#38BDF8' },
+  ];
+
+  const modalityOptions: DropdownOption[] = [
+    { label: 'Modalidade: todas', value: '' },
+    { label: 'Pregão Eletrônico', value: 'Pregão' },
+    { label: 'Concorrência', value: 'Concorrência' },
+    { label: 'Dispensa', value: 'Dispensa' },
   ];
 
   const currentClassification = filters.classification ?? 'IN_SCOPE_AND_REVIEW';
@@ -92,38 +259,26 @@ export const FilterBar: React.FC<Props> = ({
     });
   };
 
-  const selectClass: React.CSSProperties = {
-    padding: '7px 14px',
-    backgroundColor: '#101012',
-    border: '1px solid var(--border-subtle)',
-    borderRadius: 'var(--radius-full)',
-    color: 'var(--text-primary)',
-    fontSize: '12.5px',
-    fontWeight: 500,
-    cursor: 'pointer',
-    outline: 'none',
-  };
-
   return (
     <div
       className="wishlabs-card"
       style={{
-        padding: '16px 20px',
+        padding: '18px 24px',
         marginBottom: '28px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '14px',
+        gap: '16px',
       }}
     >
       {/* Top Search & Filter Pill Controls */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* Search Input with Capsule Design */}
-        <div style={{ flex: '1 1 340px', position: 'relative', minWidth: '260px' }}>
+        <div style={{ flex: '1 1 360px', position: 'relative', minWidth: '280px' }}>
           <Search
             size={16}
             style={{
               position: 'absolute',
-              left: '14px',
+              left: '16px',
               top: '50%',
               transform: 'translateY(-50%)',
               color: 'var(--text-secondary)',
@@ -138,7 +293,7 @@ export const FilterBar: React.FC<Props> = ({
             style={{
               width: '100%',
               height: '42px',
-              padding: '0 40px 0 40px',
+              padding: '0 42px 0 42px',
               backgroundColor: '#101012',
               border: '1px solid var(--border-subtle)',
               borderRadius: 'var(--radius-full)',
@@ -146,19 +301,22 @@ export const FilterBar: React.FC<Props> = ({
               outline: 'none',
               fontSize: '13.5px',
               fontFamily: 'var(--font-body)',
+              transition: 'border-color 0.15s ease',
             }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--brand-primary)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
           />
           <kbd
             style={{
               position: 'absolute',
-              right: '12px',
+              right: '14px',
               top: '50%',
               transform: 'translateY(-50%)',
               fontSize: '10px',
               fontWeight: 800,
               color: 'var(--text-secondary)',
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              padding: '2px 6px',
+              padding: '2px 7px',
               borderRadius: '6px',
               fontFamily: 'var(--font-mono)',
               pointerEvents: 'none',
@@ -169,33 +327,39 @@ export const FilterBar: React.FC<Props> = ({
         </div>
 
         {/* Municipality Selector Pill */}
-        <div ref={cityWrapRef} style={{ position: 'relative', minWidth: '210px' }}>
-          <div
+        <div ref={cityWrapRef} style={{ position: 'relative', minWidth: '220px' }}>
+          <button
+            type="button"
             onClick={() => setCityOpen((v) => !v)}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              width: '100%',
               height: '42px',
-              gap: '8px',
+              gap: '10px',
               padding: '0 16px',
               backgroundColor: '#101012',
               border: '1px solid var(--border-subtle)',
               borderRadius: 'var(--radius-full)',
-              color: selectedCity ? 'var(--brand-primary)' : 'var(--text-secondary)',
+              color: selectedCity ? 'var(--brand-primary)' : 'var(--text-primary)',
               fontSize: '12.5px',
               fontWeight: selectedCity ? 700 : 500,
               cursor: 'pointer',
+              outline: 'none',
+              transition: 'all 0.15s ease',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-subtle)')}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-              <MapPin size={14} color={selectedCity ? 'var(--brand-primary)' : 'currentColor'} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+              <MapPin size={14} color={selectedCity ? 'var(--brand-primary)' : 'var(--text-secondary)'} />
               <span style={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
                 {selectedCity || 'Municípios (CE)'}
               </span>
             </div>
-            <ChevronDown size={13} color="var(--text-secondary)" />
-          </div>
+            <ChevronDown size={14} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
+          </button>
 
           {cityOpen && (
             <div
@@ -204,7 +368,7 @@ export const FilterBar: React.FC<Props> = ({
                 top: 'calc(100% + 6px)',
                 left: 0,
                 width: '280px',
-                zIndex: 60,
+                zIndex: 70,
                 backgroundColor: 'var(--bg-surface-elevated)',
                 border: '1px solid var(--border-strong)',
                 borderRadius: 'var(--radius-lg)',
@@ -224,7 +388,7 @@ export const FilterBar: React.FC<Props> = ({
                   onChange={(e) => setCityQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '6px 10px',
+                    padding: '7px 12px',
                     backgroundColor: '#101012',
                     border: '1px solid var(--border-subtle)',
                     borderRadius: '8px',
@@ -291,7 +455,7 @@ export const FilterBar: React.FC<Props> = ({
         </div>
 
         {/* View Mode Toggle & Reset */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {onViewModeChange && (
             <div
               style={{
@@ -308,7 +472,7 @@ export const FilterBar: React.FC<Props> = ({
                 onClick={() => onViewModeChange('table')}
                 title="Tabela Técnica"
                 style={{
-                  padding: '6px 12px',
+                  padding: '6px 14px',
                   borderRadius: '9999px',
                   border: 'none',
                   backgroundColor: viewMode === 'table' ? 'var(--bg-surface-elevated)' : 'transparent',
@@ -316,9 +480,10 @@ export const FilterBar: React.FC<Props> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '5px',
                   fontSize: '12px',
                   fontWeight: 600,
+                  transition: 'all 0.15s ease',
                 }}
               >
                 <List size={14} />
@@ -328,7 +493,7 @@ export const FilterBar: React.FC<Props> = ({
                 onClick={() => onViewModeChange('cards')}
                 title="Cards Cockpit"
                 style={{
-                  padding: '6px 12px',
+                  padding: '6px 14px',
                   borderRadius: '9999px',
                   border: 'none',
                   backgroundColor: viewMode === 'cards' ? 'var(--bg-surface-elevated)' : 'transparent',
@@ -336,9 +501,10 @@ export const FilterBar: React.FC<Props> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '5px',
                   fontSize: '12px',
                   fontWeight: 600,
+                  transition: 'all 0.15s ease',
                 }}
               >
                 <LayoutGrid size={14} />
@@ -350,7 +516,7 @@ export const FilterBar: React.FC<Props> = ({
             type="button"
             onClick={onReset}
             className="btn-secondary"
-            style={{ padding: '7px 14px', fontSize: '12px' }}
+            style={{ padding: '8px 16px', fontSize: '12.5px' }}
             title="Restaurar filtros padrões"
           >
             <RotateCcw size={13} />
@@ -366,13 +532,13 @@ export const FilterBar: React.FC<Props> = ({
           flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '12px',
+          gap: '14px',
           borderTop: '1px solid var(--border-subtle)',
-          paddingTop: '14px',
+          paddingTop: '16px',
         }}
       >
         {/* Classification Filter Pills */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {classificationOptions.map((opt) => {
             const isActive = currentClassification === opt.val;
             return (
@@ -381,15 +547,21 @@ export const FilterBar: React.FC<Props> = ({
                 type="button"
                 onClick={() => onChange({ classification: opt.val, page: 1 })}
                 style={{
-                  padding: '6px 14px',
+                  padding: '7px 16px',
                   borderRadius: 'var(--radius-full)',
-                  fontSize: '12px',
+                  fontSize: '12.5px',
                   fontWeight: isActive ? 800 : 500,
                   cursor: 'pointer',
                   border: `1px solid ${isActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
-                  backgroundColor: isActive ? 'var(--brand-primary-bg)' : 'transparent',
+                  backgroundColor: isActive ? 'var(--brand-primary-bg)' : '#101012',
                   color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
                   transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) e.currentTarget.style.borderColor = 'var(--border-subtle)';
                 }}
               >
                 {opt.label}
@@ -398,28 +570,21 @@ export const FilterBar: React.FC<Props> = ({
           })}
         </div>
 
-        {/* Secondary Modality / Status / Price Range Controls */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-          <select
+        {/* Secondary Modality / Status / Price Range Controls with generous breathing room */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+          {/* Custom Status Dropdown */}
+          <DropdownPill
             value={filters.status || 'OPEN'}
-            onChange={(e) => onChange({ status: e.target.value, page: 1 })}
-            style={selectClass}
-          >
-            <option value="OPEN">🟢 Abertas (Recebendo)</option>
-            <option value="CLOSED">Encerradas</option>
-            <option value="ALL">Todas as Situações</option>
-          </select>
+            options={statusOptions}
+            onChange={(val) => onChange({ status: val, page: 1 })}
+          />
 
-          <select
+          {/* Custom Modality Dropdown */}
+          <DropdownPill
             value={filters.modality || ''}
-            onChange={(e) => onChange({ modality: e.target.value, page: 1 })}
-            style={selectClass}
-          >
-            <option value="">Modalidade: todas</option>
-            <option value="Pregão">Pregão Eletrônico</option>
-            <option value="Concorrência">Concorrência</option>
-            <option value="Dispensa">Dispensa</option>
-          </select>
+            options={modalityOptions}
+            onChange={(val) => onChange({ modality: val, page: 1 })}
+          />
 
           {/* Price Range Controls with Pill Shell */}
           <div
@@ -431,6 +596,7 @@ export const FilterBar: React.FC<Props> = ({
               padding: '3px 6px',
               borderRadius: 'var(--radius-full)',
               border: '1px solid var(--border-subtle)',
+              height: '40px',
             }}
           >
             <input
@@ -446,8 +612,8 @@ export const FilterBar: React.FC<Props> = ({
                 if (e.key === 'Enter') handleApplyPriceFilter();
               }}
               style={{
-                width: '100px',
-                padding: '4px 6px',
+                width: '105px',
+                padding: '4px 8px',
                 backgroundColor: 'transparent',
                 border: 'none',
                 color: '#FFFFFF',
@@ -474,8 +640,8 @@ export const FilterBar: React.FC<Props> = ({
                 if (e.key === 'Enter') handleApplyPriceFilter();
               }}
               style={{
-                width: '100px',
-                padding: '4px 6px',
+                width: '105px',
+                padding: '4px 8px',
                 backgroundColor: 'transparent',
                 border: 'none',
                 color: '#FFFFFF',
@@ -492,13 +658,13 @@ export const FilterBar: React.FC<Props> = ({
               onClick={handleApplyPriceFilter}
               className="btn-primary"
               style={{
-                padding: '4px 10px',
-                fontSize: '11px',
+                padding: '5px 12px',
+                fontSize: '11.5px',
                 fontWeight: 800,
                 cursor: 'pointer',
               }}
             >
-              <Filter size={11} />
+              <Filter size={12} />
               <span>Filtrar</span>
             </button>
           </div>
