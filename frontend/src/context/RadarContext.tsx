@@ -20,6 +20,10 @@ import {
   StatsOverviewData,
 } from '@/lib/types';
 
+const RADAR_CACHE_KEY = 'CONSTRUMAR_RADAR_OPPS_CACHE_V1';
+const RADAR_STATS_CACHE_KEY = 'CONSTRUMAR_RADAR_STATS_CACHE_V1';
+const RADAR_META_CACHE_KEY = 'CONSTRUMAR_RADAR_META_CACHE_V1';
+
 interface RadarContextType {
   opportunities: LicitacaoOportunidade[];
   stats: StatsOverviewData | null;
@@ -94,13 +98,49 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<string>('UNKNOWN');
 
-  // Load Data with caching (only set full loading spinner if no items are currently cached)
+  // 1. Instant Cache Hydration on Mount (Stale-While-Revalidate)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedOpps = localStorage.getItem(RADAR_CACHE_KEY);
+        if (cachedOpps) {
+          const parsedOpps = JSON.parse(cachedOpps);
+          if (Array.isArray(parsedOpps) && parsedOpps.length > 0) {
+            setOpportunities(parsedOpps);
+          }
+        }
+
+        const cachedStats = localStorage.getItem(RADAR_STATS_CACHE_KEY);
+        if (cachedStats) {
+          const parsedStats = JSON.parse(cachedStats);
+          if (parsedStats && typeof parsedStats === 'object') {
+            setStats(parsedStats);
+          }
+        }
+
+        const cachedMeta = localStorage.getItem(RADAR_META_CACHE_KEY);
+        if (cachedMeta) {
+          const parsedMeta = JSON.parse(cachedMeta);
+          if (parsedMeta?.total) setTotalRecords(parsedMeta.total);
+          if (parsedMeta?.totalPages) setTotalPages(parsedMeta.totalPages);
+          if (parsedMeta?.lastSuccessfulSyncAt) setLastSuccessfulSyncAt(parsedMeta.lastSuccessfulSyncAt);
+          if (parsedMeta?.syncStatus) setSyncStatus(parsedMeta.syncStatus);
+        }
+      } catch (err) {
+        console.warn('[RadarCache] Erro ao carregar cache local:', err);
+      }
+    }
+  }, []);
+
+  // 2. Load Data from Backend with Cache Persistence
   const loadData = useCallback(async (currentFilters: OpportunityFilterParams) => {
+    // Only show full loading indicator if we don't have items already rendered
     setLoading(true);
     setError(null);
     try {
       const resp = await fetchOpportunities(currentFilters);
-      setOpportunities(resp.data || []);
+      const data = resp.data || [];
+      setOpportunities(data);
       setTotalPages(resp.meta?.totalPages || 1);
       setTotalRecords(resp.meta?.total || 0);
       setPage(resp.meta?.page || 1);
@@ -110,16 +150,36 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (resp?.meta?.syncStatus) {
         setSyncStatus(resp.meta.syncStatus);
       }
+
+      // Persist to local cache if default view has items
+      if (typeof window !== 'undefined' && data.length > 0 && (!currentFilters.search && currentFilters.page === 1)) {
+        try {
+          localStorage.setItem(RADAR_CACHE_KEY, JSON.stringify(data));
+          localStorage.setItem(RADAR_META_CACHE_KEY, JSON.stringify(resp.meta));
+        } catch (e) {
+          console.warn('[RadarCache] Não foi possível gravar cache local:', e);
+        }
+      }
     } catch (err: any) {
+      console.warn('[RadarContext] Falha ao carregar oportunidades da API:', err);
       setError(err.message || 'Erro ao carregar oportunidades de licitação do backend.');
-      // If we don't have any cached items, ensure empty array
-      setOpportunities((prev) => (prev.length > 0 ? prev : []));
+      // Keep cached items intact so user never sees an empty screen on transient errors
+      setOpportunities((prev) => {
+        if (prev.length > 0) return prev;
+        if (typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem(RADAR_CACHE_KEY);
+            if (cached) return JSON.parse(cached);
+          } catch {}
+        }
+        return [];
+      });
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Load Stats
+  // 3. Load Stats with Cache Persistence
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
     try {
@@ -131,8 +191,13 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (data.lastSyncStatus) {
         setSyncStatus(data.lastSyncStatus);
       }
+      if (typeof window !== 'undefined' && data) {
+        try {
+          localStorage.setItem(RADAR_STATS_CACHE_KEY, JSON.stringify(data));
+        } catch {}
+      }
     } catch (err) {
-      console.warn('Erro ao carregar estatísticas do radar:', err);
+      console.warn('[RadarContext] Erro ao carregar estatísticas do radar:', err);
     } finally {
       setStatsLoading(false);
     }

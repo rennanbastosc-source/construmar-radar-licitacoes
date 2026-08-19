@@ -59,7 +59,28 @@ func main() {
 	editalHandler := api.NewEditalHandler(editalService)
 	router := api.NewRouter(oppHandler, syncHandler, orcHandler, editalHandler, cfg.APIAuthToken, cfg.CORSAllowedOrigins)
 
-	// 5. Periodic Background Sync (Daily fallback scheduler aligned with 12:00 PM UTC-3)
+	// 5. Auto-Warmup: Immediately populate database if empty on startup
+	go func() {
+		time.Sleep(1 * time.Second)
+		warmCtx, warmCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		stats, err := oppRepo.GetStatsOverview(warmCtx, cfg.DefaultUF, cfg.MinEstimatedValue)
+		warmCancel()
+
+		if err == nil && stats != nil && stats.TotalOpportunities == 0 {
+			log.Printf("[Auto-Warmup] Database has 0 active opportunities for UF=%s. Triggering initial PNCP sync in background...", cfg.DefaultUF)
+			syncCtx, syncCancel := context.WithTimeout(context.Background(), 20*time.Minute)
+			defer syncCancel()
+			if _, syncErr := syncService.RunSync(syncCtx, cfg.DefaultUF, cfg.MinEstimatedValue); syncErr != nil {
+				log.Printf("[Auto-Warmup Warning] Initial sync encountered issue: %v", syncErr)
+			} else {
+				log.Printf("[Auto-Warmup Success] Initial database population completed successfully!")
+			}
+		} else if err == nil && stats != nil {
+			log.Printf("[Auto-Warmup] Database already populated with %d active opportunities.", stats.TotalOpportunities)
+		}
+	}()
+
+	// 6. Periodic Background Sync (Daily fallback scheduler aligned with 12:00 PM UTC-3)
 	if cfg.SyncIntervalHours > 0 {
 		go func() {
 			for {

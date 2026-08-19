@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/construmar/radar-licitacoes-backend/internal/pncp"
 	"github.com/construmar/radar-licitacoes-backend/internal/repository"
 	"github.com/construmar/radar-licitacoes-backend/internal/service"
 )
@@ -21,27 +23,35 @@ func TestRouterBearerAuthAndHealth(t *testing.T) {
 	db.SetMaxOpenConns(1)
 	defer db.Close()
 
+	pncpClient := pncp.NewClient("http://127.0.0.1:0", 100*time.Millisecond)
 	oppRepo := repository.NewOpportunityRepository(db)
 	oppService := service.NewOpportunityService(oppRepo)
 	oppHandler := NewOpportunityHandler(oppService, nil)
-	syncHandler := NewSyncHandler(service.NewSyncService(oppRepo, nil), oppService)
+	syncHandler := NewSyncHandler(service.NewSyncService(oppRepo, pncpClient), oppService)
 	router := NewRouter(oppHandler, syncHandler, nil, nil, apiToken, []string{"http://localhost:3000"})
 
 	tests := []struct {
 		name   string
 		path   string
+		method string
 		header string
 		want   int
 	}{
-		{name: "health is public", path: "/health", want: http.StatusOK},
-		{name: "api without token", path: "/api/licitacoes/oportunidades", want: http.StatusUnauthorized},
-		{name: "api with incorrect token", path: "/api/licitacoes/oportunidades", header: "Bearer wrong-token", want: http.StatusUnauthorized},
-		{name: "api with correct token reaches handler", path: "/api/licitacoes/oportunidades", header: "Bearer " + apiToken, want: http.StatusOK},
+		{name: "health is public", path: "/health", method: http.MethodGet, want: http.StatusOK},
+		{name: "public read opportunities", path: "/api/licitacoes/oportunidades", method: http.MethodGet, want: http.StatusOK},
+		{name: "public read stats", path: "/api/licitacoes/stats", method: http.MethodGet, want: http.StatusOK},
+		{name: "protected sync without token", path: "/api/licitacoes/sync", method: http.MethodPost, want: http.StatusUnauthorized},
+		{name: "protected sync with incorrect token", path: "/api/licitacoes/sync", method: http.MethodPost, header: "Bearer wrong-token", want: http.StatusUnauthorized},
+		{name: "protected sync with correct token reaches handler", path: "/api/licitacoes/sync", method: http.MethodPost, header: "Bearer " + apiToken, want: http.StatusAccepted},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			method := tt.method
+			if method == "" {
+				method = http.MethodGet
+			}
+			req := httptest.NewRequest(method, tt.path, nil)
 			if tt.header != "" {
 				req.Header.Set("Authorization", tt.header)
 			}
