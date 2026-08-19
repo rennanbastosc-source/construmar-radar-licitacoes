@@ -22,6 +22,10 @@ func NewOpportunityRepository(db *sql.DB) *OpportunityRepository {
 	return &OpportunityRepository{db: db}
 }
 
+func (r *OpportunityRepository) PingDB(ctx context.Context) error {
+	return r.db.PingContext(ctx)
+}
+
 func incomingIsNewer(incoming, existing *time.Time) bool {
 	if incoming == nil {
 		return false

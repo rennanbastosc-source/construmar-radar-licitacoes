@@ -38,7 +38,7 @@ func (s *EditalService) ProcessEditalUpload(
 		analysis.OportunidadeID = oportunidadeID
 	}
 
-	persistCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	persistCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
 	if err := s.repo.CreateAnalysis(persistCtx, analysis); err != nil {
@@ -63,7 +63,7 @@ func (s *EditalService) ProcessMultipleEditalUploads(
 		analysis.OportunidadeID = oportunidadeID
 	}
 
-	persistCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	persistCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
 	if err := s.repo.CreateAnalysis(persistCtx, analysis); err != nil {

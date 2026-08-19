@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -19,6 +20,27 @@ type OpportunityHandler struct {
 
 func NewOpportunityHandler(oppService *service.OpportunityService) *OpportunityHandler {
 	return &OpportunityHandler{oppService: oppService}
+}
+
+func (h *OpportunityHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	dbStatus := "UP"
+	if err := h.oppService.PingDB(ctx); err != nil {
+		dbStatus = "DOWN: " + err.Error()
+	}
+
+	status := http.StatusOK
+	if dbStatus != "UP" {
+		status = http.StatusServiceUnavailable
+	}
+
+	writeJSON(w, status, map[string]string{
+		"status":   "UP",
+		"database": dbStatus,
+		"app":      "Radar de Licitações PNCP & Orçamentos SEOBRA",
+	})
 }
 
 type APIError struct {

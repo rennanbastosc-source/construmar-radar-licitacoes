@@ -115,13 +115,8 @@ func NewRouter(
 		}))
 	}
 
-	// Health check
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{
-			"status": "UP",
-			"app":    "Radar de Licitações PNCP & Orçamentos SEOBRA",
-		})
-	})
+	// Health check with active database ping
+	r.Get("/health", oppHandler.HealthCheck)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Use(bearerAuth(apiAuthToken))

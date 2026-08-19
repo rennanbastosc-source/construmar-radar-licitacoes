@@ -50,10 +50,13 @@ func ParseExcelBudget(r io.Reader, filename string) (*domain.Orcamento, error) {
 		}
 	}
 
-	rows, err := f.GetRows(selectedSheet)
+	sheetRows, err := f.Rows(selectedSheet)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read rows from sheet %s: %w", selectedSheet, err)
+		return nil, fmt.Errorf("failed to open rows iterator for sheet %s: %w", selectedSheet, err)
 	}
+	defer func() {
+		_ = sheetRows.Close()
+	}()
 
 	orcamentoID := uuid.New().String()
 	orc := &domain.Orcamento{
@@ -70,68 +73,73 @@ func ParseExcelBudget(r io.Reader, filename string) (*domain.Orcamento, error) {
 		Itens:            make([]domain.OrcamentoItem, 0),
 	}
 
-	// 1. Scan header rows for metadata & identify table header row
-	headerRowIdx := -1
+	headerFound := false
 	colMap := make(map[string]int)
+	rIdx := 0
 
-	for rIdx, row := range rows {
-		rowText := strings.ToLower(strings.Join(row, " "))
-
-		// Detect BDI in header
-		if match := reBDI.FindStringSubmatch(rowText); len(match) > 1 {
-			bdiVal := parsePtBrFloat(match[1])
-			if bdiVal > 0 && bdiVal < 100 {
-				orc.BDI = bdiVal
-			}
-		}
-
-		// Detect Objeto/Título in header
-		for _, cell := range row {
-			cellLower := strings.ToLower(cell)
-			if strings.HasPrefix(cellLower, "objeto:") || strings.HasPrefix(cellLower, "obra:") {
-				orc.Objeto = strings.TrimSpace(cell[strings.Index(cell, ":")+1:])
-				orc.Titulo = orc.Objeto
-			} else if strings.HasPrefix(cellLower, "órgão:") || strings.HasPrefix(cellLower, "orgao:") || strings.HasPrefix(cellLower, "prefeitura") {
-				orc.Orgao = strings.TrimSpace(cell)
-			} else if strings.Contains(cellLower, "sinapi") || strings.Contains(cellLower, "sicro") {
-				orc.DataPrecoBase = strings.TrimSpace(cell)
-			}
-		}
-
-		// Detect header columns
-		detectedCols := detectColumns(row)
-		if len(detectedCols) >= 3 { // Must have at least item/code, desc, qty
-			headerRowIdx = rIdx
-			colMap = detectedCols
-			break
-		}
-	}
-
-	// If no header row detected, fallback to first row with data
-	if headerRowIdx == -1 {
-		headerRowIdx = 0
-		colMap = map[string]int{
-			"item":  0,
-			"code":  1,
-			"desc":  2,
-			"und":   3,
-			"qty":   4,
-			"unit":  5,
-			"total": 6,
-		}
-	}
-
-	// 2. Scan data rows
-	for i := headerRowIdx + 1; i < len(rows); i++ {
-		row := rows[i]
-		if len(row) == 0 {
+	for sheetRows.Next() {
+		row, err := sheetRows.Columns()
+		if err != nil || len(row) == 0 {
+			rIdx++
 			continue
 		}
 
-		item := parseRowToItem(row, colMap, orcamentoID, len(orc.Itens)+1)
-		if item != nil {
-			orc.Itens = append(orc.Itens, *item)
+		if !headerFound {
+			rowText := strings.ToLower(strings.Join(row, " "))
+
+			// Detect BDI in header
+			if match := reBDI.FindStringSubmatch(rowText); len(match) > 1 {
+				bdiVal := parsePtBrFloat(match[1])
+				if bdiVal > 0 && bdiVal < 100 {
+					orc.BDI = bdiVal
+				}
+			}
+
+			// Detect Objeto/Título in header
+			for _, cell := range row {
+				cellLower := strings.ToLower(cell)
+				if strings.HasPrefix(cellLower, "objeto:") || strings.HasPrefix(cellLower, "obra:") {
+					orc.Objeto = strings.TrimSpace(cell[strings.Index(cell, ":")+1:])
+					orc.Titulo = orc.Objeto
+				} else if strings.HasPrefix(cellLower, "órgão:") || strings.HasPrefix(cellLower, "orgao:") || strings.HasPrefix(cellLower, "prefeitura") {
+					orc.Orgao = strings.TrimSpace(cell)
+				} else if strings.Contains(cellLower, "sinapi") || strings.Contains(cellLower, "sicro") {
+					orc.DataPrecoBase = strings.TrimSpace(cell)
+				}
+			}
+
+			// Detect header columns
+			detectedCols := detectColumns(row)
+			if len(detectedCols) >= 3 {
+				headerFound = true
+				colMap = detectedCols
+				rIdx++
+				continue
+			}
+
+			// If we passed 15 rows without finding a table header, fallback to standard column layout
+			if rIdx >= 15 {
+				headerFound = true
+				colMap = map[string]int{
+					"item":  0,
+					"code":  1,
+					"desc":  2,
+					"und":   3,
+					"qty":   4,
+					"unit":  5,
+					"total": 6,
+				}
+			}
 		}
+
+		if headerFound {
+			item := parseRowToItem(row, colMap, orcamentoID, len(orc.Itens)+1)
+			if item != nil {
+				orc.Itens = append(orc.Itens, *item)
+			}
+		}
+
+		rIdx++
 	}
 
 	orc.RecalculateTotals()

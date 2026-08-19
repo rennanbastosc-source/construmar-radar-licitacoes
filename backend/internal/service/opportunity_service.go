@@ -18,6 +18,10 @@ func NewOpportunityService(repo *repository.OpportunityRepository) *OpportunityS
 	return &OpportunityService{repo: repo}
 }
 
+func (s *OpportunityService) PingDB(ctx context.Context) error {
+	return s.repo.PingDB(ctx)
+}
+
 func (s *OpportunityService) GetOpportunity(ctx context.Context, id string) (*domain.LicitacaoOportunidade, []domain.LicitacaoPayloadSnapshot, error) {
 	opp, err := s.repo.GetOpportunityByID(ctx, id)
 	if err != nil {
