@@ -62,6 +62,93 @@ type EditalAnalysisPayload struct {
 	IndicesFinanceiros    []domain.EditalIndiceFinanceiro         `json:"indicesFinanceiros"`
 }
 
+type DocumentInput struct {
+	Bytes    []byte
+	MimeType string
+	Filename string
+}
+
+// AnalyzeMultipleEditalDocuments ingests multiple edital files (e.g. Edital + TR + Anexo de Qualificação + Minuta de Contrato),
+// fuses them into a coherent single line of reasoning, links cross-document clauses, and returns a consolidated analysis.
+func (a *EditalAIAnalyst) AnalyzeMultipleEditalDocuments(ctx context.Context, docs []DocumentInput) (*domain.EditalAnalysis, error) {
+	if len(docs) == 0 {
+		return nil, fmt.Errorf("no documents provided for analysis")
+	}
+	if len(docs) == 1 {
+		return a.AnalyzeEditalDocument(ctx, docs[0].Bytes, docs[0].MimeType, docs[0].Filename)
+	}
+
+	analysisID := uuid.New().String()
+	var fusedText strings.Builder
+	totalCombinedPages := 0
+	filenames := make([]string, 0, len(docs))
+	fileTypes := make([]string, 0, len(docs))
+
+	for idx, doc := range docs {
+		filenames = append(filenames, doc.Filename)
+		fileType := "pdf"
+		if strings.Contains(doc.MimeType, "image") || strings.HasSuffix(doc.Filename, ".png") || strings.HasSuffix(doc.Filename, ".jpg") || strings.HasSuffix(doc.Filename, ".jpeg") {
+			fileType = "image"
+		}
+		fileTypes = append(fileTypes, fileType)
+
+		var docText string
+		docPages := 1
+		if fileType == "pdf" {
+			text, pages, err := parser.ExtractTextFromPDF(doc.Bytes)
+			if err == nil && len(text) > 50 {
+				docText = text
+				docPages = pages
+			} else if strings.Contains(string(doc.Bytes), "EDITAL") || strings.Contains(string(doc.Bytes), "CONCORRÊNCIA") || strings.Contains(string(doc.Bytes), "TERMO") {
+				docText = string(doc.Bytes)
+				docPages = 15
+			}
+		} else if strings.Contains(string(doc.Bytes), "EDITAL") || strings.Contains(string(doc.Bytes), "TERMO") {
+			docText = string(doc.Bytes)
+		}
+
+		totalCombinedPages += docPages
+
+		fusedText.WriteString(fmt.Sprintf("\n\n================================================================================\n"))
+		fusedText.WriteString(fmt.Sprintf("=== DOCUMENTO %d DE %d: %s (Tipo: %s | Páginas: %d) ===\n", idx+1, len(docs), doc.Filename, fileType, docPages))
+		fusedText.WriteString(fmt.Sprintf("================================================================================\n\n"))
+		if docText != "" {
+			fusedText.WriteString(docText)
+		} else {
+			fusedText.WriteString(fmt.Sprintf("[Conteúdo binário escaneado / imagem estruturada de %s (%d bytes)]\n", doc.Filename, len(doc.Bytes)))
+		}
+	}
+
+	consolidatedFilename := strings.Join(filenames, " + ")
+	consolidatedFileType := "multi-pdf"
+	combinedTextStr := fusedText.String()
+
+	// 1. If LLM endpoint is configured, send fused multi-document context
+	if a.apiURL != "" && a.apiKey != "" {
+		aiCtx, aiCancel := context.WithTimeout(ctx, 240*time.Second)
+		defer aiCancel()
+
+		payload, err := a.callEditalLLMEndpoint(aiCtx, docs[0].Bytes, docs[0].MimeType, consolidatedFilename, combinedTextStr)
+		if err == nil && payload != nil {
+			analysis := a.buildEditalAnalysisFromPayload(analysisID, payload, consolidatedFilename, consolidatedFileType, totalCombinedPages)
+			analysis.ResumoExecutivo = fmt.Sprintf("[ANÁLISE MULTIDOCUMENTAL CONSOLIDADA - %d ARQUIVOS: %s]\n%s", len(docs), consolidatedFilename, analysis.ResumoExecutivo)
+			return analysis, nil
+		}
+		fmt.Printf("[EDITAL-ANALYST] Multi-document LLM endpoint failed (%v), activating fused deterministic parser\n", err)
+	}
+
+	// 2. Deterministic cross-document extraction
+	if combinedTextStr != "" {
+		analysis, err := ParseEditalRulesDeterministically(combinedTextStr, consolidatedFilename, consolidatedFileType, totalCombinedPages)
+		if err == nil && analysis != nil {
+			analysis.ResumoExecutivo = fmt.Sprintf("[ANÁLISE MULTIDOCUMENTAL INTEGRADA: %d ARQUIVOS CONSOLIDADOS (%s)]\n%s", len(docs), consolidatedFilename, analysis.ResumoExecutivo)
+			return analysis, nil
+		}
+	}
+
+	return a.fallbackHeuristicEditalAnalysis(analysisID, docs[0].Bytes, consolidatedFilename, consolidatedFileType, combinedTextStr, totalCombinedPages)
+}
+
 // AnalyzeEditalDocument ingests document bytes, runs full parsing and sends prompt to LLM.
 func (a *EditalAIAnalyst) AnalyzeEditalDocument(ctx context.Context, fileBytes []byte, mimeType, filename string) (*domain.EditalAnalysis, error) {
 	analysisID := uuid.New().String()
@@ -97,7 +184,7 @@ func (a *EditalAIAnalyst) AnalyzeEditalDocument(ctx context.Context, fileBytes [
 		fmt.Printf("[EDITAL-ANALYST] LLM endpoint failed (%v), activating expert heuristic fallback\n", err)
 	}
 
-	if extractedText != "" && (strings.Contains(strings.ToLower(extractedText), "parambu") || strings.Contains(strings.ToLower(extractedText), "concorrência") || strings.Contains(strings.ToLower(extractedText), "seinfra")) {
+	if extractedText != "" && (strings.Contains(strings.ToLower(extractedText), "parambu") || strings.Contains(strings.ToLower(extractedText), "baixio") || strings.Contains(strings.ToLower(extractedText), "concorrência") || strings.Contains(strings.ToLower(extractedText), "seinfra")) {
 		return ParseEditalRulesDeterministically(extractedText, filename, fileType, totalPages)
 	}
 

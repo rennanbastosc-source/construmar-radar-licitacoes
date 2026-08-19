@@ -304,11 +304,21 @@ import {
 } from './types';
 
 export async function uploadEditalForAnalysis(
-  file: File,
+  files: File | File[],
   oportunidadeId?: string
 ): Promise<EditalAnalysis> {
   const formData = new FormData();
-  formData.append('file', file);
+  if (Array.isArray(files)) {
+    files.forEach((f) => formData.append('files', f));
+    // Also append the first file to 'file' for legacy fallback
+    if (files.length > 0) {
+      formData.append('file', files[0]);
+    }
+  } else {
+    formData.append('file', files);
+    formData.append('files', files);
+  }
+
   if (oportunidadeId) {
     formData.append('oportunidadeId', oportunidadeId);
   }
@@ -321,7 +331,7 @@ export async function uploadEditalForAnalysis(
 
   if (!res.ok) {
     const errText = await res.text().catch(() => 'Falha na análise do edital');
-    throw new Error(errText || 'Falha ao processar e auditar o edital.');
+    throw new Error(errText || 'Falha ao processar e auditar os editais.');
   }
 
   return res.json();

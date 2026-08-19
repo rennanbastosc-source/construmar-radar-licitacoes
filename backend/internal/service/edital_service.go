@@ -48,6 +48,31 @@ func (s *EditalService) ProcessEditalUpload(
 	return analysis, nil
 }
 
+// ProcessMultipleEditalUploads ingests multiple notice documents, fuses their context and persists the consolidated analysis.
+func (s *EditalService) ProcessMultipleEditalUploads(
+	ctx context.Context,
+	docs []ai.DocumentInput,
+	oportunidadeID *string,
+) (*domain.EditalAnalysis, error) {
+	analysis, err := s.analyst.AnalyzeMultipleEditalDocuments(ctx, docs)
+	if err != nil {
+		return nil, fmt.Errorf("multi-document edital analysis failed: %w", err)
+	}
+
+	if oportunidadeID != nil && *oportunidadeID != "" {
+		analysis.OportunidadeID = oportunidadeID
+	}
+
+	persistCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if err := s.repo.CreateAnalysis(persistCtx, analysis); err != nil {
+		return nil, fmt.Errorf("failed to persist consolidated edital analysis: %w", err)
+	}
+
+	return analysis, nil
+}
+
 // GetAnalysis returns an edital analysis with all items.
 func (s *EditalService) GetAnalysis(ctx context.Context, id string) (*domain.EditalAnalysis, error) {
 	return s.repo.GetAnalysisByID(ctx, id)

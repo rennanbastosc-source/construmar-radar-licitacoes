@@ -57,32 +57,45 @@ export default function EditaisHubPage() {
     loadData();
   }, []);
 
-  const handleFileUpload = async (file: File) => {
-    if (!file) return;
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+
+  const handleFilesSelected = async (incomingFiles: FileList | File[]) => {
+    const list = Array.from(incomingFiles);
+    if (list.length === 0) return;
+
+    setSelectedFiles(list);
     setIsUploading(true);
     setErrorMessage(null);
-    setUploadStep('Extraindo conteúdo e estruturando páginas do edital...');
+
+    const fileCount = list.length;
+    setUploadStep(fileCount > 1 
+      ? `Consolidando ${fileCount} arquivos em linha contínua de raciocínio...`
+      : 'Extraindo conteúdo e estruturando páginas do edital...'
+    );
 
     try {
       const timer1 = setTimeout(() => {
-        setUploadStep('IA Jurídica & Engenharia auditando exigências e habilitação...');
-      }, 1200);
+        setUploadStep(fileCount > 1
+          ? `Cruzando cláusulas do Edital, Termo de Ref. e Anexos (${fileCount} docs)...`
+          : 'IA Jurídica & Engenharia auditando exigências e habilitação...'
+        );
+      }, 1400);
 
       const timer2 = setTimeout(() => {
-        setUploadStep('Mapeando pegadinhas, atestados mínimos e gerando checklist...');
-      }, 2800);
+        setUploadStep('Mapeando pegadinhas, atestados mínimos e gerando checklist unificado...');
+      }, 3000);
 
-      const newAnalysis = await uploadEditalForAnalysis(file);
+      const newAnalysis = await uploadEditalForAnalysis(list);
 
       clearTimeout(timer1);
       clearTimeout(timer2);
-      setUploadStep('Auditoria concluída com sucesso! Redirecionando...');
+      setUploadStep('Auditoria consolidada concluída com sucesso! Redirecionando...');
 
       setTimeout(() => {
         router.push(`/editais/${newAnalysis.id}`);
       }, 800);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Falha ao auditar o edital anexado.');
+      setErrorMessage(err.message || 'Falha ao auditar os documentos anexados.');
       setIsUploading(false);
     }
   };
@@ -101,8 +114,8 @@ export default function EditaisHubPage() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesSelected(e.dataTransfer.files);
     }
   };
 
@@ -243,11 +256,12 @@ export default function EditaisHubPage() {
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 accept=".pdf,.png,.jpg,.jpeg"
                 style={{ display: 'none' }}
                 onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleFileUpload(e.target.files[0]);
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleFilesSelected(e.target.files);
                   }
                 }}
               />
@@ -266,7 +280,7 @@ export default function EditaisHubPage() {
                   />
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                      Análise IA em Andamento
+                      {selectedFiles.length > 1 ? `Consolidando ${selectedFiles.length} Arquivos` : 'Análise IA em Andamento'}
                     </p>
                     <p style={{ margin: '4px 0 0 0', color: 'var(--brand-cyan)', fontSize: '0.85rem', fontWeight: 500 }}>
                       {uploadStep}
@@ -292,13 +306,14 @@ export default function EditaisHubPage() {
                   </div>
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
-                      Clique ou arraste o Edital aqui
+                      Clique ou arraste 1 ou múltiplos arquivos
                     </p>
                     <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                      Suporta PDF digital, PDF escaneado e imagens (até 32MB)
+                      Selecione Edital + Termo de Referência + Anexos (PDF digital/escaneado ou imagens)
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(14, 165, 233, 0.15)', color: 'var(--brand-cyan)', fontWeight: 700 }}>MULTI-UPLOAD</span>
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>.PDF</span>
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>.PNG</span>
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>.JPG</span>

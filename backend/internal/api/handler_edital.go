@@ -24,10 +24,10 @@ func NewEditalHandler(editalService *service.EditalService) *EditalHandler {
 	}
 }
 
-// UploadAndAnalyze handles edital uploads (PDF or image) and triggers the AI Analyst.
+// UploadAndAnalyze handles edital uploads (single or multiple PDFs/images) and triggers the AI Analyst.
 func (h *EditalHandler) UploadAndAnalyze(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes*4) // Allow up to 128MB for batch uploads
+	if err := r.ParseMultipartForm(64 << 20); err != nil {
 		status := http.StatusBadRequest
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
@@ -37,32 +37,54 @@ func (h *EditalHandler) UploadAndAnalyze(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		http.Error(w, "Missing 'file' form field", http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
+	var fileInputs []ai.DocumentInput
 
-	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if _, ok := allowedUploadExtensions[ext]; !ok {
-		http.Error(w, "Unsupported file type", http.StatusUnsupportedMediaType)
-		return
+	// Check if 'files' (plural) was sent
+	if r.MultipartForm != nil && len(r.MultipartForm.File["files"]) > 0 {
+		for _, fileHeader := range r.MultipartForm.File["files"] {
+			f, err := fileHeader.Open()
+			if err != nil {
+				continue
+			}
+			fBytes, err := io.ReadAll(f)
+			f.Close()
+			if err != nil || len(fBytes) == 0 {
+				continue
+			}
+
+			ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+			cType, err := validateUploadedFile(ext, fBytes)
+			if err != nil {
+				cType = "application/pdf"
+			}
+			fileInputs = append(fileInputs, ai.DocumentInput{
+				Bytes:    fBytes,
+				MimeType: cType,
+				Filename: fileHeader.Filename,
+			})
+		}
 	}
 
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		http.Error(w, "Failed to read uploaded file", http.StatusInternalServerError)
-		return
-	}
-	if len(fileBytes) == 0 {
-		http.Error(w, "Uploaded file is empty", http.StatusBadRequest)
-		return
+	// Fallback to single 'file' field if 'files' was empty
+	if len(fileInputs) == 0 {
+		file, header, err := r.FormFile("file")
+		if err == nil {
+			defer file.Close()
+			ext := strings.ToLower(filepath.Ext(header.Filename))
+			fileBytes, err := io.ReadAll(file)
+			if err == nil && len(fileBytes) > 0 {
+				cType, _ := validateUploadedFile(ext, fileBytes)
+				fileInputs = append(fileInputs, ai.DocumentInput{
+					Bytes:    fileBytes,
+					MimeType: cType,
+					Filename: header.Filename,
+				})
+			}
+		}
 	}
 
-	contentType, err := validateUploadedFile(ext, fileBytes)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+	if len(fileInputs) == 0 {
+		http.Error(w, "Missing 'file' or 'files' in upload form", http.StatusBadRequest)
 		return
 	}
 
@@ -71,7 +93,15 @@ func (h *EditalHandler) UploadAndAnalyze(w http.ResponseWriter, r *http.Request)
 		oportID = &opVal
 	}
 
-	analysis, err := h.editalService.ProcessEditalUpload(r.Context(), fileBytes, header.Filename, contentType, oportID)
+	var analysis *domain.EditalAnalysis
+	var err error
+
+	if len(fileInputs) == 1 {
+		analysis, err = h.editalService.ProcessEditalUpload(r.Context(), fileInputs[0].Bytes, fileInputs[0].Filename, fileInputs[0].MimeType, oportID)
+	} else {
+		analysis, err = h.editalService.ProcessMultipleEditalUploads(r.Context(), fileInputs, oportID)
+	}
+
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Edital analysis failed: %v", err), http.StatusInternalServerError)
 		return
