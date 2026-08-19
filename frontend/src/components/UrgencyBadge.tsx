@@ -1,6 +1,6 @@
 import React from 'react';
 import { getDeadlineUrgency } from '@/lib/formatters';
-import { Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, AlertTriangle, Check, X } from 'lucide-react';
 
 interface Props {
   deadlineIso?: string | null;
@@ -14,30 +14,30 @@ export const UrgencyBadge: React.FC<Props> = ({ deadlineIso }) => {
       case 'critical':
         return {
           backgroundColor: 'var(--status-urgent-bg)',
-          color: 'var(--status-urgent-text)',
+          color: 'var(--status-urgent)',
           border: '1px solid var(--status-urgent-border)',
         };
       case 'warning':
         return {
           backgroundColor: 'var(--status-review-bg)',
-          color: 'var(--status-review-text)',
+          color: 'var(--status-review)',
           border: '1px solid var(--status-review-border)',
         };
       case 'normal':
         return {
-          backgroundColor: 'rgba(59, 130, 246, 0.12)',
-          color: '#93c5fd',
-          border: '1px solid rgba(59, 130, 246, 0.3)',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          color: '#A1A1AA',
+          border: '1px solid var(--border-subtle)',
         };
       case 'expired':
         return {
-          backgroundColor: 'rgba(100, 116, 139, 0.15)',
+          backgroundColor: 'rgba(255, 255, 255, 0.03)',
           color: 'var(--text-muted)',
-          border: '1px solid rgba(100, 116, 139, 0.3)',
+          border: '1px solid var(--border-subtle)',
         };
       default:
         return {
-          backgroundColor: 'rgba(100, 116, 139, 0.1)',
+          backgroundColor: 'rgba(255, 255, 255, 0.04)',
           color: 'var(--text-secondary)',
           border: '1px solid var(--border-subtle)',
         };
@@ -50,18 +50,18 @@ export const UrgencyBadge: React.FC<Props> = ({ deadlineIso }) => {
         display: 'inline-flex',
         alignItems: 'center',
         gap: '5px',
-        padding: '3px 8px',
-        borderRadius: '6px',
-        fontSize: '12px',
-        fontWeight: 500,
+        padding: '3px 10px',
+        borderRadius: 'var(--radius-full)',
+        fontSize: '11.5px',
+        fontWeight: 700,
         ...getStyle(),
       }}
     >
       {urgency.level === 'critical' && <AlertTriangle size={12} />}
       {urgency.level === 'warning' && <Clock size={12} />}
-      {urgency.level === 'normal' && <CheckCircle size={12} />}
-      {urgency.level === 'expired' && <XCircle size={12} />}
-      {urgency.label}
+      {urgency.level === 'normal' && <Check size={12} />}
+      {urgency.level === 'expired' && <X size={12} />}
+      <span>{urgency.label}</span>
     </span>
   );
 };

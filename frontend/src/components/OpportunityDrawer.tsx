@@ -57,8 +57,8 @@ export const OpportunityDrawer: React.FC<Props> = ({
         style={{
           position: 'fixed',
           inset: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(4px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(8px)',
           transition: 'opacity 0.2s ease',
         }}
       />
@@ -71,8 +71,8 @@ export const OpportunityDrawer: React.FC<Props> = ({
           maxWidth: '680px',
           height: '100vh',
           backgroundColor: 'var(--bg-surface)',
-          borderLeft: '1px solid var(--border-strong)',
-          boxShadow: '-12px 0 40px rgba(0, 0, 0, 0.8)',
+          borderLeft: '1px solid var(--border-subtle)',
+          boxShadow: '-16px 0 50px rgba(0, 0, 0, 0.8)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 101,
@@ -81,25 +81,25 @@ export const OpportunityDrawer: React.FC<Props> = ({
         {/* Drawer Header */}
         <div
           style={{
-            padding: '1.25rem 1.5rem',
+            padding: '20px 24px',
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: 'rgba(21, 34, 56, 0.7)',
+            backgroundColor: 'var(--bg-surface-elevated)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span
               style={{
-                fontSize: '11px',
+                fontSize: '11.5px',
                 fontWeight: 800,
                 fontFamily: 'var(--font-mono)',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                backgroundColor: 'rgba(14, 165, 233, 0.12)',
-                color: 'var(--brand-cyan)',
-                border: '1px solid rgba(14, 165, 233, 0.3)',
+                padding: '3px 10px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                color: '#FFFFFF',
+                border: '1px solid var(--border-subtle)',
               }}
             >
               {opportunity.sourceExternalId}
@@ -111,9 +111,9 @@ export const OpportunityDrawer: React.FC<Props> = ({
             onClick={onClose}
             style={{
               padding: '6px',
-              borderRadius: '6px',
-              border: 'none',
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              borderRadius: '50%',
+              border: '1px solid var(--border-subtle)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
               color: 'var(--text-secondary)',
               cursor: 'pointer',
               display: 'flex',
@@ -121,7 +121,7 @@ export const OpportunityDrawer: React.FC<Props> = ({
               justifyContent: 'center',
             }}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
@@ -130,35 +130,35 @@ export const OpportunityDrawer: React.FC<Props> = ({
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '1.5rem',
+            padding: '24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1.5rem',
+            gap: '24px',
           }}
         >
           {/* Estimated Value Card */}
           <div
-            className="saas-card"
+            className="wishlabs-card"
             style={{
-              padding: '1.25rem',
-              backgroundColor: 'rgba(21, 34, 56, 0.6)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
+              padding: '20px',
+              backgroundColor: '#101012',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
             <div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>
                 Valor Total Estimado da Licitação
               </span>
               <div
                 style={{
                   fontFamily: 'var(--font-mono)',
-                  fontSize: '24px',
-                  fontWeight: 800,
-                  color: '#10B981',
-                  marginTop: '2px',
+                  fontSize: '26px',
+                  fontWeight: 900,
+                  color: '#FFFFFF',
+                  marginTop: '4px',
+                  letterSpacing: '-0.03em',
                 }}
               >
                 {opportunity.valueStatus === 'KNOWN'
@@ -182,10 +182,11 @@ export const OpportunityDrawer: React.FC<Props> = ({
             <h2
               style={{
                 fontFamily: 'var(--font-heading)',
-                fontSize: '16px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                lineHeight: 1.5,
+                fontSize: '18px',
+                fontWeight: 800,
+                color: '#FFFFFF',
+                lineHeight: 1.45,
+                letterSpacing: '-0.02em',
               }}
             >
               {opportunity.objectRaw}
@@ -197,10 +198,10 @@ export const OpportunityDrawer: React.FC<Props> = ({
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '1rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
-              padding: '1.2rem',
-              borderRadius: 'var(--radius-md)',
+              gap: '14px',
+              backgroundColor: '#101012',
+              padding: '20px',
+              borderRadius: 'var(--radius-lg)',
               border: '1px solid var(--border-subtle)',
             }}
           >
@@ -208,7 +209,7 @@ export const OpportunityDrawer: React.FC<Props> = ({
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>
                 Órgão Licitante
               </span>
-              <strong style={{ fontSize: '13px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <strong style={{ fontSize: '13.5px', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Building2 size={14} color="var(--brand-cyan)" />
                 {opportunity.organizationName}
               </strong>
@@ -227,8 +228,8 @@ export const OpportunityDrawer: React.FC<Props> = ({
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>
                 Localidade
               </span>
-              <strong style={{ fontSize: '13px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <MapPin size={14} color="var(--brand-orange)" />
+              <strong style={{ fontSize: '13.5px', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <MapPin size={14} color="var(--brand-primary)" />
                 {opportunity.municipalityName} - {opportunity.uf}
               </strong>
             </div>
@@ -245,10 +246,10 @@ export const OpportunityDrawer: React.FC<Props> = ({
 
           {/* AI Scopes & Evidence */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-              <Sparkles size={15} color="var(--brand-orange)" />
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Termos Identificados pelo Classificador IA
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }} />
+              <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#FFFFFF' }}>
+                Termos Identificados pelo Classificador
               </span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -257,13 +258,14 @@ export const OpportunityDrawer: React.FC<Props> = ({
                   key={term}
                   onClick={() => onTermClick && onTermClick(term)}
                   style={{
-                    padding: '4px 10px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                    border: '1px solid rgba(14, 165, 233, 0.25)',
-                    color: 'var(--brand-cyan)',
-                    fontSize: '11.5px',
+                    padding: '4px 12px',
+                    borderRadius: 'var(--radius-full)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--border-subtle)',
+                    color: '#FFFFFF',
+                    fontSize: '12px',
                     fontWeight: 600,
+                    fontFamily: 'var(--font-mono)',
                     cursor: 'pointer',
                   }}
                 >
@@ -277,23 +279,23 @@ export const OpportunityDrawer: React.FC<Props> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
               <Calendar size={15} color="var(--text-secondary)" />
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Cronograma de Licitação
+              <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#FFFFFF' }}>
+                Cronograma da Licitação
               </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {opportunity.proposalStartAt && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '12.5px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', backgroundColor: '#101012', borderRadius: '8px', fontSize: '13px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Início de Propostas:</span>
-                  <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  <strong style={{ color: '#FFFFFF', fontFamily: 'var(--font-mono)' }}>
                     {formatDateTime(opportunity.proposalStartAt)}
                   </strong>
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', fontSize: '12.5px' }}>
-                <span style={{ color: '#F87171', fontWeight: 600 }}>Término do Recebimento:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', backgroundColor: 'var(--status-urgent-bg)', border: '1px solid var(--status-urgent-border)', borderRadius: '8px', fontSize: '13px' }}>
+                <span style={{ color: 'var(--status-urgent)', fontWeight: 700 }}>Término do Recebimento:</span>
                 <strong style={{ color: '#FFFFFF', fontFamily: 'var(--font-mono)' }}>
                   {formatDateTime(opportunity.proposalEndAt)}
                 </strong>
@@ -305,9 +307,9 @@ export const OpportunityDrawer: React.FC<Props> = ({
         {/* Drawer Action Footer */}
         <div
           style={{
-            padding: '1.25rem 1.5rem',
+            padding: '18px 24px',
             borderTop: '1px solid var(--border-subtle)',
-            backgroundColor: 'rgba(14, 23, 38, 0.95)',
+            backgroundColor: 'var(--bg-surface-elevated)',
             display: 'flex',
             gap: '12px',
           }}
@@ -329,7 +331,7 @@ export const OpportunityDrawer: React.FC<Props> = ({
             style={{ flex: 1.5 }}
           >
             <Sparkles size={15} />
-            <span>Orçar & Gerar Timbrado</span>
+            <span>Orçar com IA SEOBRA</span>
           </a>
         </div>
       </div>

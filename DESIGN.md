@@ -1,6 +1,6 @@
-# Design System & Token Specification — CONSTRUMAR Radar
+# Design System & Token Specification — CONSTRUMAR Radar & SEOBRA
 
-Design tokens and UI guidelines for **CONSTRUMAR Locações e Serviços LTDA** Radar de Licitações & Orçamentação Inteligente com SEOBRA.
+Design system and token specifications inspired by **Wishlabs / Elena Perini** for **CONSTRUMAR Locações e Serviços LTDA**.
 
 ---
 
@@ -8,37 +8,31 @@ Design tokens and UI guidelines for **CONSTRUMAR Locações e Serviços LTDA** R
 
 | Token | HEX / Value | Role & Usage |
 |---|---|---|
-| `--color-brand-ocean` | `#0A2540` | Cor primária institucional nobre. Cabeçalhos e barras de navegação. |
-| `--color-brand-navy` | `#144272` | Azul corporativo médio. Superfícies de cartões e gradientes. |
-| `--color-brand-orange` | `#F26419` | Laranja construtivo de ação e destaque. Botões primários e chamadas de ação. |
-| `--color-brand-cyan` | `#0EA5E9` | Azul técnico. Badges de engenharia, conexões ativas e links em foco. |
-| `--color-bg-base` | `#0b1320` | Fundo principal da aplicação (Dark Theme Industrial de Alta Legibilidade). |
-| `--color-bg-surface` | `#111c2e` | Fundo de cartões, formulários e painéis de dados. |
-| `--color-bg-surface-elevated` | `#1a2b44` | Fundo de modais, menus suspensos e linhas em hover. |
-| `--color-border-subtle` | `rgba(255, 255, 255, 0.08)` | Bordas discretas e divisórias. |
-| `--color-border-accent` | `rgba(14, 165, 233, 0.3)` | Bordas ativas e caixas de seleção. |
-| `--color-text-primary` | `#f8fafc` | Texto principal e títulos. |
-| `--color-text-secondary` | `#94a3b8` | Textos de apoio, descrições e legendas. |
-| `--color-text-muted` | `#64748b` | Metadados terciários e datas. |
-| `--color-confidence-high` | `#10b981` | Alta confiança da IA (>90%) — Verde Esmeralda. |
-| `--color-confidence-med` | `#f59e0b` | Confiança média da IA (70–89%) — Amarelo Alerta. |
-| `--color-confidence-low` | `#ef4444` | Baixa confiança da IA (<70%) — Vermelho Atenção. |
+| `--bg-base` | `#0E0E10` | Fundo principal da aplicação (Dark Obsidian Profundo). |
+| `--bg-surface` | `#161618` | Superfícies principais (Cards Bento, Painéis e Tabelas). |
+| `--bg-surface-elevated` | `#1F1F23` | Superfícies elevadas, modais, drawers e dropdowns. |
+| `--brand-primary` | `#C0FF73` | Volt Lime elétrico. Botões de ação, badges ativas e destaques em itálico. |
+| `--brand-cyan` | `#38BDF8` | Ciano Técnico para tags e metadados. |
+| `--status-inscope` | `#C0FF73` | Alta aderência / Escopo Construmar (Volt Lime). |
+| `--status-review` | `#F59E0B` | Revisão técnica do engenheiro (Âmbar). |
+| `--status-urgent` | `#FF81B2` | Vencimento crítico &le; 72h (Neon Coral). |
+| `--text-primary` | `#FFFFFF` | Texto principal e títulos. |
+| `--text-secondary` | `#8E8E93` | Apoio, subtítulos e descrições. |
+| `--border-subtle` | `rgba(255, 255, 255, 0.08)` | Bordas nítidas de 1px. |
 
 ---
 
 ## 🔤 Typography
 
-- **Headings & Display:** `Montserrat`, -apple-system, sans-serif (Weights: 600, 700, 800)
-- **Body & Data Grids:** `Inter`, -apple-system, sans-serif (Weights: 400, 500, 600)
-- **Numeric & Financial Tables:** `JetBrains Mono` / `ui-monospace`, monospace (Tabular figures para alinhamento perfeito de valores monetários e quantitativos).
+- **Headings & Display:** `DM Sans`, -apple-system, sans-serif (Weights: 700, 800, 900) com tracking `-0.04em` e ênfase expressiva em *itálico*.
+- **Body & Controls:** `Inter` / `DM Sans`, sans-serif (Weights: 400, 500, 600).
+- **Tabular Numerics & Financials:** `JetBrains Mono`, monospace com `tabular-nums` para alinhamento contábil e de quantitativos.
 
 ---
 
-## 📐 Spacing, Radius & Geometry
+## 📐 Geometry & Controls
 
 - **Border Radius:**
-  - `radius-sm`: `4px` (Tags e Badges)
-  - `radius-md`: `8px` (Inputs e Botões)
-  - `radius-lg`: `12px` (Cards e Painéis de Tabela)
-  - `radius-xl`: `16px` (Modais e Hub de Upload)
-- **Grid Layout:** 12-column responsive layout com `max-width: 1400px`.
+  - `radius-full`: `9999px` (Pills de Navegação, Botões CTAs, Chips de Filtros e Badges).
+  - `radius-xl`: `20px` (Cards Bento e Painéis de Dados).
+  - `radius-md`: `12px` (Logo, Sub-painéis e Inputs).

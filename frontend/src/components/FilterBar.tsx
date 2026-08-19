@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { OpportunityFilterParams } from '@/lib/types';
 import { MUNICIPIOS_CE } from '@/lib/municipios-ce';
-import { Search, RotateCcw, MapPin, Check, LayoutGrid, List, SlidersHorizontal, Filter, ArrowRight } from 'lucide-react';
+import { Search, RotateCcw, MapPin, Check, LayoutGrid, List, Filter, ChevronDown } from 'lucide-react';
 
 interface Props {
   filters: OpportunityFilterParams;
@@ -32,26 +32,24 @@ export const FilterBar: React.FC<Props> = ({
   onViewModeChange,
 }) => {
   const classificationOptions = [
-    { label: '🔥 Radar Ativo', val: 'IN_SCOPE_AND_REVIEW' },
-    { label: '🏗️ Obras & Engenharia', val: 'IN_SCOPE' },
-    { label: '🔍 Em Revisão', val: 'REVIEW' },
-    { label: '📋 Todas as Licitações', val: 'ALL' },
+    { label: 'Radar Ativo', val: 'IN_SCOPE_AND_REVIEW' },
+    { label: 'Escopo Direto', val: 'IN_SCOPE' },
+    { label: 'Revisão Técnica', val: 'REVIEW' },
+    { label: 'Todas as Oportunidades', val: 'ALL' },
   ];
 
-  const currentClassification = filters.classification ?? 'IN_SCOPE';
+  const currentClassification = filters.classification ?? 'IN_SCOPE_AND_REVIEW';
   const selectedCity = filters.municipality || '';
 
   // Local city combobox state
   const [cityOpen, setCityOpen] = useState(false);
   const [cityQuery, setCityQuery] = useState('');
-  const [hoveredCity, setHoveredCity] = useState<string | null>(null);
   const cityWrapRef = useRef<HTMLDivElement>(null);
 
-  // Local price inputs state (buffered until submit to prevent reload per keystroke)
+  // Local price inputs state
   const [localMinStr, setLocalMinStr] = useState<string>(() => formatBrlInput(filters.minValue));
   const [localMaxStr, setLocalMaxStr] = useState<string>(() => formatBrlInput(filters.maxValue));
 
-  // Sync local inputs when filters prop updates externally (e.g. on Reset)
   useEffect(() => {
     setLocalMinStr(formatBrlInput(filters.minValue));
   }, [filters.minValue]);
@@ -74,18 +72,8 @@ export const FilterBar: React.FC<Props> = ({
         setCityQuery('');
       }
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setCityOpen(false);
-        setCityQuery('');
-      }
-    };
     document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
+    return () => document.removeEventListener('mousedown', onDown);
   }, [cityOpen]);
 
   const pickCity = (name: string) => {
@@ -94,31 +82,21 @@ export const FilterBar: React.FC<Props> = ({
     setCityQuery('');
   };
 
-  const clearCity = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange({ municipality: '', page: 1 });
-    setCityQuery('');
-    setCityOpen(false);
-  };
-
   const handleApplyPriceFilter = () => {
     const minDigits = localMinStr.replace(/\D/g, '');
     const maxDigits = localMaxStr.replace(/\D/g, '');
-    const nextMin = minDigits ? Number(minDigits) : undefined;
-    const nextMax = maxDigits ? Number(maxDigits) : undefined;
-
     onChange({
-      minValue: nextMin,
-      maxValue: nextMax,
+      minValue: minDigits ? Number(minDigits) : undefined,
+      maxValue: maxDigits ? Number(maxDigits) : undefined,
       page: 1,
     });
   };
 
   const selectClass: React.CSSProperties = {
-    padding: '7px 11px',
-    backgroundColor: 'rgba(21, 34, 56, 0.75)',
+    padding: '7px 14px',
+    backgroundColor: '#101012',
     border: '1px solid var(--border-subtle)',
-    borderRadius: 'var(--radius-sm)',
+    borderRadius: 'var(--radius-full)',
     color: 'var(--text-primary)',
     fontSize: '12.5px',
     fontWeight: 500,
@@ -128,46 +106,46 @@ export const FilterBar: React.FC<Props> = ({
 
   return (
     <div
-      className="glass-panel"
+      className="wishlabs-card"
       style={{
-        borderRadius: 'var(--radius-lg)',
-        padding: '1.25rem',
-        marginBottom: '1.8rem',
+        padding: '16px 20px',
+        marginBottom: '28px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '1rem',
-        boxShadow: 'var(--shadow-md)',
+        gap: '14px',
       }}
     >
-      {/* Top Search & Controls Bar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-        {/* Search Input with Shortcut Badge */}
-        <div style={{ flex: '1 1 380px', position: 'relative' }}>
+      {/* Top Search & Filter Pill Controls */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Search Input with Capsule Design */}
+        <div style={{ flex: '1 1 340px', position: 'relative', minWidth: '260px' }}>
           <Search
             size={16}
             style={{
               position: 'absolute',
-              left: '13px',
+              left: '14px',
               top: '50%',
               transform: 'translateY(-50%)',
-              color: 'var(--brand-cyan)',
+              color: 'var(--text-secondary)',
               pointerEvents: 'none',
             }}
           />
           <input
             type="text"
-            placeholder="Buscar por objeto, prefeitura, órgão ou processo PNCP..."
+            placeholder="Buscar por objeto, prefeitura, órgão ou edital..."
             value={filters.search || ''}
             onChange={(e) => onChange({ search: e.target.value, page: 1 })}
             style={{
               width: '100%',
-              padding: '9px 40px 9px 38px',
-              backgroundColor: 'rgba(21, 34, 56, 0.65)',
+              height: '42px',
+              padding: '0 40px 0 40px',
+              backgroundColor: '#101012',
               border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)',
+              borderRadius: 'var(--radius-full)',
+              color: '#FFFFFF',
               outline: 'none',
-              fontSize: '13px',
+              fontSize: '13.5px',
+              fontFamily: 'var(--font-body)',
             }}
           />
           <kbd
@@ -177,11 +155,11 @@ export const FilterBar: React.FC<Props> = ({
               top: '50%',
               transform: 'translateY(-50%)',
               fontSize: '10px',
-              color: 'var(--text-muted)',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              fontWeight: 800,
+              color: 'var(--text-secondary)',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
               padding: '2px 6px',
-              borderRadius: '4px',
-              border: '1px solid var(--border-subtle)',
+              borderRadius: '6px',
               fontFamily: 'var(--font-mono)',
               pointerEvents: 'none',
             }}
@@ -190,68 +168,54 @@ export const FilterBar: React.FC<Props> = ({
           </kbd>
         </div>
 
-        {/* Municipality Combobox */}
-        <div ref={cityWrapRef} style={{ position: 'relative', minWidth: '220px', flex: '0 1 240px' }}>
+        {/* Municipality Selector Pill */}
+        <div ref={cityWrapRef} style={{ position: 'relative', minWidth: '210px' }}>
           <div
             onClick={() => setCityOpen((v) => !v)}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              height: '42px',
               gap: '8px',
-              padding: '8px 12px',
-              backgroundColor: 'rgba(21, 34, 56, 0.75)',
+              padding: '0 16px',
+              backgroundColor: '#101012',
               border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              color: selectedCity ? 'var(--brand-orange)' : 'var(--text-secondary)',
+              borderRadius: 'var(--radius-full)',
+              color: selectedCity ? 'var(--brand-primary)' : 'var(--text-secondary)',
               fontSize: '12.5px',
               fontWeight: selectedCity ? 700 : 500,
               cursor: 'pointer',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-              <MapPin size={14} color="var(--brand-orange)" />
+              <MapPin size={14} color={selectedCity ? 'var(--brand-primary)' : 'currentColor'} />
               <span style={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                {selectedCity ? selectedCity : 'Municípios do Ceará'}
+                {selectedCity || 'Municípios (CE)'}
               </span>
             </div>
-            {selectedCity ? (
-              <span
-                onClick={clearCity}
-                title="Limpar município"
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: '0 4px',
-                }}
-              >
-                ✕
-              </span>
-            ) : (
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>▼</span>
-            )}
+            <ChevronDown size={13} color="var(--text-secondary)" />
           </div>
 
-          {/* City Dropdown Menu */}
           {cityOpen && (
             <div
-              className="glass-panel"
               style={{
                 position: 'absolute',
-                top: 'calc(100% + 4px)',
+                top: 'calc(100% + 6px)',
                 left: 0,
                 width: '280px',
                 zIndex: 60,
-                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 'var(--radius-lg)',
                 boxShadow: 'var(--shadow-lg)',
-                padding: '6px',
-                maxHeight: '320px',
+                padding: '8px',
+                maxHeight: '300px',
                 display: 'flex',
                 flexDirection: 'column',
               }}
             >
-              <div style={{ padding: '4px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '4px' }}>
+              <div style={{ padding: '4px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '6px' }}>
                 <input
                   type="text"
                   autoFocus
@@ -260,11 +224,11 @@ export const FilterBar: React.FC<Props> = ({
                   onChange={(e) => setCityQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '6px 8px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    padding: '6px 10px',
+                    backgroundColor: '#101012',
                     border: '1px solid var(--border-subtle)',
-                    borderRadius: '4px',
-                    color: 'var(--text-primary)',
+                    borderRadius: '8px',
+                    color: '#FFFFFF',
                     fontSize: '12px',
                     outline: 'none',
                   }}
@@ -275,11 +239,23 @@ export const FilterBar: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => pickCity('')}
-                  onMouseEnter={() => setHoveredCity('__all__')}
-                  style={optionStyle(!selectedCity, hoveredCity === '__all__')}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    backgroundColor: !selectedCity ? 'var(--brand-primary-bg)' : 'transparent',
+                    color: !selectedCity ? 'var(--brand-primary)' : 'var(--text-primary)',
+                    fontSize: '12.5px',
+                    fontWeight: !selectedCity ? 700 : 500,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                  }}
                 >
                   <span>Todos os Municípios (CE)</span>
-                  {!selectedCity && <Check size={13} color="var(--brand-orange)" />}
+                  {!selectedCity && <Check size={13} />}
                 </button>
 
                 {filteredCities.map((city) => {
@@ -289,11 +265,23 @@ export const FilterBar: React.FC<Props> = ({
                       key={city}
                       type="button"
                       onClick={() => pickCity(city)}
-                      onMouseEnter={() => setHoveredCity(city)}
-                      style={optionStyle(active, hoveredCity === city)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        backgroundColor: active ? 'var(--brand-primary-bg)' : 'transparent',
+                        color: active ? 'var(--brand-primary)' : 'var(--text-primary)',
+                        fontSize: '12.5px',
+                        fontWeight: active ? 700 : 500,
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                      }}
                     >
                       <span>{city}</span>
-                      {active && <Check size={13} color="var(--brand-orange)" />}
+                      {active && <Check size={13} />}
                     </button>
                   );
                 })}
@@ -302,89 +290,88 @@ export const FilterBar: React.FC<Props> = ({
           )}
         </div>
 
-        {/* View Mode Toggle (Table vs Cards) */}
-        {onViewModeChange && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: 'rgba(21, 34, 56, 0.75)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-              padding: '2px',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => onViewModeChange('table')}
-              title="Visualização em Tabela Técnica"
+        {/* View Mode Toggle & Reset */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {onViewModeChange && (
+            <div
               style={{
-                padding: '6px 10px',
-                borderRadius: '5px',
-                border: 'none',
-                backgroundColor: viewMode === 'table' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                color: viewMode === 'table' ? '#FFFFFF' : 'var(--text-muted)',
-                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                fontSize: '12px',
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
+                backgroundColor: '#101012',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-full)',
+                padding: '3px',
               }}
             >
-              <List size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onViewModeChange('cards')}
-              title="Visualização em Cards Cockpit"
-              style={{
-                padding: '6px 10px',
-                borderRadius: '5px',
-                border: 'none',
-                backgroundColor: viewMode === 'cards' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                color: viewMode === 'cards' ? '#FFFFFF' : 'var(--text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '12px',
-                fontWeight: 600,
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <LayoutGrid size={14} />
-            </button>
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={() => onViewModeChange('table')}
+                title="Tabela Técnica"
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '9999px',
+                  border: 'none',
+                  backgroundColor: viewMode === 'table' ? 'var(--bg-surface-elevated)' : 'transparent',
+                  color: viewMode === 'table' ? '#FFFFFF' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                }}
+              >
+                <List size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onViewModeChange('cards')}
+                title="Cards Cockpit"
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '9999px',
+                  border: 'none',
+                  backgroundColor: viewMode === 'cards' ? 'var(--bg-surface-elevated)' : 'transparent',
+                  color: viewMode === 'cards' ? '#FFFFFF' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                }}
+              >
+                <LayoutGrid size={14} />
+              </button>
+            </div>
+          )}
 
-        {/* Reset Filter Button */}
-        <button
-          type="button"
-          onClick={onReset}
-          className="btn-secondary"
-          style={{ padding: '7px 12px', fontSize: '12px' }}
-          title="Restaurar filtros padrões"
-        >
-          <RotateCcw size={13} />
-          <span>Limpar</span>
-        </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="btn-secondary"
+            style={{ padding: '7px 14px', fontSize: '12px' }}
+            title="Restaurar filtros padrões"
+          >
+            <RotateCcw size={13} />
+            <span>Limpar</span>
+          </button>
+        </div>
       </div>
 
-      {/* Bottom Filter Controls: Scope Pills & Value Inputs with Apply */}
+      {/* Bottom Category Filter Pills & Modality Selectors */}
       <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '10px',
+          gap: '12px',
           borderTop: '1px solid var(--border-subtle)',
-          paddingTop: '0.85rem',
+          paddingTop: '14px',
         }}
       >
-        {/* Scope Filter Pills */}
+        {/* Classification Filter Pills */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {classificationOptions.map((opt) => {
             const isActive = currentClassification === opt.val;
@@ -394,15 +381,14 @@ export const FilterBar: React.FC<Props> = ({
                 type="button"
                 onClick={() => onChange({ classification: opt.val, page: 1 })}
                 style={{
-                  padding: '5px 11px',
-                  borderRadius: '16px',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '12px',
+                  fontWeight: isActive ? 800 : 500,
                   cursor: 'pointer',
-                  border: `1px solid ${isActive ? 'var(--brand-orange)' : 'var(--border-subtle)'}`,
-                  backgroundColor: isActive ? 'rgba(242, 100, 25, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                  color: isActive ? 'var(--brand-orange)' : 'var(--text-secondary)',
-                  boxShadow: isActive ? '0 0 10px rgba(242, 100, 25, 0.2)' : 'none',
+                  border: `1px solid ${isActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
+                  backgroundColor: isActive ? 'var(--brand-primary-bg)' : 'transparent',
+                  color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
                   transition: 'all 0.15s ease',
                 }}
               >
@@ -412,8 +398,8 @@ export const FilterBar: React.FC<Props> = ({
           })}
         </div>
 
-        {/* Secondary Modality / Status / Price Range Inputs */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+        {/* Secondary Modality / Status / Price Range Controls */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
           <select
             value={filters.status || 'OPEN'}
             onChange={(e) => onChange({ status: e.target.value, page: 1 })}
@@ -425,17 +411,6 @@ export const FilterBar: React.FC<Props> = ({
           </select>
 
           <select
-            value={filters.deadlinePreset ?? 'any'}
-            onChange={(e) => onChange({ deadlinePreset: e.target.value === 'any' ? undefined : e.target.value, page: 1 })}
-            style={selectClass}
-          >
-            <option value="any">⏳ Prazo: qualquer</option>
-            <option value="7">Encerra em 7 dias</option>
-            <option value="15">Encerra em 15 dias</option>
-            <option value="30">Encerra em 30 dias</option>
-          </select>
-
-          <select
             value={filters.modality || ''}
             onChange={(e) => onChange({ modality: e.target.value, page: 1 })}
             style={selectClass}
@@ -444,23 +419,20 @@ export const FilterBar: React.FC<Props> = ({
             <option value="Pregão">Pregão Eletrônico</option>
             <option value="Concorrência">Concorrência</option>
             <option value="Dispensa">Dispensa</option>
-            <option value="Tomada de Preços">Tomada de Preços</option>
-            <option value="Credenciamento">Credenciamento</option>
           </select>
 
-          {/* Price Range Controls with Local Buffer and Submit Button */}
+          {/* Price Range Controls with Pill Shell */}
           <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
-              backgroundColor: 'rgba(21, 34, 56, 0.85)',
-              padding: '3px 4px',
-              borderRadius: 'var(--radius-sm)',
+              gap: '6px',
+              backgroundColor: '#101012',
+              padding: '3px 6px',
+              borderRadius: 'var(--radius-full)',
               border: '1px solid var(--border-subtle)',
             }}
           >
-            {/* Min Value Input */}
             <input
               type="text"
               inputMode="numeric"
@@ -473,17 +445,15 @@ export const FilterBar: React.FC<Props> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleApplyPriceFilter();
               }}
-              title="Valor Mínimo Estimado (pressione Enter ou clique em Filtrar)"
               style={{
-                width: '105px',
+                width: '100px',
                 padding: '4px 6px',
                 backgroundColor: 'transparent',
                 border: 'none',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                color: 'var(--text-primary)',
+                color: '#FFFFFF',
                 fontFamily: 'var(--font-mono)',
                 fontSize: '12px',
-                fontWeight: 600,
+                fontWeight: 700,
                 textAlign: 'right',
                 outline: 'none',
               }}
@@ -491,11 +461,10 @@ export const FilterBar: React.FC<Props> = ({
 
             <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 600 }}>até</span>
 
-            {/* Max Value Input (Teto) */}
             <input
               type="text"
               inputMode="numeric"
-              placeholder="Teto máx. (R$)"
+              placeholder="Teto (R$)"
               value={localMaxStr}
               onChange={(e) => {
                 const digits = e.target.value.replace(/\D/g, '');
@@ -504,37 +473,30 @@ export const FilterBar: React.FC<Props> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleApplyPriceFilter();
               }}
-              title="Teto / Valor Máximo Estimado (pressione Enter ou clique em Filtrar)"
               style={{
-                width: '110px',
+                width: '100px',
                 padding: '4px 6px',
                 backgroundColor: 'transparent',
                 border: 'none',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                color: 'var(--text-primary)',
+                color: '#FFFFFF',
                 fontFamily: 'var(--font-mono)',
                 fontSize: '12px',
-                fontWeight: 600,
+                fontWeight: 700,
                 textAlign: 'right',
                 outline: 'none',
               }}
             />
 
-            {/* Apply / Submit Button */}
             <button
               type="button"
               onClick={handleApplyPriceFilter}
               className="btn-primary"
               style={{
                 padding: '4px 10px',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
+                fontSize: '11px',
+                fontWeight: 800,
                 cursor: 'pointer',
               }}
-              title="Buscar licitações na faixa de valor informada (Enter)"
             >
               <Filter size={11} />
               <span>Filtrar</span>
@@ -545,25 +507,3 @@ export const FilterBar: React.FC<Props> = ({
     </div>
   );
 };
-
-function optionStyle(active: boolean, hovered: boolean): React.CSSProperties {
-  return {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '8px',
-    padding: '8px 12px',
-    border: 'none',
-    backgroundColor: active
-      ? 'rgba(242, 100, 25, 0.15)'
-      : hovered
-      ? 'rgba(255, 255, 255, 0.06)'
-      : 'transparent',
-    color: active ? 'var(--brand-orange)' : 'var(--text-primary)',
-    fontSize: '12.5px',
-    fontWeight: active ? 700 : 500,
-    textAlign: 'left',
-    cursor: 'pointer',
-  };
-}

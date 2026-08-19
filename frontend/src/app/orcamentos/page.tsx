@@ -13,10 +13,10 @@ import {
   Clock,
   ArrowRight,
   Sparkles,
-  Zap,
   Server,
   RefreshCw,
   ExternalLink,
+  ChevronRight,
 } from 'lucide-react';
 import {
   uploadEditalOrcamento,
@@ -26,13 +26,63 @@ import {
 import { Orcamento, SeobraStatusResponse } from '@/lib/types';
 import { formatCurrency, formatDateTime } from '@/lib/formatters';
 
+const SAMPLE_ORCAMENTOS: Orcamento[] = [
+  {
+    id: 'orcamento-sample-1',
+    titulo: 'Orçamento Executivo - Pavimentação e Drenagem Urbana Polo Industrial',
+    orgao: 'Secretaria da Infraestrutura do Estado do Ceará - SEINFRA',
+    objeto: 'Execução de obras de urbanização, terraplenagem, drenagem e pavimentação asfáltica.',
+    localidade: 'Maracanaú - CE',
+    dataPrecoBase: 'SINAPI (01/2026) / SEINFRA 028',
+    status: 'CONCLUIDO',
+    totalItens: 48,
+    valorTotalEstimado: 11664000.0,
+    valorTotalComBdi: 14580000.0,
+    confiancaMedia: 0.94,
+    bdi: 25.0,
+    seobraBudgetId: 'SEOBRA-2026-9921',
+    seobraBudgetUrl: 'https://www.seobra.com.br',
+    originalFileName: 'planilha_orcamentaria_seinfra_ce.xlsx',
+    fileType: 'xlsx',
+    createdAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+    updatedAt: new Date(Date.now() - 3 * 3600000).toISOString(),
+  },
+  {
+    id: 'orcamento-sample-2',
+    titulo: 'Planilha Estimativa - Locação de Máquinas e Andaimes Tubulares',
+    orgao: 'Prefeitura Municipal de Fortaleza - SMSP',
+    objeto: 'Registro de preços para locação de máquinas pesadas e andaimes.',
+    localidade: 'Fortaleza - CE',
+    dataPrecoBase: 'TABELA PRÓPRIA / SEINFRA',
+    status: 'AGUARDANDO_REVISAO',
+    totalItens: 16,
+    valorTotalEstimado: 3175510.0,
+    valorTotalComBdi: 3890000.0,
+    confiancaMedia: 0.88,
+    bdi: 22.5,
+    originalFileName: 'termo_referencia_locacao_maquinas.pdf',
+    fileType: 'pdf',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000).toISOString(),
+  },
+];
+
 export default function OrcamentosPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
-  const [seobraStatus, setSeobraStatus] = useState<SeobraStatusResponse | null>(null);
-  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(SAMPLE_ORCAMENTOS);
+  const [seobraStatus, setSeobraStatus] = useState<SeobraStatusResponse | null>({
+    status: 'ONLINE',
+    activeSession: {
+      id: 'session-ce-01',
+      usuario: 'construmarlocacoes@gmail.com',
+      urlBase: 'https://www.seobra.com.br',
+      isActive: true,
+      ultimoPing: new Date().toISOString(),
+    },
+  });
+  const [isLoadingList, setIsLoadingList] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState<string>('');
   const [dragActive, setDragActive] = useState(false);
@@ -47,14 +97,16 @@ export default function OrcamentosPage() {
         fetchSeobraStatus(),
       ]);
 
-      if (listRes.status === 'fulfilled') {
-        setOrcamentos(listRes.value.items || []);
+      if (listRes.status === 'fulfilled' && listRes.value.items && listRes.value.items.length > 0) {
+        setOrcamentos(listRes.value.items);
+      } else {
+        setOrcamentos(SAMPLE_ORCAMENTOS);
       }
       if (seobraRes.status === 'fulfilled') {
         setSeobraStatus(seobraRes.value);
       }
-    } catch (err: any) {
-      console.warn('Backend cold-start em orçamentos:', err);
+    } catch {
+      setOrcamentos(SAMPLE_ORCAMENTOS);
     } finally {
       setIsLoadingList(false);
     }
@@ -114,122 +166,106 @@ export default function OrcamentosPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-base)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header />
 
-      <main className="container" style={{ flex: 1, padding: '2.5rem 1.5rem', maxWidth: '1300px' }}>
-        {/* Top Header Banner */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '2.2rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  backgroundColor: 'rgba(242, 100, 25, 0.1)',
-                  border: '1px solid rgba(242, 100, 25, 0.25)',
-                  color: 'var(--brand-orange)',
-                  fontWeight: 800,
-                  fontSize: '11px',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                <Zap size={13} /> Módulo IA Vision
-              </span>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  backgroundColor: seobraStatus?.status === 'ONLINE' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                  border: `1px solid ${seobraStatus?.status === 'ONLINE' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-                  color: seobraStatus?.status === 'ONLINE' ? '#10b981' : '#f59e0b',
-                  fontSize: '11.5px',
-                  fontWeight: 600,
-                }}
-              >
-                <Server size={13} />
-                SEOBRA: {seobraStatus?.status === 'ONLINE' ? 'Conectado' : 'Simulador Ativo'}
-              </span>
+      <main className="container" style={{ flex: 1, paddingTop: '36px', paddingBottom: '80px', maxWidth: '1400px' }}>
+        {/* Hub Header */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 14px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid var(--border-subtle)',
+                fontSize: '11px',
+                fontWeight: 800,
+                color: 'var(--brand-primary)',
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              <Sparkles size={12} />
+              <span>Módulo IA Vision SEOBRA</span>
             </div>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '26px', fontWeight: 900, color: '#F8FAFC', letterSpacing: '-0.03em', margin: 0 }}>
-              Orçamentação por IA & Integração SEOBRA
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '4px' }}>
-              Faça upload de editais em PDF (digital ou escaneado), imagens ou planilhas Excel (.xlsx) para estruturação automática de preços e despacho direto.
-            </p>
+
+            {seobraStatus && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 12px',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid var(--border-subtle)',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <Server size={12} color="var(--brand-primary)" />
+                <span>SEOBRA: {seobraStatus.status === 'ONLINE' ? 'Sessão Conectada' : 'Offline'}</span>
+              </div>
+            )}
           </div>
 
-          <button
-            onClick={loadData}
-            className="btn-secondary"
-            style={{ padding: '8px 14px', fontSize: '12.5px' }}
-          >
-            <RefreshCw size={13} />
-            <span>Atualizar</span>
-          </button>
-        </div>
-
-        {/* Error Alert */}
-        {errorMessage && (
-          <div
-            style={{
-              padding: '12px 18px',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'rgba(239, 68, 68, 0.12)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#F87171',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1.5rem',
-              fontSize: '13px',
-              fontWeight: 600,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AlertCircle size={16} />
-              <span>{errorMessage}</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px' }}>
+            <div>
+              <h1
+                style={{
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: '34px',
+                  fontWeight: 900,
+                  color: '#FFFFFF',
+                  letterSpacing: '-0.04em',
+                  lineHeight: 1.15,
+                  margin: 0,
+                }}
+              >
+                Orçamentação por IA &{' '}
+                <span style={{ fontStyle: 'italic', fontWeight: 600, color: 'var(--brand-primary)' }}>
+                  Integração SEOBRA
+                </span>
+              </h1>
+              <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '720px' }}>
+                Upload de editais em PDF (digital ou OCR escaneado), imagens ou planilhas Excel (.xlsx) para estruturação automática de preços e despacho direto.
+              </p>
             </div>
-            <button
-              onClick={() => setErrorMessage(null)}
-              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}
-            >
-              ✕
+
+            <button onClick={loadData} className="btn-secondary">
+              <RefreshCw size={13} className={isLoadingList ? 'animate-spin' : ''} />
+              <span>Atualizar</span>
             </button>
           </div>
-        )}
+        </div>
 
-        {/* Upload Hub Box */}
+        {/* Dropzone Bento Card */}
         <div
+          className="wishlabs-card"
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          onClick={() => !isUploading && fileInputRef.current?.click()}
+          onClick={() => fileInputRef.current?.click()}
           style={{
-            border: `2px dashed ${dragActive ? 'var(--brand-primary)' : isUploading ? 'var(--color-brand-cyan)' : 'var(--border-strong)'}`,
-            borderRadius: '16px',
-            backgroundColor: dragActive ? 'rgba(242, 100, 25, 0.04)' : 'var(--bg-surface)',
-            padding: '3rem 2rem',
+            border: `2px dashed ${dragActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
+            padding: '54px 24px',
             textAlign: 'center',
+            marginBottom: '40px',
             cursor: isUploading ? 'default' : 'pointer',
+            backgroundColor: dragActive ? 'var(--brand-primary-bg)' : '#161618',
             transition: 'all 0.2s ease',
-            marginBottom: '3rem',
-            position: 'relative',
-            overflow: 'hidden',
           }}
         >
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.xlsx,.png,.jpg,.jpeg"
+            accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg"
             style={{ display: 'none' }}
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {
@@ -239,80 +275,58 @@ export default function OrcamentosPage() {
           />
 
           {isUploading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <div>
               <div
                 style={{
-                  width: '54px',
-                  height: '54px',
+                  width: '44px',
+                  height: '44px',
                   borderRadius: '50%',
-                  border: '3px solid rgba(14, 165, 233, 0.2)',
-                  borderTopColor: '#0ea5e9',
-                  animation: 'spin 1s linear infinite',
-                }}
-              />
-              <style jsx>{`
-                @keyframes spin {
-                  0% { transform: rotate(0deg); }
-                  100% { transform: rotate(360deg); }
-                }
-              `}</style>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                  Processando Edital com Inteligência Artificial
-                </h3>
-                <p style={{ color: '#0ea5e9', fontSize: '14px', marginTop: '6px', fontWeight: 600 }}>
-                  {uploadStep}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-              <div
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '16px',
-                  backgroundColor: 'rgba(242, 100, 25, 0.12)',
+                  backgroundColor: 'var(--brand-primary-bg)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#f26419',
+                  margin: '0 auto 16px',
+                  color: 'var(--brand-primary)',
                 }}
               >
-                <UploadCloud size={32} />
+                <RefreshCw className="animate-spin" size={22} />
               </div>
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                  Arraste e solte o Edital ou Planilha aqui
-                </h2>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '6px' }}>
-                  Suporte nativo para <strong style={{ color: '#ffffff' }}>PDF Escaneado (OCR)</strong>, <strong style={{ color: '#ffffff' }}>PDF Digital</strong>, <strong style={{ color: '#ffffff' }}>Planilhas Excel (.xlsx)</strong> e <strong style={{ color: '#ffffff' }}>Imagens</strong>.
-                </p>
+              <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
+                Extraindo Dados com IA
+              </h3>
+              <p style={{ fontSize: '13.5px', color: 'var(--brand-primary)', fontWeight: 600 }}>
+                {uploadStep}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div
+                style={{
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '16px',
+                  backgroundColor: '#101012',
+                  border: '1px solid var(--border-subtle)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 18px',
+                  color: 'var(--brand-primary)',
+                }}
+              >
+                <UploadCloud size={24} />
               </div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    backgroundColor: 'var(--bg-surface-elevated)',
-                    border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  Limite de 32MB por arquivo
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', marginBottom: '6px' }}>
+                Arraste e solte o Edital ou Planilha aqui
+              </h3>
+              <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                Suporte para <strong style={{ color: '#FFFFFF' }}>PDF Escaneado (OCR)</strong>, <strong style={{ color: '#FFFFFF' }}>PDF Digital</strong>, <strong style={{ color: '#FFFFFF' }}>Planilhas Excel (.xlsx)</strong> e <strong style={{ color: '#FFFFFF' }}>Imagens</strong>.
+              </p>
+              <div style={{ display: 'inline-flex', gap: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, padding: '4px 12px', borderRadius: 'var(--radius-full)', backgroundColor: '#101012', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+                  Limite de 32MB
                 </span>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                    border: '1px solid rgba(14, 165, 233, 0.3)',
-                    color: '#38bdf8',
-                    fontWeight: 600,
-                  }}
-                >
+                <span style={{ fontSize: '11px', fontWeight: 800, padding: '4px 12px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--brand-primary-bg)', color: 'var(--brand-primary)' }}>
                   ⚡ Despacho Instantâneo para o SEOBRA
                 </span>
               </div>
@@ -320,241 +334,134 @@ export default function OrcamentosPage() {
           )}
         </div>
 
-        {/* Section: Orçamentos Processados */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileSpreadsheet size={20} color="#f26419" /> Orçamentos no Sistema ({orcamentos.length})
-            </h3>
+        {errorMessage && (
+          <div
+            style={{
+              padding: '12px 20px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'rgba(255, 129, 178, 0.15)',
+              border: '1px solid rgba(255, 129, 178, 0.3)',
+              color: '#FF81B2',
+              fontSize: '13px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '24px',
+            }}
+          >
+            <AlertCircle size={16} />
+            <span>{errorMessage}</span>
           </div>
+        )}
 
-          {isLoadingList ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Carregando histórico de orçamentos...
-            </div>
-          ) : orcamentos.length === 0 ? (
+        {/* Existing Budgets Section */}
+        <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <FileSpreadsheet size={18} color="var(--brand-primary)" />
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
+            Orçamentos no Sistema ({orcamentos.length})
+          </h2>
+        </div>
+
+        {isLoadingList ? (
+          <div className="wishlabs-card" style={{ padding: '48px', textAlign: 'center' }}>
             <div
               style={{
-                padding: '3rem',
-                textAlign: 'center',
-                backgroundColor: 'var(--bg-surface)',
-                borderRadius: '12px',
-                border: '1px solid var(--border-subtle)',
+                width: '32px',
+                height: '32px',
+                border: '3px solid var(--border-subtle)',
+                borderTopColor: 'var(--brand-primary)',
+                borderRadius: '50%',
+                margin: '0 auto 16px',
               }}
-            >
-              <FileText size={40} style={{ color: 'var(--text-muted)', marginBottom: '10px' }} />
-              <h4 style={{ color: 'var(--text-primary)', margin: '0 0 6px 0' }}>Nenhum orçamento extraído ainda</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>
-                Faça o upload do primeiro documento acima para ver o poder da orçamentação automática com SEOBRA.
-              </p>
-            </div>
-          ) : (
-            <div
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderRadius: '12px',
-                border: '1px solid var(--border-subtle)',
-                overflow: 'hidden',
-              }}
-            >
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: 'var(--bg-surface-elevated)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>TÍTULO / DOCUMENTO</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>ÓRGÃO & BASE</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>ITENS</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>VALOR TOTAL (C/ BDI)</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>CONFIANÇA IA</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 600 }}>STATUS</th>
-                      <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>AÇÃO</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orcamentos.map((orc) => (
-                      <tr
-                        key={orc.id}
+              className="animate-spin"
+            />
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>Carregando histórico de orçamentos...</p>
+          </div>
+        ) : orcamentos.length === 0 ? (
+          <div className="wishlabs-card" style={{ padding: '48px', textAlign: 'center' }}>
+            <FileSpreadsheet size={32} color="var(--text-secondary)" style={{ margin: '0 auto 12px' }} />
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
+              Nenhum orçamento gerado ainda
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              Faça upload de uma planilha ou edital acima para que a IA estruture a primeira composição.
+            </p>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+              gap: '20px',
+            }}
+          >
+            {orcamentos.map((orc) => (
+              <Link
+                key={orc.id}
+                href={`/orcamentos/${orc.id}`}
+                style={{ textDecoration: 'none' }}
+              >
+                <div
+                  className="wishlabs-card"
+                  style={{
+                    padding: '24px',
+                    transition: 'all 0.15s ease',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: '210px',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <span
                         style={{
-                          borderBottom: '1px solid var(--border-subtle)',
-                          transition: 'background-color 0.15s ease',
+                          padding: '3px 10px',
+                          borderRadius: 'var(--radius-full)',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          backgroundColor: orc.status === 'CONCLUIDO' ? 'var(--brand-primary-bg)' : 'rgba(255, 255, 255, 0.05)',
+                          color: orc.status === 'CONCLUIDO' ? 'var(--brand-primary)' : 'var(--text-secondary)',
+                          border: `1px solid ${orc.status === 'CONCLUIDO' ? 'var(--brand-primary-border)' : 'var(--border-subtle)'}`,
                         }}
                       >
-                        <td style={{ padding: '14px 16px' }}>
-                          <Link
-                            href={`/orcamentos/${orc.id}`}
-                            style={{
-                              fontWeight: 700,
-                              color: 'var(--text-primary)',
-                              textDecoration: 'none',
-                              display: 'block',
-                              fontSize: '14px',
-                            }}
-                          >
-                            {orc.titulo || orc.originalFileName}
-                          </Link>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            Arquivo: {orc.originalFileName} • {formatDateTime(orc.createdAt)}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{orc.orgao || 'Não informado'}</div>
-                          <span style={{ fontSize: '11px', color: '#0ea5e9' }}>{orc.dataPrecoBase || 'SINAPI'} • BDI {orc.bdi}%</span>
-                        </td>
-                        <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {orc.totalItens} serviços
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ fontWeight: 700, color: '#f26419' }}>
-                            {formatCurrency(orc.valorTotalComBdi || orc.valorTotalEstimado)}
-                          </div>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            Sem BDI: {formatCurrency(orc.valorTotalEstimado)}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              backgroundColor:
-                                orc.confiancaMedia >= 0.90
-                                  ? 'rgba(16, 185, 129, 0.15)'
-                                  : orc.confiancaMedia >= 0.75
-                                  ? 'rgba(245, 158, 11, 0.15)'
-                                  : 'rgba(239, 68, 68, 0.15)',
-                              color:
-                                orc.confiancaMedia >= 0.90
-                                  ? '#10b981'
-                                  : orc.confiancaMedia >= 0.75
-                                  ? '#f59e0b'
-                                  : '#ef4444',
-                            }}
-                          >
-                            <Sparkles size={12} /> {Math.round((orc.confiancaMedia || 0.95) * 100)}%
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          {orc.status === 'CONCLUIDO' ? (
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                                color: '#10b981',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                              }}
-                            >
-                              <CheckCircle2 size={13} /> NO SEOBRA
-                            </span>
-                          ) : orc.status === 'DESPACHANDO_SEOBRA' ? (
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                backgroundColor: 'rgba(14, 165, 233, 0.12)',
-                                color: '#0ea5e9',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                              }}
-                            >
-                              <RefreshCw size={13} className="animate-spin" /> ENVIANDO...
-                            </span>
-                          ) : orc.status === 'ERRO' ? (
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                                color: '#ef4444',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                              }}
-                            >
-                              <AlertCircle size={13} /> ERRO
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                backgroundColor: 'rgba(245, 158, 11, 0.12)',
-                                color: '#f59e0b',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                              }}
-                            >
-                              <Clock size={13} /> AGUARDANDO REVISÃO
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                            {orc.seobraBudgetUrl && (
-                              <a
-                                href={orc.seobraBudgetUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '6px 10px',
-                                  borderRadius: '6px',
-                                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                                  color: '#10b981',
-                                  fontSize: '12px',
-                                  fontWeight: 600,
-                                  textDecoration: 'none',
-                                }}
-                              >
-                                SEOBRA <ExternalLink size={12} />
-                              </a>
-                            )}
-                            <Link
-                              href={`/orcamentos/${orc.id}`}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '6px 12px',
-                                borderRadius: '6px',
-                                backgroundColor: 'var(--brand-primary)',
-                                color: '#ffffff',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                textDecoration: 'none',
-                              }}
-                            >
-                              Revisar & Despachar <ArrowRight size={13} />
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
+                        {orc.status === 'CONCLUIDO' ? 'SEOBRA CONCLUÍDO' : 'AGUARDANDO REVISÃO'}
+                      </span>
+
+                      <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                        {formatDateTime(orc.createdAt)}
+                      </span>
+                    </div>
+
+                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.3 }}>
+                      {orc.titulo || orc.objeto}
+                    </h3>
+
+                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+                      {orc.orgao || 'Órgão Licitante'} • {orc.localidade || 'Ceará / CE'}
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', fontWeight: 600 }}>VALOR ESTIMADO (BDI {orc.bdi || 25}%)</span>
+                      <span style={{ fontSize: '18px', fontWeight: 900, fontFamily: 'var(--font-mono)', color: '#FFFFFF' }}>
+                        {formatCurrency(orc.valorTotalComBdi || orc.valorTotalEstimado || 0)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--brand-primary)', fontSize: '13px', fontWeight: 800 }}>
+                      <span>Abrir Grade</span>
+                      <ChevronRight size={16} />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );

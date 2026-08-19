@@ -15,12 +15,10 @@ export const ErrorState: React.FC<Props> = ({
 }) => {
   return (
     <div
+      className="wishlabs-card"
       style={{
-        backgroundColor: 'rgba(239, 68, 68, 0.08)',
-        border: '1px solid rgba(239, 68, 68, 0.3)',
-        borderRadius: 'var(--radius-md)',
-        padding: '2rem 1.5rem',
-        margin: '1.5rem 0',
+        padding: '36px 24px',
+        margin: '24px 0',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -29,25 +27,26 @@ export const ErrorState: React.FC<Props> = ({
     >
       <div
         style={{
-          width: '44px',
-          height: '44px',
+          width: '48px',
+          height: '48px',
           borderRadius: '50%',
-          backgroundColor: 'rgba(239, 68, 68, 0.15)',
+          backgroundColor: 'rgba(255, 129, 178, 0.15)',
+          border: '1px solid rgba(255, 129, 178, 0.3)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#f87171',
-          marginBottom: '1rem',
+          color: '#FF81B2',
+          marginBottom: '16px',
         }}
       >
         <AlertTriangle size={22} />
       </div>
 
-      <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#f87171', marginBottom: '6px' }}>
+      <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
         Instabilidade na Consulta do Radar
       </h3>
 
-      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '500px', marginBottom: '1.25rem' }}>
+      <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', maxWidth: '500px', marginBottom: '20px' }}>
         {message}
       </p>
 
@@ -58,41 +57,27 @@ export const ErrorState: React.FC<Props> = ({
             alignItems: 'center',
             gap: '6px',
             fontSize: '12px',
-            color: 'var(--text-muted)',
-            marginBottom: '1.25rem',
-            backgroundColor: 'var(--bg-surface)',
-            padding: '4px 10px',
-            borderRadius: '6px',
+            color: 'var(--text-secondary)',
+            marginBottom: '20px',
+            backgroundColor: '#101012',
+            padding: '6px 14px',
+            borderRadius: 'var(--radius-full)',
             border: '1px solid var(--border-subtle)',
           }}
         >
-          <Clock size={13} />
+          <Clock size={13} color="var(--brand-primary)" />
           <span>
             Última sincronização válida preservada:{' '}
-            <strong style={{ color: 'var(--text-primary)' }}>
+            <strong style={{ color: '#FFFFFF' }}>
               {formatDateTime(lastValidSyncAt)}
             </strong>
           </span>
         </div>
       )}
 
-      <button
-        onClick={onRetry}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 18px',
-          backgroundColor: 'var(--brand-primary)',
-          color: '#090e17',
-          border: 'none',
-          borderRadius: 'var(--radius-sm)',
-          fontWeight: 700,
-          cursor: 'pointer',
-        }}
-      >
-        <RotateCcw size={15} />
-        Tentar Novamente
+      <button onClick={onRetry} className="btn-primary">
+        <RotateCcw size={14} />
+        <span>Tentar Novamente</span>
       </button>
     </div>
   );

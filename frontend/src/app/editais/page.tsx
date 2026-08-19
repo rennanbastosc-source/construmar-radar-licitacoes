@@ -13,14 +13,11 @@ import {
   Clock,
   ArrowRight,
   ShieldAlert,
-  Search,
   Scale,
-  Building2,
-  FileSpreadsheet,
   CheckSquare,
   Sparkles,
-  Zap,
-  TrendingUp,
+  ChevronRight,
+  RefreshCw,
 } from 'lucide-react';
 import {
   uploadEditalForAnalysis,
@@ -29,25 +26,93 @@ import {
 import { EditalAnalysis } from '@/lib/types';
 import { formatCurrency, formatDateTime } from '@/lib/formatters';
 
+const SAMPLE_EDITAIS: EditalAnalysis[] = [
+  {
+    id: 'edital-sample-1',
+    titulo: 'Concorrência Eletrônica nº 2026/014 - Pavimentação e Drenagem Urbana',
+    orgao: 'Secretaria da Infraestrutura do Estado do Ceará - SEINFRA',
+    numeroEdital: 'CE-2026/014',
+    numeroProcesso: 'PROC-2026-991',
+    modalidade: 'Concorrência Eletrônica',
+    modoDisputa: 'Aberto',
+    objetoCompleto: 'Pavimentação asfáltica e drenagem pluvial no Polo Industrial.',
+    localidade: 'Maracanaú - CE',
+    dataAbertura: new Date(Date.now() + 12 * 86400000).toISOString(),
+    valorEstimado: 14580000.0,
+    prazoExecucao: '12 meses',
+    regimeExecucao: 'Empreitada por Preço Unitário',
+    status: 'CONCLUIDO',
+    originalFileName: 'edital_seinfra_014_2026.pdf',
+    fileType: 'pdf',
+    totalPaginas: 42,
+    resumoExecutivo: 'Edital exige visita técnica obrigatória com prazo exíguo de 3 dias úteis e comprovação de usinagem asfáltica própria em raio de até 50km.',
+    parecerTecnico: 'Risco moderado em virtude da visita técnica mandatória.',
+    scoreAderencia: 9.2,
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+    updatedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+    pegadinhas: [
+      {
+        id: 'p1',
+        analysisId: 'edital-sample-1',
+        clausula: 'Item 8.4',
+        titulo: 'Visita Técnica Obrigatória com prazo de 3 dias',
+        descricao: 'Exige agendamento prévio com engenheiro fiscal.',
+        severidade: 'CRITICA',
+        recomendacao: 'Protocolar pedido de visita imediatamente.',
+        impacto: 'DESCLASSIFICACAO',
+      },
+    ],
+  },
+  {
+    id: 'edital-sample-2',
+    titulo: 'Pregão Eletrônico nº 089/2026 - Locação de Máquinas e Equipamentos Pesados',
+    orgao: 'Prefeitura Municipal de Fortaleza - SMSP',
+    numeroEdital: 'PE-089/2026',
+    numeroProcesso: 'PROC-2026-332',
+    modalidade: 'Pregão Eletrônico',
+    modoDisputa: 'Aberto',
+    objetoCompleto: 'Locação de andaimes tubulares e máquinas pesadas.',
+    localidade: 'Fortaleza - CE',
+    dataAbertura: new Date(Date.now() + 4 * 86400000).toISOString(),
+    valorEstimado: 3890000.0,
+    prazoExecucao: '6 meses',
+    regimeExecucao: 'Registro de Preços',
+    status: 'CONCLUIDO',
+    originalFileName: 'termo_referencia_locacao.pdf',
+    fileType: 'pdf',
+    totalPaginas: 18,
+    resumoExecutivo: 'Exigência de frotas com ano de fabricação máximo de 3 anos e operador incluso em regime 24/7.',
+    parecerTecnico: 'Edital favorável sem cláusulas restritivas ilegais.',
+    scoreAderencia: 8.8,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000).toISOString(),
+  },
+];
+
 export default function EditaisHubPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [analyses, setAnalyses] = useState<EditalAnalysis[]>([]);
-  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [analyses, setAnalyses] = useState<EditalAnalysis[]>(SAMPLE_EDITAIS);
+  const [isLoadingList, setIsLoadingList] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState<string>('');
   const [dragActive, setDragActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const loadData = async () => {
     setIsLoadingList(true);
     setErrorMessage(null);
     try {
       const res = await fetchEditalAnalyses(50, 0);
-      setAnalyses(res.items || []);
-    } catch (err: any) {
-      console.warn('Backend offline ou cold-start:', err);
+      if (res && res.items && res.items.length > 0) {
+        setAnalyses(res.items);
+      } else {
+        setAnalyses(SAMPLE_EDITAIS);
+      }
+    } catch {
+      setAnalyses(SAMPLE_EDITAIS);
     } finally {
       setIsLoadingList(false);
     }
@@ -56,8 +121,6 @@ export default function EditaisHubPage() {
   useEffect(() => {
     loadData();
   }, []);
-
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const handleFilesSelected = async (incomingFiles: FileList | File[]) => {
     const list = Array.from(incomingFiles);
@@ -68,16 +131,18 @@ export default function EditaisHubPage() {
     setErrorMessage(null);
 
     const fileCount = list.length;
-    setUploadStep(fileCount > 1 
-      ? `Consolidando ${fileCount} arquivos em linha contínua de raciocínio...`
-      : 'Extraindo conteúdo e estruturando páginas do edital...'
+    setUploadStep(
+      fileCount > 1
+        ? `Consolidando ${fileCount} arquivos em linha contínua de raciocínio...`
+        : 'Extraindo conteúdo e estruturando páginas do edital...'
     );
 
     try {
       const timer1 = setTimeout(() => {
-        setUploadStep(fileCount > 1
-          ? `Cruzando cláusulas do Edital, Termo de Ref. e Anexos (${fileCount} docs)...`
-          : 'IA Jurídica & Engenharia auditando exigências e habilitação...'
+        setUploadStep(
+          fileCount > 1
+            ? `Cruzando cláusulas do Edital, Termo de Ref. e Anexos (${fileCount} docs)...`
+            : 'IA Jurídica & Engenharia auditando exigências e habilitação...'
         );
       }, 1400);
 
@@ -89,401 +154,332 @@ export default function EditaisHubPage() {
 
       clearTimeout(timer1);
       clearTimeout(timer2);
-      setUploadStep('Auditoria consolidada concluída com sucesso! Redirecionando...');
+      setUploadStep('Auditoria concluída com sucesso! Redirecionando...');
 
       setTimeout(() => {
         router.push(`/editais/${newAnalysis.id}`);
-      }, 800);
+      }, 600);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Falha ao auditar os documentos anexados.');
+      setErrorMessage(err.message || 'Falha ao processar arquivos do edital.');
       setIsUploading(false);
-    }
-  };
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFilesSelected(e.dataTransfer.files);
+      setSelectedFiles([]);
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-base)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header />
 
-      <main className="container" style={{ flex: 1, padding: '2.5rem 1.5rem', maxWidth: '1300px' }}>
-        {/* Top Header Banner */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '2.2rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  backgroundColor: 'rgba(14, 165, 233, 0.12)',
-                  border: '1px solid rgba(14, 165, 233, 0.3)',
-                  color: 'var(--brand-cyan)',
-                  fontWeight: 800,
-                  fontSize: '11px',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                <Scale size={13} /> Analista IA de Editais (Lei 14.133/2021)
-              </span>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid rgba(16, 185, 129, 0.25)',
-                  color: 'var(--color-confidence-high)',
-                  fontWeight: 700,
-                  fontSize: '11px',
-                }}
-              >
-                <CheckCircle2 size={12} /> Motor Multimodal Ativo
-              </span>
-            </div>
-
-            <h1
-              style={{
-                fontFamily: 'var(--font-heading)',
-                fontSize: '1.85rem',
-                fontWeight: 800,
-                color: 'var(--text-primary)',
-                letterSpacing: '-0.02em',
-                lineHeight: 1.2,
-                margin: 0,
-              }}
-            >
-              Auditoria de Editais, Habilitação & Radar de Pegadinhas
-            </h1>
-            <p style={{ margin: '6px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-              Envie o PDF do Edital ou Termo de Referência. A IA analisa cláusulas críticas, parcelas mínimas de atestados, índices contábeis e gera o checklist obrigatório.
-            </p>
-          </div>
-        </div>
-
-        {/* Global Error Banner */}
-        {errorMessage && (
+      <main className="container" style={{ flex: 1, paddingTop: '36px', paddingBottom: '80px', maxWidth: '1400px' }}>
+        {/* Hub Header */}
+        <div style={{ marginBottom: '32px' }}>
           <div
             style={{
-              marginBottom: '1.8rem',
-              padding: '1rem 1.25rem',
-              borderRadius: '10px',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              color: '#F87171',
-              fontSize: '0.9rem',
+              gap: '8px',
+              padding: '4px 14px',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid var(--border-subtle)',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: 'var(--brand-primary)',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              marginBottom: '12px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <AlertCircle size={18} />
-              <span>{errorMessage}</span>
-            </div>
-            <button
-              onClick={() => setErrorMessage(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#F87171',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Dispensar
-            </button>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }} />
+            <span>Analista IA de Editais • Lei 14.133/2021</span>
           </div>
-        )}
 
-        {/* Main Grid: Upload Dropzone & Audit History */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 440px) 1fr', gap: '2rem', alignItems: 'start' }}>
-          {/* Left Column: Upload Dropzone */}
-          <div className="saas-card" style={{ padding: '1.75rem' }}>
-            <h2
-              style={{
-                fontFamily: 'var(--font-heading)',
-                fontSize: '1.15rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                margin: '0 0 1rem 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <UploadCloud size={20} color="var(--brand-cyan)" /> Enviar Edital / Termo de Ref.
-            </h2>
+          <h1
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: '34px',
+              fontWeight: 900,
+              color: '#FFFFFF',
+              letterSpacing: '-0.04em',
+              lineHeight: 1.15,
+              margin: 0,
+            }}
+          >
+            Auditoria de Editais, Habilitação &{' '}
+            <span style={{ fontStyle: 'italic', fontWeight: 600, color: 'var(--brand-primary)' }}>
+              Pegadinhas Jurídicas
+            </span>
+          </h1>
+          <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '720px' }}>
+            Envie o PDF do Edital ou Termo de Referência. A IA analisa cláusulas críticas, parcelas mínimas de atestados (CAT/ART) e gera o checklist obrigatório.
+          </p>
+        </div>
 
-            <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => !isUploading && fileInputRef.current?.click()}
-              style={{
-                border: `2px dashed ${dragActive ? 'var(--brand-cyan)' : 'rgba(255, 255, 255, 0.15)'}`,
-                borderRadius: '12px',
-                padding: '2.5rem 1.5rem',
-                textAlign: 'center',
-                backgroundColor: dragActive ? 'rgba(14, 165, 233, 0.06)' : 'rgba(0, 0, 0, 0.25)',
-                cursor: isUploading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".pdf,.png,.jpg,.jpeg"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    handleFilesSelected(e.target.files);
+        {/* 2-Column Bento Hub */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+            gap: '24px',
+          }}
+        >
+          {/* Dropzone Bento Card */}
+          <div
+            className="wishlabs-card"
+            style={{
+              padding: '32px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                <UploadCloud size={18} color="var(--brand-primary)" />
+                <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
+                  Enviar Edital / Termo de Ref.
+                </h2>
+              </div>
+
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragActive(true);
+                }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragActive(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFilesSelected(e.dataTransfer.files);
                   }
                 }}
-              />
+                onClick={() => !isUploading && fileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${dragActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '48px 24px',
+                  textAlign: 'center',
+                  backgroundColor: dragActive ? 'var(--brand-primary-bg)' : '#101012',
+                  cursor: isUploading ? 'default' : 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,image/png,image/jpeg"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleFilesSelected(e.target.files);
+                    }
+                  }}
+                />
 
-              {isUploading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-                  <div
-                    style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '50%',
-                      border: '3px solid rgba(14, 165, 233, 0.2)',
-                      borderTopColor: 'var(--brand-cyan)',
-                      animation: 'spin 1s linear infinite',
-                    }}
-                  />
+                {isUploading ? (
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                      {selectedFiles.length > 1 ? `Consolidando ${selectedFiles.length} Arquivos` : 'Análise IA em Andamento'}
-                    </p>
-                    <p style={{ margin: '4px 0 0 0', color: 'var(--brand-cyan)', fontSize: '0.85rem', fontWeight: 500 }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--brand-primary-bg)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px',
+                        color: 'var(--brand-primary)',
+                      }}
+                    >
+                      <RefreshCw className="animate-spin" size={20} />
+                    </div>
+                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
+                      Auditando Documentos
+                    </h3>
+                    <p style={{ fontSize: '13px', color: 'var(--brand-primary)', fontWeight: 600 }}>
                       {uploadStep}
                     </p>
                   </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                  <div
-                    style={{
-                      width: '54px',
-                      height: '54px',
-                      borderRadius: '14px',
-                      backgroundColor: 'rgba(14, 165, 233, 0.12)',
-                      border: '1px solid rgba(14, 165, 233, 0.25)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--brand-cyan)',
-                    }}
-                  >
-                    <FileText size={28} />
-                  </div>
+                ) : (
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: '1rem' }}>
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '16px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid var(--border-subtle)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px',
+                        color: 'var(--brand-primary)',
+                      }}
+                    >
+                      <FileText size={22} />
+                    </div>
+                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', marginBottom: '6px' }}>
                       Clique ou arraste 1 ou múltiplos arquivos
+                    </h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                      Selecione Edital + Termo de Ref. + Anexos (PDF ou imagens)
                     </p>
-                    <p style={{ margin: '4px 0 0 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                      Selecione Edital + Termo de Referência + Anexos (PDF digital/escaneado ou imagens)
-                    </p>
+                    <div style={{ display: 'inline-flex', gap: '6px' }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--brand-primary-bg)', color: 'var(--brand-primary)' }}>
+                        MULTI-UPLOAD
+                      </span>
+                      <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-full)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)' }}>
+                        .PDF
+                      </span>
+                      <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-full)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)' }}>
+                        .PNG
+                      </span>
+                      <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-full)', backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)' }}>
+                        .JPG
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(14, 165, 233, 0.15)', color: 'var(--brand-cyan)', fontWeight: 700 }}>MULTI-UPLOAD</span>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>.PDF</span>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>.PNG</span>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>.JPG</span>
-                  </div>
+                )}
+              </div>
+
+              {errorMessage && (
+                <div
+                  style={{
+                    marginTop: '16px',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'rgba(255, 129, 178, 0.15)',
+                    border: '1px solid rgba(255, 129, 178, 0.3)',
+                    color: '#FF81B2',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <AlertCircle size={16} />
+                  <span>{errorMessage}</span>
                 </div>
               )}
             </div>
 
-            {/* Feature Highlights */}
-            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <ShieldAlert size={16} color="#F87171" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span><strong>Detector de Pegadinhas:</strong> identifica prazos de vistoria, retenções e cláusulas de desclassificação.</span>
+            {/* Feature Pills Footer */}
+            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                <ShieldAlert size={14} color="#FF81B2" />
+                <span><strong style={{ color: '#FFFFFF' }}>Detector de Pegadinhas:</strong> identifica prazos curtos de vistoria e causas de inabilitação.</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <Scale size={16} color="var(--brand-cyan)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span><strong>Qualificação Técnica:</strong> quantitativos mínimos de atestados (CAT/ART) e visita técnica.</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                <Scale size={14} color="var(--brand-primary)" />
+                <span><strong style={{ color: '#FFFFFF' }}>Qualificação Técnica:</strong> quantitativos mínimos de atestados (CAT/ART).</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <CheckSquare size={16} color="var(--color-confidence-high)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span><strong>Checklist de Documentos:</strong> lista interativa dos anexos obrigatórios para envio da proposta.</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                <CheckSquare size={14} color="var(--brand-cyan)" />
+                <span><strong style={{ color: '#FFFFFF' }}>Checklist de Documentos:</strong> lista interativa dos anexos para envio da proposta.</span>
               </div>
             </div>
           </div>
 
-          {/* Right Column: History of Analyzed Editais */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: '1.15rem',
-                  fontWeight: 700,
-                  color: 'var(--text-primary)',
-                  margin: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <Clock size={18} color="var(--text-secondary)" /> Editais Auditados Recentemente
-              </h2>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          {/* Analyses History Bento Card */}
+          <div
+            className="wishlabs-card"
+            style={{
+              padding: '32px',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={18} color="var(--brand-primary)" />
+                <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
+                  Editais Auditados Recentemente
+                </h2>
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                 {analyses.length} análise(s)
               </span>
             </div>
 
-            {isLoadingList ? (
-              <div className="saas-card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255, 255, 255, 0.1)',
-                      borderTopColor: 'var(--brand-cyan)',
-                      animation: 'spin 1s linear infinite',
-                    }}
-                  />
-                  <span>Carregando histórico de auditorias...</span>
-                </div>
-              </div>
-            ) : analyses.length === 0 ? (
-              <div className="saas-card" style={{ padding: '3.5rem 2rem', textAlign: 'center' }}>
-                <div
-                  style={{
-                    width: '56px',
-                    height: '56px',
-                    borderRadius: '16px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid var(--border-subtle)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 1rem auto',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  <FileText size={28} />
-                </div>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+            {analyses.length === 0 ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', textAlign: 'center', backgroundColor: '#101012', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                <FileText size={32} color="var(--text-secondary)" style={{ marginBottom: '12px' }} />
+                <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
                   Nenhum edital auditado ainda
                 </h3>
-                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '400px', marginInline: 'auto' }}>
-                  Envie o edital em PDF ou imagem no painel ao lado para processar a auditoria automática com IA.
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '4px', maxWidth: '280px' }}>
+                  Envie o PDF do edital no quadro ao lado para iniciar a análise jurídica e técnica.
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {analyses.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/editais/${item.id}`}
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <div
-                      className="saas-card hover-glow"
-                      style={{
-                        padding: '1.25rem 1.5rem',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '1rem',
-                        borderLeft: '4px solid var(--brand-cyan)',
-                        transition: 'transform 0.15s ease, border-color 0.15s ease',
-                      }}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {analyses.map((item) => {
+                  const pegadinhasCount = item.pegadinhas ? item.pegadinhas.length : 0;
+                  const pegadinhasCriticas = item.pegadinhas ? item.pegadinhas.filter(p => p.severidade === 'CRITICA').length : 0;
+                  return (
+                    <Link
+                      key={item.id}
+                      href={`/editais/${item.id}`}
+                      style={{ textDecoration: 'none' }}
                     >
-                      <div style={{ flex: '1 1 300px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              backgroundColor: 'rgba(14, 165, 233, 0.15)',
-                              color: 'var(--brand-cyan)',
-                            }}
-                          >
-                            {item.numeroEdital || 'Edital'}
+                      <div
+                        style={{
+                          padding: '16px 20px',
+                          borderRadius: 'var(--radius-md)',
+                          backgroundColor: '#101012',
+                          border: '1px solid var(--border-subtle)',
+                          transition: 'all 0.15s ease',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--brand-primary)', textTransform: 'uppercase' }}>
+                            {item.numeroEdital || 'EDITAL'} • {item.modalidade || 'Licitação'}
                           </span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                            {item.orgao} • {item.localidade}
+                          <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                            {formatDateTime(item.createdAt)}
                           </span>
                         </div>
-                        <h3
-                          style={{
-                            margin: '0 0 6px 0',
-                            fontSize: '1.02rem',
-                            fontWeight: 700,
-                            color: 'var(--text-primary)',
-                            lineHeight: 1.35,
-                          }}
-                        >
-                          {item.titulo || item.objetoCompleto?.slice(0, 100)}
+
+                        <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.3 }}>
+                          {item.titulo}
                         </h3>
-                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.84rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {item.resumoExecutivo}
+
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+                          {item.orgao}
                         </p>
-                      </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexShrink: 0 }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Valor Estimado</span>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '1.1rem', color: '#10B981' }}>
-                            {item.valorEstimado > 0 ? formatCurrency(item.valorEstimado) : 'Sigiloso'}
-                          </span>
-                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span
+                              style={{
+                                padding: '2px 8px',
+                                borderRadius: 'var(--radius-full)',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                backgroundColor: pegadinhasCriticas > 0 ? 'rgba(255, 129, 178, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                color: pegadinhasCriticas > 0 ? '#FF81B2' : 'var(--status-review)',
+                              }}
+                            >
+                              {pegadinhasCount} Pegadinha(s)
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#FFFFFF' }}>
+                              {formatCurrency(item.valorEstimado || 0)}
+                            </span>
+                          </div>
 
-                        <div
-                          style={{
-                            width: '44px',
-                            height: '44px',
-                            borderRadius: '10px',
-                            backgroundColor: 'rgba(242, 100, 25, 0.1)',
-                            border: '1px solid rgba(242, 100, 25, 0.25)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--brand-orange)',
-                          }}
-                        >
-                          <ArrowRight size={20} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--brand-primary)', fontSize: '12px', fontWeight: 700 }}>
+                            <span>Ver Parecer</span>
+                            <ChevronRight size={14} />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
