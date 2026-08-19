@@ -67,7 +67,7 @@ func (s *SyncService) CheckPncpHealth(ctx context.Context) PncpHealth {
 
 	start := time.Now()
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 15 * time.Second, // ponytail: PNCP responde em >5s, sync usa 60s; 15s é enough para health sem bloquear muito
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
