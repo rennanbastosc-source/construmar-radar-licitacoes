@@ -44,11 +44,11 @@ func (h *SyncHandler) TriggerSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Run asynchronously in background
+	// Run asynchronously in background; PARTIAL runs are retried with backoff
 	go func() {
-		bgCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		bgCtx, cancel := context.WithTimeout(context.Background(), 40*time.Minute)
 		defer cancel()
-		_, _ = h.syncService.RunSync(bgCtx, uf, minValue)
+		_, _ = h.syncService.RunSyncUntilComplete(bgCtx, uf, minValue, 5, 2*time.Minute)
 	}()
 
 	writeJSON(w, http.StatusAccepted, map[string]interface{}{

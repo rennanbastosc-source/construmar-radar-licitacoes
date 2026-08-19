@@ -301,3 +301,38 @@ func (s *SyncService) RunSync(ctx context.Context, uf string, minEstimatedValue 
 
 	return run, lastErr
 }
+
+// RunSyncUntilComplete retries a PARTIAL sync with linear backoff so PNCP
+// instability no longer leaves the radar with a tiny skewed dataset.
+// ponytail: whole-sync re-run (idempotent via upsert/dedup) instead of page-level resume.
+func (s *SyncService) RunSyncUntilComplete(ctx context.Context, uf string, minEstimatedValue float64, maxAttempts int, backoff time.Duration) (*domain.LicitacaoSyncRun, error) {
+	var lastRun *domain.LicitacaoSyncRun
+	var lastErr error
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		run, err := s.RunSync(ctx, uf, minEstimatedValue)
+		if run != nil {
+			lastRun, lastErr = run, err
+		}
+
+		if errors.Is(err, ErrSyncAlreadyRunning) {
+			return run, err
+		}
+		if run == nil {
+			break
+		}
+		if run.Status != domain.SyncStatusPartial || attempt == maxAttempts {
+			break
+		}
+
+		wait := backoff * time.Duration(attempt)
+		log.Printf("[Sync] Run ended PARTIAL (attempt %d/%d), retrying in %s...", attempt, maxAttempts, wait)
+		select {
+		case <-ctx.Done():
+			return run, ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+
+	return lastRun, lastErr
+}

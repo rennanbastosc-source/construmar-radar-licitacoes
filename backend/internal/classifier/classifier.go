@@ -38,8 +38,9 @@ var highWeightRules = []Rule{
 	{"saneamento", 3.0},
 	{"terraplenagem", 3.0},
 	{"restauracao predial", 3.0},
-	{"construcao civil", 4.0},
-	{"engenharia civil", 4.0},
+	// ponytail: phrase rules are deltas on top of the single-word match to avoid double-counting
+	{"construcao civil", 1.0},
+	{"engenharia civil", 1.0},
 	{"infraestrutura urbana", 3.0},
 	{"muro de contencao", 3.0},
 	{"calcamento", 3.0},

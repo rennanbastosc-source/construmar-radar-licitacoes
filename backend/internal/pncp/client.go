@@ -31,7 +31,7 @@ func NewClient(baseURL string, timeout time.Duration) *Client {
 		HTTPClient: &http.Client{
 			Timeout: timeout,
 		},
-		MaxRetries: 3,
+		MaxRetries: 5,
 	}
 }
 
@@ -92,7 +92,8 @@ func (c *Client) doRequestWithRetry(ctx context.Context, reqURL string) ([]byte,
 
 	for attempt := 0; attempt <= c.MaxRetries; attempt++ {
 		if attempt > 0 {
-			backoff := time.Duration(math.Pow(2, float64(attempt))) * 500 * time.Millisecond
+			// ponytail: 1s base — PNCP 500/503 precisa de fôlego maior entre tentativas
+			backoff := time.Duration(math.Pow(2, float64(attempt))) * time.Second
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()

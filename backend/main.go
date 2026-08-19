@@ -68,9 +68,9 @@ func main() {
 
 		if err == nil && stats != nil && stats.TotalOpportunities == 0 {
 			log.Printf("[Auto-Warmup] Database has 0 active opportunities for UF=%s. Triggering initial PNCP sync in background...", cfg.DefaultUF)
-			syncCtx, syncCancel := context.WithTimeout(context.Background(), 20*time.Minute)
+			syncCtx, syncCancel := context.WithTimeout(context.Background(), 40*time.Minute)
 			defer syncCancel()
-			if _, syncErr := syncService.RunSync(syncCtx, cfg.DefaultUF, cfg.MinEstimatedValue); syncErr != nil {
+			if _, syncErr := syncService.RunSyncUntilComplete(syncCtx, cfg.DefaultUF, cfg.MinEstimatedValue, 5, 2*time.Minute); syncErr != nil {
 				log.Printf("[Auto-Warmup Warning] Initial sync encountered issue: %v", syncErr)
 			} else {
 				log.Printf("[Auto-Warmup Success] Initial database population completed successfully!")
@@ -95,8 +95,8 @@ func main() {
 				time.Sleep(sleepDuration)
 
 				log.Printf("[Scheduler] Triggering daily scheduled sync (12:00 PM UTC-3) for UF=%s...", cfg.DefaultUF)
-				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
-				_, _ = syncService.RunSync(ctx, cfg.DefaultUF, cfg.MinEstimatedValue)
+				ctx, cancel := context.WithTimeout(context.Background(), 40*time.Minute)
+				_, _ = syncService.RunSyncUntilComplete(ctx, cfg.DefaultUF, cfg.MinEstimatedValue, 5, 2*time.Minute)
 				cancel()
 			}
 		}()

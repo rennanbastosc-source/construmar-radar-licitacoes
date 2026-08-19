@@ -103,6 +103,43 @@ export default function RadarDashboardPage() {
           </div>
         )}
 
+        {/* Partial Data Banner — last completed sync ended PARTIAL */}
+        {syncStatus === 'PARTIAL' && !isSyncing && (
+          <div
+            style={{
+              padding: '14px 20px',
+              borderRadius: 'var(--radius-full)',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px',
+              flexWrap: 'wrap',
+              backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              color: '#38BDF8',
+              fontSize: '13px',
+              fontWeight: 700,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertCircle size={16} />
+              <span>
+                Dados parciais — a última sincronização não concluiu todas as páginas do PNCP. Os
+                resultados podem estar incompletos.
+              </span>
+            </div>
+            <button
+              onClick={handleTriggerSync}
+              className="btn-primary"
+              style={{ fontSize: '12px', padding: '8px 16px' }}
+            >
+              <RefreshCw size={14} />
+              <span>Sincronizar novamente</span>
+            </button>
+          </div>
+        )}
+
         {/* Hero Title Banner */}
         <div style={{ marginBottom: '32px' }}>
           <div
