@@ -3,54 +3,62 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { OpportunityFilterParams } from '@/lib/types';
 import { MUNICIPIOS_CE } from '@/lib/municipios-ce';
-import { valorPorExtenso } from '@/lib/valorPorExtenso';
-import { Search, RotateCcw, MapPin, Check } from 'lucide-react';
+import { Search, RotateCcw, MapPin, Check, LayoutGrid, List, SlidersHorizontal, Filter, ArrowRight } from 'lucide-react';
 
 interface Props {
   filters: OpportunityFilterParams;
   onChange: (updated: Partial<OpportunityFilterParams>) => void;
   onReset: () => void;
+  viewMode?: 'table' | 'cards';
+  onViewModeChange?: (mode: 'table' | 'cards') => void;
 }
 
 function fold(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-const fieldStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 12px 10px 36px',
-  backgroundColor: 'var(--bg-surface-elevated)',
-  border: '1px solid var(--border-subtle)',
-  borderRadius: 'var(--radius-sm)',
-  color: 'var(--text-primary)',
-  outline: 'none',
-};
+function formatBrlInput(raw: string | number | undefined): string {
+  if (raw === undefined || raw === null || raw === '') return '';
+  const digits = String(raw).replace(/\D/g, '');
+  if (!digits) return '';
+  return `R$ ${Number(digits).toLocaleString('pt-BR')}`;
+}
 
-const selectStyle: React.CSSProperties = {
-  ...fieldStyle,
-  padding: '8px 10px',
-  paddingLeft: '12px',
-  backgroundColor: 'var(--bg-surface-elevated)',
-  fontSize: '12px',
-  fontWeight: 500,
-  cursor: 'pointer',
-};
-
-export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
+export const FilterBar: React.FC<Props> = ({
+  filters,
+  onChange,
+  onReset,
+  viewMode = 'table',
+  onViewModeChange,
+}) => {
   const classificationOptions = [
-    { label: 'Radar Ativo (Escopo + Revisão)', val: 'IN_SCOPE_AND_REVIEW' },
-    { label: 'Obras & Engenharia (Escopo)', val: 'IN_SCOPE' },
-    { label: 'Em Revisão', val: 'REVIEW' },
-    { label: 'Todas as Licitações', val: 'ALL' },
+    { label: '🔥 Radar Ativo', val: 'IN_SCOPE_AND_REVIEW' },
+    { label: '🏗️ Obras & Engenharia', val: 'IN_SCOPE' },
+    { label: '🔍 Em Revisão', val: 'REVIEW' },
+    { label: '📋 Todas as Licitações', val: 'ALL' },
   ];
 
   const currentClassification = filters.classification ?? 'IN_SCOPE';
   const selectedCity = filters.municipality || '';
 
+  // Local city combobox state
   const [cityOpen, setCityOpen] = useState(false);
   const [cityQuery, setCityQuery] = useState('');
   const [hoveredCity, setHoveredCity] = useState<string | null>(null);
   const cityWrapRef = useRef<HTMLDivElement>(null);
+
+  // Local price inputs state (buffered until submit to prevent reload per keystroke)
+  const [localMinStr, setLocalMinStr] = useState<string>(() => formatBrlInput(filters.minValue));
+  const [localMaxStr, setLocalMaxStr] = useState<string>(() => formatBrlInput(filters.maxValue));
+
+  // Sync local inputs when filters prop updates externally (e.g. on Reset)
+  useEffect(() => {
+    setLocalMinStr(formatBrlInput(filters.minValue));
+  }, [filters.minValue]);
+
+  useEffect(() => {
+    setLocalMaxStr(formatBrlInput(filters.maxValue));
+  }, [filters.maxValue]);
 
   const filteredCities = useMemo(() => {
     const q = fold(cityQuery.trim());
@@ -93,358 +101,445 @@ export const FilterBar: React.FC<Props> = ({ filters, onChange, onReset }) => {
     setCityOpen(false);
   };
 
-  const minVal = filters.minValue;
-  const maxVal = filters.maxValue;
-  const minExtenso = minVal !== undefined ? valorPorExtenso(minVal) : '';
-  const maxExtenso = maxVal !== undefined ? valorPorExtenso(maxVal) : '';
-  const rangeInvalid =
-    minVal !== undefined && maxVal !== undefined && minVal > maxVal;
+  const handleApplyPriceFilter = () => {
+    const minDigits = localMinStr.replace(/\D/g, '');
+    const maxDigits = localMaxStr.replace(/\D/g, '');
+    const nextMin = minDigits ? Number(minDigits) : undefined;
+    const nextMax = maxDigits ? Number(maxDigits) : undefined;
 
-  const handleDeadlineChange = (value: string) => {
-    onChange({ deadlinePreset: value === 'any' ? undefined : value, page: 1 });
+    onChange({
+      minValue: nextMin,
+      maxValue: nextMax,
+      page: 1,
+    });
   };
 
-  const deadlinePreset = filters.deadlinePreset ?? 'any';
+  const selectClass: React.CSSProperties = {
+    padding: '7px 11px',
+    backgroundColor: 'rgba(21, 34, 56, 0.75)',
+    border: '1px solid var(--border-subtle)',
+    borderRadius: 'var(--radius-sm)',
+    color: 'var(--text-primary)',
+    fontSize: '12.5px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    outline: 'none',
+  };
 
   return (
     <div
+      className="glass-panel"
       style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: 'var(--radius-lg)',
         padding: '1.25rem',
-        border: '1px solid var(--border-subtle)',
-        marginBottom: '1.5rem',
+        marginBottom: '1.8rem',
         display: 'flex',
         flexDirection: 'column',
         gap: '1rem',
+        boxShadow: 'var(--shadow-md)',
       }}
     >
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ flex: '1 1 320px', position: 'relative' }}>
+      {/* Top Search & Controls Bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+        {/* Search Input with Shortcut Badge */}
+        <div style={{ flex: '1 1 380px', position: 'relative' }}>
           <Search
             size={16}
             style={{
               position: 'absolute',
-              left: '12px',
+              left: '13px',
               top: '50%',
               transform: 'translateY(-50%)',
-              color: 'var(--text-muted)',
+              color: 'var(--brand-cyan)',
               pointerEvents: 'none',
             }}
           />
           <input
             type="text"
-            placeholder="Buscar por objeto, órgão, número PNCP..."
+            placeholder="Buscar por objeto, prefeitura, órgão ou processo PNCP..."
             value={filters.search || ''}
             onChange={(e) => onChange({ search: e.target.value, page: 1 })}
-            style={fieldStyle}
+            style={{
+              width: '100%',
+              padding: '9px 40px 9px 38px',
+              backgroundColor: 'rgba(21, 34, 56, 0.65)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              fontSize: '13px',
+            }}
           />
-        </div>
-
-        <div ref={cityWrapRef} style={{ flex: '0 1 280px', position: 'relative' }}>
-          <MapPin
-            size={16}
+          <kbd
             style={{
               position: 'absolute',
-              left: '12px',
+              right: '12px',
               top: '50%',
               transform: 'translateY(-50%)',
+              fontSize: '10px',
               color: 'var(--text-muted)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              border: '1px solid var(--border-subtle)',
+              fontFamily: 'var(--font-mono)',
               pointerEvents: 'none',
-              zIndex: 1,
             }}
-          />
-          <input
-            type="text"
-            role="combobox"
-            aria-expanded={cityOpen}
-            aria-controls="municipio-listbox"
-            aria-autocomplete="list"
-            placeholder="Todas as cidades"
-            value={cityOpen ? cityQuery : selectedCity}
-            onFocus={() => {
-              setCityOpen(true);
-              setCityQuery('');
-            }}
-            onChange={(e) => {
-              setCityQuery(e.target.value);
-              if (!cityOpen) setCityOpen(true);
-            }}
+          >
+            /
+          </kbd>
+        </div>
+
+        {/* Municipality Combobox */}
+        <div ref={cityWrapRef} style={{ position: 'relative', minWidth: '220px', flex: '0 1 240px' }}>
+          <div
+            onClick={() => setCityOpen((v) => !v)}
             style={{
-              ...fieldStyle,
-              paddingRight: selectedCity ? '36px' : '12px',
-              borderColor: cityOpen ? 'var(--border-focus)' : 'var(--border-subtle)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(21, 34, 56, 0.75)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              color: selectedCity ? 'var(--brand-orange)' : 'var(--text-secondary)',
+              fontSize: '12.5px',
+              fontWeight: selectedCity ? 700 : 500,
               cursor: 'pointer',
             }}
-          />
-          {selectedCity ? (
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={clearCity}
-              aria-label="Limpar município"
-              style={{
-                position: 'absolute',
-                right: '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '22px',
-                height: '22px',
-                border: 'none',
-                borderRadius: '4px',
-                background: 'transparent',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: '16px',
-                lineHeight: 1,
-              }}
-            >
-              ×
-            </button>
-          ) : null}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+              <MapPin size={14} color="var(--brand-orange)" />
+              <span style={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                {selectedCity ? selectedCity : 'Municípios do Ceará'}
+              </span>
+            </div>
+            {selectedCity ? (
+              <span
+                onClick={clearCity}
+                title="Limpar município"
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: '0 4px',
+                }}
+              >
+                ✕
+              </span>
+            ) : (
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>▼</span>
+            )}
+          </div>
 
+          {/* City Dropdown Menu */}
           {cityOpen && (
-            <ul
-              id="municipio-listbox"
-              role="listbox"
+            <div
+              className="glass-panel"
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 4px)',
                 left: 0,
-                right: 0,
-                zIndex: 30,
-                maxHeight: '280px',
-                overflowY: 'auto',
-                margin: 0,
-                padding: '4px 0',
-                listStyle: 'none',
-                backgroundColor: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-sm)',
+                width: '280px',
+                zIndex: 60,
+                borderRadius: 'var(--radius-md)',
                 boxShadow: 'var(--shadow-lg)',
+                padding: '6px',
+                maxHeight: '320px',
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
-              <li role="option" aria-selected={!selectedCity}>
+              <div style={{ padding: '4px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '4px' }}>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Filtrar cidade..."
+                  value={cityQuery}
+                  onChange={(e) => setCityQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '4px',
+                    color: 'var(--text-primary)',
+                    fontSize: '12px',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div style={{ overflowY: 'auto', flex: 1 }}>
                 <button
                   type="button"
                   onClick={() => pickCity('')}
-                  onMouseEnter={() => setHoveredCity('')}
-                  onMouseLeave={() => setHoveredCity(null)}
-                  style={optionStyle(!selectedCity, hoveredCity === '')}
+                  onMouseEnter={() => setHoveredCity('__all__')}
+                  style={optionStyle(!selectedCity, hoveredCity === '__all__')}
                 >
-                  <span>Todas as cidades</span>
-                  {!selectedCity ? <Check size={14} color="var(--brand-primary)" /> : null}
+                  <span>Todos os Municípios (CE)</span>
+                  {!selectedCity && <Check size={13} color="var(--brand-orange)" />}
                 </button>
-              </li>
-              {filteredCities.map((name) => {
-                const active = selectedCity === name;
-                return (
-                  <li key={name} role="option" aria-selected={active}>
+
+                {filteredCities.map((city) => {
+                  const active = selectedCity.toLowerCase() === city.toLowerCase();
+                  return (
                     <button
+                      key={city}
                       type="button"
-                      onClick={() => pickCity(name)}
-                      onMouseEnter={() => setHoveredCity(name)}
-                      onMouseLeave={() => setHoveredCity(null)}
-                      style={optionStyle(active, hoveredCity === name)}
+                      onClick={() => pickCity(city)}
+                      onMouseEnter={() => setHoveredCity(city)}
+                      style={optionStyle(active, hoveredCity === city)}
                     >
-                      <span>{name}</span>
-                      {active ? <Check size={14} color="var(--brand-primary)" /> : null}
+                      <span>{city}</span>
+                      {active && <Check size={13} color="var(--brand-orange)" />}
                     </button>
-                  </li>
-                );
-              })}
-              {filteredCities.length === 0 && (
-                <li
-                  style={{
-                    padding: '10px 12px',
-                    fontSize: '13px',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  Nenhum município encontrado
-                </li>
-              )}
-            </ul>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
 
+        {/* View Mode Toggle (Table vs Cards) */}
+        {onViewModeChange && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: 'rgba(21, 34, 56, 0.75)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              padding: '2px',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => onViewModeChange('table')}
+              title="Visualização em Tabela Técnica"
+              style={{
+                padding: '6px 10px',
+                borderRadius: '5px',
+                border: 'none',
+                backgroundColor: viewMode === 'table' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                color: viewMode === 'table' ? '#FFFFFF' : 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '12px',
+                fontWeight: 600,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <List size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onViewModeChange('cards')}
+              title="Visualização em Cards Cockpit"
+              style={{
+                padding: '6px 10px',
+                borderRadius: '5px',
+                border: 'none',
+                backgroundColor: viewMode === 'cards' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                color: viewMode === 'cards' ? '#FFFFFF' : 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '12px',
+                fontWeight: 600,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <LayoutGrid size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Reset Filter Button */}
         <button
           type="button"
           onClick={onReset}
-          title="Restaurar filtros padrão"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 14px',
-            backgroundColor: 'var(--bg-surface-elevated)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            fontWeight: 500,
-          }}
+          className="btn-secondary"
+          style={{ padding: '7px 12px', fontSize: '12px' }}
+          title="Restaurar filtros padrões"
         >
-          <RotateCcw size={14} />
-          Limpar
+          <RotateCcw size={13} />
+          <span>Limpar</span>
         </button>
       </div>
 
+      {/* Bottom Filter Controls: Scope Pills & Value Inputs with Apply */}
       <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          alignItems: 'flex-start',
           justifyContent: 'space-between',
-          gap: '1rem',
-          paddingTop: '0.75rem',
+          alignItems: 'center',
+          gap: '10px',
           borderTop: '1px solid var(--border-subtle)',
+          paddingTop: '0.85rem',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 auto', minWidth: 0 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {classificationOptions.map((opt) => {
-              const isActive = currentClassification === opt.val;
-              return (
-                <button
-                  key={opt.val}
-                  type="button"
-                  onClick={() => onChange({ classification: opt.val, page: 1 })}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: `1px solid ${isActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
-                    backgroundColor: isActive ? 'var(--brand-primary-subtle)' : 'var(--bg-surface-elevated)',
-                    color: isActive ? 'var(--brand-primary)' : 'var(--text-secondary)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-            {filters.term ? (
-              <span
+        {/* Scope Filter Pills */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {classificationOptions.map((opt) => {
+            const isActive = currentClassification === opt.val;
+            return (
+              <button
+                key={opt.val}
+                type="button"
+                onClick={() => onChange({ classification: opt.val, page: 1 })}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '6px 8px 6px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  border: '1px solid var(--brand-primary)',
-                  backgroundColor: 'var(--brand-primary-subtle)',
-                  color: 'var(--brand-primary)',
+                  padding: '5px 11px',
+                  borderRadius: '16px',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: `1px solid ${isActive ? 'var(--brand-orange)' : 'var(--border-subtle)'}`,
+                  backgroundColor: isActive ? 'rgba(242, 100, 25, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                  color: isActive ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                  boxShadow: isActive ? '0 0 10px rgba(242, 100, 25, 0.2)' : 'none',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                <span>Termo: {filters.term}</span>
-                <button
-                  type="button"
-                  onClick={() => onChange({ term: '', page: 1 })}
-                  aria-label="Remover termo"
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                    fontSize: '15px',
-                    lineHeight: 1,
-                  }}
-                >
-                  ×
-                </button>
-              </span>
-            ) : null}
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            <div style={{ flex: '0 1 140px', minWidth: '120px' }}>
-              <select
-                aria-label="Status"
-                value={filters.status || 'OPEN'}
-                onChange={(e) => onChange({ status: e.target.value, page: 1 })}
-                style={selectStyle}
-              >
-                <option value="OPEN">Abertas</option>
-                <option value="CLOSED">Encerradas</option>
-                <option value="ALL">Todas</option>
-              </select>
-            </div>
-
-            <div style={{ flex: '0 1 170px', minWidth: '150px' }}>
-              <select
-                aria-label="Prazo"
-                value={deadlinePreset}
-                onChange={(e) => handleDeadlineChange(e.target.value)}
-                style={selectStyle}
-              >
-                <option value="any">Prazo: qualquer</option>
-                <option value="7">Encerra em 7 dias</option>
-                <option value="15">Encerra em 15 dias</option>
-                <option value="30">Encerra em 30 dias</option>
-              </select>
-            </div>
-
-            <div style={{ flex: '0 1 170px', minWidth: '150px' }}>
-              <select
-                aria-label="Modalidade"
-                value={filters.modality || ''}
-                onChange={(e) => onChange({ modality: e.target.value, page: 1 })}
-                style={selectStyle}
-              >
-                <option value="">Modalidade: todas</option>
-                <option value="Pregão">Pregão</option>
-                <option value="Concorrência">Concorrência</option>
-                <option value="Dispensa">Dispensa</option>
-                <option value="Tomada de Preços">Tomada de Preços</option>
-                <option value="Credenciamento">Credenciamento</option>
-                <option value="Leilão">Leilão</option>
-                <option value="Inexigibilidade">Inexigibilidade</option>
-              </select>
-            </div>
-
-            <div style={{ flex: '0 1 170px', minWidth: '150px' }}>
-              <select
-                aria-label="Confiança"
-                value={filters.minScore !== undefined ? String(filters.minScore) : ''}
-                onChange={(e) => onChange({ minScore: e.target.value ? Number(e.target.value) : undefined, page: 1 })}
-                style={selectStyle}
-              >
-                <option value="">Confiança: qualquer</option>
-                <option value="4">Alta (score ≥ 4)</option>
-                <option value="6">Máxima (score ≥ 6)</option>
-              </select>
-            </div>
-          </div>
+                {opt.label}
+              </button>
+            );
+          })}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '280px' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <MoneyField
-              label="Valor mín."
-              placeholder="R$ mín."
-              value={minVal}
-              extenso={minExtenso}
-              onValue={(n) => onChange({ minValue: n, page: 1 })}
+        {/* Secondary Modality / Status / Price Range Inputs */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+          <select
+            value={filters.status || 'OPEN'}
+            onChange={(e) => onChange({ status: e.target.value, page: 1 })}
+            style={selectClass}
+          >
+            <option value="OPEN">🟢 Abertas (Recebendo)</option>
+            <option value="CLOSED">Encerradas</option>
+            <option value="ALL">Todas as Situações</option>
+          </select>
+
+          <select
+            value={filters.deadlinePreset ?? 'any'}
+            onChange={(e) => onChange({ deadlinePreset: e.target.value === 'any' ? undefined : e.target.value, page: 1 })}
+            style={selectClass}
+          >
+            <option value="any">⏳ Prazo: qualquer</option>
+            <option value="7">Encerra em 7 dias</option>
+            <option value="15">Encerra em 15 dias</option>
+            <option value="30">Encerra em 30 dias</option>
+          </select>
+
+          <select
+            value={filters.modality || ''}
+            onChange={(e) => onChange({ modality: e.target.value, page: 1 })}
+            style={selectClass}
+          >
+            <option value="">Modalidade: todas</option>
+            <option value="Pregão">Pregão Eletrônico</option>
+            <option value="Concorrência">Concorrência</option>
+            <option value="Dispensa">Dispensa</option>
+            <option value="Tomada de Preços">Tomada de Preços</option>
+            <option value="Credenciamento">Credenciamento</option>
+          </select>
+
+          {/* Price Range Controls with Local Buffer and Submit Button */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              backgroundColor: 'rgba(21, 34, 56, 0.85)',
+              padding: '3px 4px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            {/* Min Value Input */}
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Mín. (R$)"
+              value={localMinStr}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '');
+                setLocalMinStr(digits ? `R$ ${Number(digits).toLocaleString('pt-BR')}` : '');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleApplyPriceFilter();
+              }}
+              title="Valor Mínimo Estimado (pressione Enter ou clique em Filtrar)"
+              style={{
+                width: '105px',
+                padding: '4px 6px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '12px',
+                fontWeight: 600,
+                textAlign: 'right',
+                outline: 'none',
+              }}
             />
-            <MoneyField
-              label="Valor máx."
-              placeholder="R$ máx."
-              value={maxVal}
-              extenso={maxExtenso}
-              onValue={(n) => onChange({ maxValue: n, page: 1 })}
+
+            <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 600 }}>até</span>
+
+            {/* Max Value Input (Teto) */}
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Teto máx. (R$)"
+              value={localMaxStr}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '');
+                setLocalMaxStr(digits ? `R$ ${Number(digits).toLocaleString('pt-BR')}` : '');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleApplyPriceFilter();
+              }}
+              title="Teto / Valor Máximo Estimado (pressione Enter ou clique em Filtrar)"
+              style={{
+                width: '110px',
+                padding: '4px 6px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '12px',
+                fontWeight: 600,
+                textAlign: 'right',
+                outline: 'none',
+              }}
             />
+
+            {/* Apply / Submit Button */}
+            <button
+              type="button"
+              onClick={handleApplyPriceFilter}
+              className="btn-primary"
+              style={{
+                padding: '4px 10px',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+              }}
+              title="Buscar licitações na faixa de valor informada (Enter)"
+            >
+              <Filter size={11} />
+              <span>Filtrar</span>
+            </button>
           </div>
-          {rangeInvalid && (
-            <span style={{ fontSize: '11px', color: '#f87171', fontWeight: 500 }}>
-              Mínimo maior que máximo
-            </span>
-          )}
         </div>
       </div>
     </div>
@@ -461,66 +556,14 @@ function optionStyle(active: boolean, hovered: boolean): React.CSSProperties {
     padding: '8px 12px',
     border: 'none',
     backgroundColor: active
-      ? 'var(--brand-primary-subtle)'
+      ? 'rgba(242, 100, 25, 0.15)'
       : hovered
-        ? 'var(--bg-surface-hover)'
-        : 'transparent',
-    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-    fontSize: '13px',
-    fontWeight: active ? 600 : 500,
+      ? 'rgba(255, 255, 255, 0.06)'
+      : 'transparent',
+    color: active ? 'var(--brand-orange)' : 'var(--text-primary)',
+    fontSize: '12.5px',
+    fontWeight: active ? 700 : 500,
     textAlign: 'left',
     cursor: 'pointer',
   };
-}
-
-function MoneyField({
-  label,
-  placeholder,
-  value,
-  extenso,
-  onValue,
-}: {
-  label: string;
-  placeholder: string;
-  value?: number;
-  extenso: string;
-  onValue: (n: number | undefined) => void;
-}) {
-  return (
-    <label style={{ flex: 1, minWidth: '120px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
-        {label}
-      </span>
-      <input
-        type="text"
-        inputMode="numeric"
-        placeholder={placeholder}
-        value={value !== undefined ? String(value) : ''}
-        onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, '');
-          onValue(digits ? Number(digits) : undefined);
-        }}
-        style={{
-          width: '100%',
-          padding: '8px 10px',
-          backgroundColor: 'var(--bg-surface-elevated)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-sm)',
-          color: 'var(--text-primary)',
-          outline: 'none',
-          fontFamily: 'var(--font-mono)',
-        }}
-      />
-      <span
-        style={{
-          fontSize: '10px',
-          color: 'var(--text-muted)',
-          lineHeight: 1.3,
-          minHeight: '1.3em',
-        }}
-      >
-        {extenso || '\u00a0'}
-      </span>
-    </label>
-  );
 }

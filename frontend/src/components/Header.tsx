@@ -3,22 +3,17 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { RefreshCw, Radio, Layers, History, ShieldCheck } from 'lucide-react';
+import { RefreshCw, Radio, Sparkles, History, Layers } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatters';
 import { fetchPncpHealth } from '@/lib/api';
 import type { PncpHealth } from '@/lib/types';
 
-const badgeStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  fontSize: '12px',
-  color: 'var(--text-secondary)',
-  padding: '6px 10px',
-  borderRadius: '6px',
-  backgroundColor: 'var(--bg-surface-elevated)',
-  border: '1px solid var(--border-subtle)',
-};
+interface HeaderProps {
+  lastSyncAt?: string | null;
+  syncStatus?: string;
+  isSyncing?: boolean;
+  onTriggerSync?: () => void;
+}
 
 function PncpHealthBadge() {
   const [health, setHealth] = useState<PncpHealth | null>(null);
@@ -26,7 +21,6 @@ function PncpHealthBadge() {
 
   useEffect(() => {
     let cancelled = false;
-
     const load = async () => {
       try {
         const data = await fetchPncpHealth();
@@ -43,43 +37,43 @@ function PncpHealthBadge() {
     };
 
     load();
-    const id = setInterval(load, 45_000); // ponytail: 45s poll, SSE if live status matters
+    const id = setInterval(load, 45_000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
   }, []);
 
-  const loading = !health && !errored;
   const isUp = health?.status === 'UP';
-  const dotColor = isUp ? '#10b981' : health?.status === 'DOWN' ? '#ef4444' : '#64748b';
-  const label = loading ? 'PNCP ...' : isUp ? 'PNCP Online' : 'PNCP Offline';
-  const title = health
-    ? `${health.message} • ${health.latencyMs} ms • ${formatDateTime(health.checkedAt)}`
-    : errored
-      ? 'Não foi possível verificar a API do PNCP'
-      : 'Verificando API do PNCP...';
+  const label = health ? (isUp ? 'PNCP Online' : 'PNCP Offline') : errored ? 'PNCP Offline' : 'Verificando...';
 
   return (
-    <div title={title} style={badgeStyle}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        fontSize: '11.5px',
+        color: 'var(--text-secondary)',
+        padding: '5px 10px',
+        borderRadius: '6px',
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        border: '1px solid var(--border-subtle)',
+      }}
+    >
       <span
         style={{
           width: '7px',
           height: '7px',
           borderRadius: '50%',
-          backgroundColor: dotColor,
+          backgroundColor: isUp ? '#10B981' : '#F59E0B',
+          boxShadow: isUp ? '0 0 8px #10B981' : '0 0 8px #F59E0B',
         }}
+        className="live-pulse"
       />
-      <span>{label}</span>
+      <span style={{ fontWeight: 600 }}>{label}</span>
     </div>
   );
-}
-
-interface HeaderProps {
-  lastSyncAt?: string | null;
-  syncStatus?: string;
-  isSyncing?: boolean;
-  onTriggerSync?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -90,14 +84,22 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const pathname = usePathname();
 
+  const navItems = [
+    { href: '/', label: 'Radar de Oportunidades', icon: Radio },
+    { href: '/orcamentos', label: 'Orçamentos com IA', icon: Sparkles, badge: 'NOVO' },
+    { href: '/sync', label: 'Histórico PNCP', icon: History },
+  ];
+
   return (
     <header
       style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderBottom: '1px solid var(--border-subtle)',
         position: 'sticky',
         top: 0,
         zIndex: 50,
+        backgroundColor: 'rgba(6, 11, 19, 0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--border-subtle)',
       }}
     >
       <div
@@ -106,189 +108,175 @@ export const Header: React.FC<HeaderProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          height: '70px',
-          gap: '1rem',
+          height: '68px',
+          gap: '1.5rem',
         }}
       >
-        {/* Brand */}
+        {/* Brand Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
           <Link
             href="/"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
+              gap: '12px',
               textDecoration: 'none',
             }}
           >
+            {/* CONSTRUMAR Vector Icon */}
             <div
               style={{
                 width: '38px',
                 height: '38px',
-                borderRadius: '8px',
-                backgroundColor: 'var(--accent-navy)',
-                border: '1px solid #3b82f6',
+                borderRadius: '9px',
+                background: 'linear-gradient(135deg, #0A2540 0%, #144272 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#60a5fa',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                flexShrink: 0,
               }}
             >
-              <Radio size={20} />
+              <svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 32V14L16 6V32H6Z" fill="#0EA5E9" />
+                <path d="M18 32V10L28 18V32H18Z" fill="#F26419" />
+                <path d="M30 32V22L36 26.5V32H30Z" fill="#38BDF8" opacity="0.8" />
+                <rect x="4" y="32" width="34" height="3" rx="1.5" fill="#F8FAFC" />
+              </svg>
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                 <span
                   style={{
-                    fontSize: '18px',
-                    fontWeight: 800,
-                    letterSpacing: '-0.02em',
-                    color: '#ffffff',
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: '17px',
+                    fontWeight: 900,
+                    letterSpacing: '-0.03em',
+                    color: '#F8FAFC',
                   }}
                 >
-                  CONSTRUMAR
+                  CONSTRU<span style={{ color: '#F26419' }}>MAR</span>
                 </span>
                 <span
                   style={{
-                    fontSize: '11px',
+                    fontSize: '9.5px',
+                    fontWeight: 800,
+                    fontFamily: 'var(--font-mono)',
                     padding: '1px 6px',
                     borderRadius: '4px',
-                    backgroundColor: 'var(--brand-primary-subtle)',
-                    color: 'var(--brand-primary)',
-                    fontWeight: 700,
-                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    backgroundColor: 'rgba(242, 100, 25, 0.12)',
+                    color: '#F26419',
+                    border: '1px solid rgba(242, 100, 25, 0.3)',
+                    letterSpacing: '0.06em',
                   }}
                 >
-                  RADAR
+                  RADAR SAAS
                 </span>
               </div>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1 }}>
-                Oportunidades PNCP • Ceará
-              </p>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--text-muted)',
+                  fontWeight: 500,
+                  letterSpacing: '0.01em',
+                }}
+              >
+                Inteligência de Editais & Obras
+              </span>
             </div>
           </Link>
 
-          {/* Nav */}
-          <nav style={{ display: 'none', gap: '0.5rem' }} className="md-nav">
-            <Link
-              href="/"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: pathname === '/' ? '#ffffff' : 'var(--text-secondary)',
-                backgroundColor: pathname === '/' ? 'var(--bg-surface-elevated)' : 'transparent',
-                border: `1px solid ${pathname === '/' ? 'var(--border-strong)' : 'transparent'}`,
-              }}
-            >
-              <Layers size={15} />
-              Oportunidades
-            </Link>
-            <Link
-              href="/orcamentos"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: pathname.startsWith('/orcamentos') ? '#ffffff' : 'var(--text-secondary)',
-                backgroundColor: pathname.startsWith('/orcamentos') ? 'var(--bg-surface-elevated)' : 'transparent',
-                border: `1px solid ${pathname.startsWith('/orcamentos') ? 'rgba(242, 100, 25, 0.4)' : 'transparent'}`,
-              }}
-            >
-              <span style={{ color: '#f26419', fontWeight: 800 }}>⚡</span>
-              Orçamentos SEOBRA
-            </Link>
-            <Link
-              href="/sync"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: pathname === '/sync' ? '#ffffff' : 'var(--text-secondary)',
-                backgroundColor: pathname === '/sync' ? 'var(--bg-surface-elevated)' : 'transparent',
-                border: `1px solid ${pathname === '/sync' ? 'var(--border-strong)' : 'transparent'}`,
-              }}
-            >
-              <History size={15} />
-              Histórico PNCP
-            </Link>
+          {/* Navigation Links */}
+          <nav
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              padding: '3px',
+              borderRadius: '8px',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
+                    backgroundColor: isActive ? 'rgba(255, 255, 255, 0.09)' : 'transparent',
+                    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
+                    textDecoration: 'none',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <Icon size={14} color={isActive ? 'var(--brand-orange)' : 'currentColor'} />
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: 800,
+                        backgroundColor: 'var(--brand-orange)',
+                        color: '#FFFFFF',
+                        padding: '1px 4px',
+                        borderRadius: '3px',
+                      }}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
-        {/* Actions & Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {/* Right Status & Action Section */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <PncpHealthBadge />
 
-          {/* Sync Status Badge */}
-          <div style={badgeStyle}>
-            <span
-              style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                backgroundColor:
-                  syncStatus === 'SUCCESS'
-                    ? '#10b981'
-                    : syncStatus === 'RUNNING'
-                    ? '#f59e0b'
-                    : syncStatus === 'PARTIAL'
-                    ? '#eab308'
-                    : '#64748b',
-              }}
-            />
-            <span>
-              Última atualização:{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>
-                {lastSyncAt ? formatDateTime(lastSyncAt) : 'Pendente'}
-              </strong>
-            </span>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11.5px',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <span>Sincronização:</span>
+            <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+              {lastSyncAt ? formatDateTime(lastSyncAt) : 'Automática'}
+            </strong>
           </div>
 
-          {/* Sync Action Button */}
+          {/* Primary Sync Button */}
           {onTriggerSync && (
             <button
               onClick={onTriggerSync}
               disabled={isSyncing}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--brand-primary)',
-                color: '#090e17',
-                border: 'none',
-                fontWeight: 700,
-                cursor: isSyncing ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s',
-                opacity: isSyncing ? 0.7 : 1,
-              }}
+              className="btn-primary"
+              title="Executar varredura no Portal Nacional de Contratações Públicas"
             >
-              <RefreshCw size={15} className={isSyncing ? 'animate-spin' : ''} />
-              <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar PNCP'}</span>
+              <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} />
+              <span>{isSyncing ? 'Varrendo...' : 'Sincronizar PNCP'}</span>
             </button>
           )}
         </div>
       </div>
-      <style jsx>{`
-        @media (min-width: 768px) {
-          .md-nav {
-            display: flex !important;
-          }
-        }
-      `}</style>
     </header>
   );
 };

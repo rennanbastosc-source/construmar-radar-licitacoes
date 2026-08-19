@@ -42,14 +42,19 @@ export default function OrcamentosPage() {
     setIsLoadingList(true);
     setErrorMessage(null);
     try {
-      const [listRes, seobraRes] = await Promise.all([
+      const [listRes, seobraRes] = await Promise.allSettled([
         fetchOrcamentos(50, 0),
         fetchSeobraStatus(),
       ]);
-      setOrcamentos(listRes.items || []);
-      setSeobraStatus(seobraRes);
+
+      if (listRes.status === 'fulfilled') {
+        setOrcamentos(listRes.value.items || []);
+      }
+      if (seobraRes.status === 'fulfilled') {
+        setSeobraStatus(seobraRes.value);
+      }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Erro ao carregar dados do hub de orçamentos.');
+      console.warn('Backend cold-start em orçamentos:', err);
     } finally {
       setIsLoadingList(false);
     }
@@ -63,23 +68,22 @@ export default function OrcamentosPage() {
     if (!file) return;
     setIsUploading(true);
     setErrorMessage(null);
-    setUploadStep('Enviando documento para a infraestrutura segura...');
+    setUploadStep('Enviando documento para o motor de IA...');
 
     try {
-      // Simulate progressive extraction feedback
       const timer1 = setTimeout(() => {
         setUploadStep('IA Vision processando páginas e tabelas do edital...');
       }, 1000);
 
       const timer2 = setTimeout(() => {
-        setUploadStep('Mapeando códigos SINAPI/SICRO e calculando quantitativos...');
+        setUploadStep('Mapeando composições SINAPI/SICRO e calculando BDI...');
       }, 2500);
 
       const newOrcamento = await uploadEditalOrcamento(file);
 
       clearTimeout(timer1);
       clearTimeout(timer2);
-      setUploadStep('Extração concluída! Redirecionando para a grade de conferência...');
+      setUploadStep('Extração concluída! Redirecionando...');
 
       setTimeout(() => {
         router.push(`/orcamentos/${newOrcamento.id}`);
@@ -113,69 +117,62 @@ export default function OrcamentosPage() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--bg-base)' }}>
       <Header />
 
-      <main className="container" style={{ flex: 1, padding: '2rem 1rem', maxWidth: '1300px' }}>
+      <main className="container" style={{ flex: 1, padding: '2.5rem 1.5rem', maxWidth: '1300px' }}>
         {/* Top Header Banner */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '2.2rem' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  backgroundColor: 'rgba(242, 100, 25, 0.15)',
-                  border: '1px solid rgba(242, 100, 25, 0.35)',
-                  color: '#f26419',
-                  fontWeight: 700,
-                  fontSize: '12px',
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  backgroundColor: 'rgba(242, 100, 25, 0.1)',
+                  border: '1px solid rgba(242, 100, 25, 0.25)',
+                  color: 'var(--brand-orange)',
+                  fontWeight: 800,
+                  fontSize: '11px',
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
                 }}
               >
-                <Zap size={14} /> NOVO MÓDULO INTELIGENTE
+                <Zap size={13} /> Módulo IA Vision
               </span>
               <span
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
+                  padding: '3px 10px',
+                  borderRadius: '20px',
                   backgroundColor: seobraStatus?.status === 'ONLINE' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
                   border: `1px solid ${seobraStatus?.status === 'ONLINE' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
                   color: seobraStatus?.status === 'ONLINE' ? '#10b981' : '#f59e0b',
-                  fontSize: '12px',
+                  fontSize: '11.5px',
                   fontWeight: 600,
                 }}
               >
                 <Server size={13} />
-                Sessão SEOBRA: {seobraStatus?.status === 'ONLINE' ? 'Ativa & Conectada' : 'Simulador Local Ativo'}
+                SEOBRA: {seobraStatus?.status === 'ONLINE' ? 'Conectado' : 'Simulador Ativo'}
               </span>
             </div>
-            <h1 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '26px', fontWeight: 900, color: '#F8FAFC', letterSpacing: '-0.03em', margin: 0 }}>
               Orçamentação por IA & Integração SEOBRA
             </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px', marginTop: '4px' }}>
               Faça upload de editais em PDF (digital ou escaneado), imagens ou planilhas Excel (.xlsx) para estruturação automática de preços e despacho direto.
             </p>
           </div>
 
           <button
             onClick={loadData}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              backgroundColor: 'var(--bg-surface-elevated)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-secondary)',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className="btn-secondary"
+            style={{ padding: '8px 14px', fontSize: '12.5px' }}
           >
-            <RefreshCw size={14} /> Atualizar Lista
+            <RefreshCw size={13} />
+            <span>Atualizar</span>
           </button>
         </div>
 
@@ -183,19 +180,29 @@ export default function OrcamentosPage() {
         {errorMessage && (
           <div
             style={{
-              padding: '1rem',
-              borderRadius: '8px',
+              padding: '12px 18px',
+              borderRadius: 'var(--radius-md)',
               backgroundColor: 'rgba(239, 68, 68, 0.12)',
               border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#fca5a5',
+              color: '#F87171',
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
+              justifyContent: 'space-between',
               marginBottom: '1.5rem',
+              fontSize: '13px',
+              fontWeight: 600,
             }}
           >
-            <AlertCircle size={20} />
-            <span style={{ fontSize: '14px' }}>{errorMessage}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertCircle size={16} />
+              <span>{errorMessage}</span>
+            </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}
+            >
+              ✕
+            </button>
           </div>
         )}
 

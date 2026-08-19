@@ -38,8 +38,12 @@ yarn-error.log*
 
 # TypeScript cache
 *.tsbuildinfo
+**/*.tsbuildinfo
 
-# Tooling caches
+# Tooling caches & binaries
 .codex/
 .loopx/
-
+.codebase-memory/
+.opencode/
+backend/radar-fixed
+backend/radar-backend

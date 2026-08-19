@@ -1,0 +1,62 @@
+# Configuration file for GitHub Dependabot
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  # 1. Frontend: Next.js & React ecosystem (npm)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Fortaleza"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps-frontend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      next-react:
+        patterns:
+          - "next"
+          - "react*"
+          - "@types/react*"
+      tooling:
+        patterns:
+          - "typescript"
+          - "@types/node"
+          - "lucide-react"
+
+  # 2. Backend: Go Modules ecosystem (gomod)
+  - package-ecosystem: "gomod"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Fortaleza"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps-backend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "backend"
+
+  # 3. CI/CD: GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Fortaleza"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(actions)"
+    labels:
+      - "dependencies"
+      - "ci-cd"
