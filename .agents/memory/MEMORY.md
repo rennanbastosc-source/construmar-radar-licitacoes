@@ -5,3 +5,5 @@
 - [project] AG Kit only supports Gemini CLI and Google Antigravity (not other AI coding tools) → project-conventions.md
 - [project] SEOBRA Guardrail: Nunca editar/sobrescrever editais existentes, apenas criar novos → project-conventions.md
 - [project] Component metadata uses SemVer while toolkit releases use CalVer → tech-decisions.md
+- [project] Anti-Mock Rule: NUNCA adicionar dados mockados/fallbacks fictícios no frontend. Erros exibem ErrorState → STATE.md
+- [project] Estado persistente do projeto, decisões arquiteturais e nuances do PNCP/SEOBRA → STATE.md
