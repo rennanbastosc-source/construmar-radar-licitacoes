@@ -18,6 +18,9 @@ import (
 
 func TestOrcamentoAPIWorkflow(t *testing.T) {
 	t.Setenv("SEOBRA_MOCK", "1")
+	const apiToken = "test-shared-token"
+	t.Setenv("API_AUTH_TOKEN", apiToken)
+	t.Setenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
 	db, err := repository.InitDB(":memory:")
 	if err != nil {
 		t.Fatalf("InitDB failed: %v", err)
@@ -37,7 +40,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 	syncHandler := NewSyncHandler(syncService, oppService)
 	orcHandler := NewOrcamentoHandler(orcService, seobraClient)
 
-	router := NewRouter(oppHandler, syncHandler, orcHandler)
+	router := NewRouter(oppHandler, syncHandler, orcHandler, apiToken, []string{"http://localhost:3000"})
 
 	// 1. Create a dummy Excel file in memory
 	f := excelize.NewFile()
@@ -78,6 +81,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/orcamentos/upload", &body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+apiToken)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -106,6 +110,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 
 	// 3. Test GET Detail
 	reqGet := httptest.NewRequest("GET", "/api/orcamentos/"+created.ID, nil)
+	reqGet.Header.Set("Authorization", "Bearer "+apiToken)
 	recGet := httptest.NewRecorder()
 	router.ServeHTTP(recGet, reqGet)
 
@@ -121,6 +126,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 	updateBody, _ := json.Marshal(created)
 	reqPut := httptest.NewRequest("PUT", "/api/orcamentos/"+created.ID+"/itens", bytes.NewReader(updateBody))
 	reqPut.Header.Set("Content-Type", "application/json")
+	reqPut.Header.Set("Authorization", "Bearer "+apiToken)
 	recPut := httptest.NewRecorder()
 	router.ServeHTTP(recPut, reqPut)
 
@@ -136,6 +142,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 
 	// 5. Test SEOBRA Dispatch
 	reqDispatch := httptest.NewRequest("POST", "/api/orcamentos/"+created.ID+"/despachar-seobra", nil)
+	reqDispatch.Header.Set("Authorization", "Bearer "+apiToken)
 	recDispatch := httptest.NewRecorder()
 	router.ServeHTTP(recDispatch, reqDispatch)
 
@@ -154,6 +161,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 
 	// 6. Test SEOBRA XLSX export
 	reqExport := httptest.NewRequest("GET", "/api/orcamentos/"+created.ID+"/exportar-seobra-xlsx", nil)
+	reqExport.Header.Set("Authorization", "Bearer "+apiToken)
 	recExport := httptest.NewRecorder()
 	router.ServeHTTP(recExport, reqExport)
 	if recExport.Code != http.StatusOK {
@@ -161,5 +169,51 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 	}
 	if !bytes.HasPrefix(recExport.Body.Bytes(), []byte("PK")) {
 		t.Fatalf("expected XLSX zip body to start with PK")
+	}
+}
+
+func TestUploadDocumentRejectsUnsupportedExtension(t *testing.T) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "orcamento.xls")
+	if err != nil {
+		t.Fatalf("CreateFormFile failed: %v", err)
+	}
+	_, _ = part.Write([]byte("PK\x03\x04"))
+	if err := writer.Close(); err != nil {
+		t.Fatalf("failed to close multipart writer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/orcamentos/upload", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	rec := httptest.NewRecorder()
+
+	(&OrcamentoHandler{}).UploadDocument(rec, req)
+
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("expected status 415 for .xls upload, got %d", rec.Code)
+	}
+}
+
+func TestUploadDocumentRejectsOversizedRequest(t *testing.T) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "orcamento.pdf")
+	if err != nil {
+		t.Fatalf("CreateFormFile failed: %v", err)
+	}
+	_, _ = part.Write(bytes.Repeat([]byte("x"), int(maxUploadBytes)))
+	if err := writer.Close(); err != nil {
+		t.Fatalf("failed to close multipart writer: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/orcamentos/upload", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	rec := httptest.NewRecorder()
+
+	(&OrcamentoHandler{}).UploadDocument(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected status 413 for oversized upload, got %d", rec.Code)
 	}
 }

@@ -217,14 +217,8 @@ func NewClient(repo *repository.OrcamentoRepository) *Client {
 	}
 
 	usuario := os.Getenv("SEOBRA_USER")
-	if usuario == "" {
-		usuario = "ssilvaeefernando123@gmail.com"
-	}
 
 	senha := os.Getenv("SEOBRA_PASS")
-	if senha == "" {
-		senha = "Renova2016."
-	}
 	mockMode := os.Getenv("SEOBRA_MOCK") == "1" || strings.EqualFold(os.Getenv("SEOBRA_MOCK"), "true")
 
 	jar, _ := cookiejar.New(nil)

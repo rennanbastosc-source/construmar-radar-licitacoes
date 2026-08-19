@@ -1,10 +1,79 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { RefreshCw, Radio, Layers, History, ShieldCheck } from 'lucide-react';
 import { formatDateTime } from '@/lib/formatters';
+import { fetchPncpHealth } from '@/lib/api';
+import type { PncpHealth } from '@/lib/types';
+
+const badgeStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+  fontSize: '12px',
+  color: 'var(--text-secondary)',
+  padding: '6px 10px',
+  borderRadius: '6px',
+  backgroundColor: 'var(--bg-surface-elevated)',
+  border: '1px solid var(--border-subtle)',
+};
+
+function PncpHealthBadge() {
+  const [health, setHealth] = useState<PncpHealth | null>(null);
+  const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const data = await fetchPncpHealth();
+        if (!cancelled) {
+          setHealth(data);
+          setErrored(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setHealth(null);
+          setErrored(true);
+        }
+      }
+    };
+
+    load();
+    const id = setInterval(load, 45_000); // ponytail: 45s poll, SSE if live status matters
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const loading = !health && !errored;
+  const isUp = health?.status === 'UP';
+  const dotColor = isUp ? '#10b981' : health?.status === 'DOWN' ? '#ef4444' : '#64748b';
+  const label = loading ? 'PNCP ...' : isUp ? 'PNCP Online' : 'PNCP Offline';
+  const title = health
+    ? `${health.message} • ${health.latencyMs} ms • ${formatDateTime(health.checkedAt)}`
+    : errored
+      ? 'Não foi possível verificar a API do PNCP'
+      : 'Verificando API do PNCP...';
+
+  return (
+    <div title={title} style={badgeStyle}>
+      <span
+        style={{
+          width: '7px',
+          height: '7px',
+          borderRadius: '50%',
+          backgroundColor: dotColor,
+        }}
+      />
+      <span>{label}</span>
+    </div>
+  );
+}
 
 interface HeaderProps {
   lastSyncAt?: string | null;
@@ -160,20 +229,10 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Actions & Status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <PncpHealthBadge />
+
           {/* Sync Status Badge */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '12px',
-              color: 'var(--text-secondary)',
-              padding: '6px 10px',
-              borderRadius: '6px',
-              backgroundColor: 'var(--bg-surface-elevated)',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
+          <div style={badgeStyle}>
             <span
               style={{
                 width: '7px',

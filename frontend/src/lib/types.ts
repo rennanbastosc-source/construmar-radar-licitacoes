@@ -194,3 +194,10 @@ export interface SeobraStatusResponse {
     ultimoPing: string;
   };
 }
+
+export interface PncpHealth {
+  status: 'UP' | 'DOWN';
+  latencyMs: number;
+  checkedAt: string;
+  message: string;
+}

@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -19,6 +22,16 @@ type OrcamentoHandler struct {
 	seobraClient     *seobra.Client
 }
 
+const maxUploadBytes int64 = 32 << 20
+
+var allowedUploadExtensions = map[string]struct{}{
+	".pdf":  {},
+	".xlsx": {},
+	".png":  {},
+	".jpg":  {},
+	".jpeg": {},
+}
+
 func NewOrcamentoHandler(orcService *service.OrcamentoService, seobraClient *seobra.Client) *OrcamentoHandler {
 	return &OrcamentoHandler{
 		orcamentoService: orcService,
@@ -28,9 +41,15 @@ func NewOrcamentoHandler(orcService *service.OrcamentoService, seobraClient *seo
 
 // UploadDocument handles file uploads (PDF, XLSX, Images), runs the extraction pipeline and returns the budget.
 func (h *OrcamentoHandler) UploadDocument(w http.ResponseWriter, r *http.Request) {
-	// Max upload size: 32MB
+	// MaxBytesReader must wrap the body before multipart parsing so the complete request is bounded.
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		http.Error(w, "File too large or invalid multipart form", http.StatusBadRequest)
+		status := http.StatusBadRequest
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			status = http.StatusRequestEntityTooLarge
+		}
+		http.Error(w, "File too large or invalid multipart form", status)
 		return
 	}
 
@@ -43,15 +62,26 @@ func (h *OrcamentoHandler) UploadDocument(w http.ResponseWriter, r *http.Request
 		_ = file.Close()
 	}()
 
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if _, ok := allowedUploadExtensions[ext]; !ok {
+		http.Error(w, "Unsupported file type", http.StatusUnsupportedMediaType)
+		return
+	}
+
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
 		http.Error(w, "Failed to read uploaded file", http.StatusInternalServerError)
 		return
 	}
+	if len(fileBytes) == 0 {
+		http.Error(w, "Uploaded file is empty", http.StatusBadRequest)
+		return
+	}
 
-	contentType := header.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
+	contentType, err := validateUploadedFile(ext, fileBytes)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
 	}
 
 	var oportID *string
@@ -68,6 +98,32 @@ func (h *OrcamentoHandler) UploadDocument(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(orc)
+}
+
+func validateUploadedFile(ext string, fileBytes []byte) (string, error) {
+	detectedType := http.DetectContentType(fileBytes)
+
+	switch ext {
+	case ".pdf":
+		if detectedType != "application/pdf" {
+			return "", fmt.Errorf("file signature does not match PDF extension")
+		}
+	case ".xlsx":
+		// XLSX is a ZIP container; DetectContentType reports application/zip.
+		if len(fileBytes) < 2 || !bytes.Equal(fileBytes[:2], []byte("PK")) {
+			return "", fmt.Errorf("file signature does not match XLSX extension")
+		}
+	case ".png":
+		if detectedType != "image/png" {
+			return "", fmt.Errorf("file signature does not match PNG extension")
+		}
+	case ".jpg", ".jpeg":
+		if detectedType != "image/jpeg" {
+			return "", fmt.Errorf("file signature does not match JPEG extension")
+		}
+	}
+
+	return detectedType, nil
 }
 
 // GetOrcamento returns budget details and items.

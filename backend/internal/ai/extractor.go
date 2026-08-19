@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -26,21 +27,8 @@ type AIExtractor struct {
 }
 
 func NewAIExtractor(apiURL, apiKey, modelName string) *AIExtractor {
-	if apiURL == "" {
-		apiURL = os.Getenv("AI_API_URL")
-	}
-	if apiURL == "" {
-		apiURL = "https://rennan.tail814f6b.ts.net/v1"
-	}
 	// Trim trailing slashes
 	apiURL = strings.TrimRight(apiURL, "/")
-
-	if apiKey == "" {
-		apiKey = os.Getenv("AI_API_KEY")
-	}
-	if apiKey == "" {
-		apiKey = "sk-a96069847efa2519-c5e93r-9ff7bea2"
-	}
 
 	if modelName == "" {
 		modelName = os.Getenv("AI_MODEL")
@@ -61,24 +49,26 @@ func NewAIExtractor(apiURL, apiKey, modelName string) *AIExtractor {
 
 // ExtractionPayload matches the LLM's expected JSON output schema.
 type ExtractionPayload struct {
-	Titulo        string  `json:"titulo"`
-	Objeto        string  `json:"objeto"`
-	Orgao         string  `json:"orgao"`
-	Localidade    string  `json:"localidade"`
-	DataPrecoBase string  `json:"dataPrecoBase"`
-	BDI           float64 `json:"bdi"`
-	Itens         []struct {
-		ItemNumero       string  `json:"itemNumero"`
-		CodigoReferencia string  `json:"codigoReferencia"`
-		Fonte            string  `json:"fonte"`
-		Descricao        string  `json:"descricao"`
-		Unidade          string  `json:"unidade"`
-		Quantidade       float64 `json:"quantidade"`
-		PrecoUnitario    float64 `json:"precoUnitario"`
-		PrecoTotal       float64 `json:"precoTotal"`
-		Confianca        float64 `json:"confianca"`
-		ObservacaoIA     string  `json:"observacaoIa"`
-	} `json:"itens"`
+	Titulo        string           `json:"titulo"`
+	Objeto        string           `json:"objeto"`
+	Orgao         string           `json:"orgao"`
+	Localidade    string           `json:"localidade"`
+	DataPrecoBase string           `json:"dataPrecoBase"`
+	BDI           float64          `json:"bdi"`
+	Itens         []ExtractionItem `json:"itens"`
+}
+
+type ExtractionItem struct {
+	ItemNumero       string  `json:"itemNumero"`
+	CodigoReferencia string  `json:"codigoReferencia"`
+	Fonte            string  `json:"fonte"`
+	Descricao        string  `json:"descricao"`
+	Unidade          string  `json:"unidade"`
+	Quantidade       float64 `json:"quantidade"`
+	PrecoUnitario    float64 `json:"precoUnitario"`
+	PrecoTotal       float64 `json:"precoTotal"`
+	Confianca        float64 `json:"confianca"`
+	ObservacaoIA     string  `json:"observacaoIa"`
 }
 
 // ExtractFromDocument receives binary content (PDF/image/text) and returns a normalized Orcamento.
@@ -94,8 +84,16 @@ func (e *AIExtractor) ExtractFromDocument(ctx context.Context, fileBytes []byte,
 		defer aiCancel()
 
 		extracted, err := e.callOpenAICompatibleEndpoint(aiCtx, fileBytes, mimeType, filename)
-		if err == nil && len(extracted.Itens) > 0 {
-			return e.buildOrcamentoFromPayload(extracted, filename, fileType), nil
+		if err == nil {
+			if extracted == nil {
+				err = fmt.Errorf("AI endpoint returned an empty payload")
+			} else if len(extracted.Itens) == 0 {
+				err = fmt.Errorf("AI endpoint returned no budget items")
+			} else if validationErr := validateExtractionPayload(extracted); validationErr != nil {
+				err = validationErr
+			} else {
+				return e.buildOrcamentoFromPayload(extracted, filename, fileType), nil
+			}
 		}
 		fmt.Printf("[AI-EXTRACTOR] Endpoint %s failed (%v), activating heuristic fallback\n", e.apiURL, err)
 	}
@@ -117,7 +115,7 @@ Extraia todas as informações orçamentárias em formato JSON estrito:
   "orgao": "Nome do órgão licitante / prefeitura / secretaria",
   "localidade": "Cidade/UF da obra",
   "dataPrecoBase": "Base de preços (ex: SINAPI 01/2026 Não Desonerado, SICRO, SEINFRA, etc.)",
-  "bdi": 25.0,
+  "bdi": 0.0,
   "itens": [
     {
       "itemNumero": "1.1",
@@ -128,13 +126,13 @@ Extraia todas as informações orçamentárias em formato JSON estrito:
       "quantidade": 150.0,
       "precoUnitario": 22.50,
       "precoTotal": 3375.0,
-      "confianca": 0.98,
+      "confianca": 0.0,
       "observacaoIa": ""
     }
   ]
 }
 
-Responda APENAS com o JSON válido. Não inclua texto explicativo fora do bloco JSON.`
+Responda APENAS com o JSON válido. Não inclua texto explicativo fora do bloco JSON. Não presuma BDI ou confiança: use 0 quando esses dados não estiverem explícitos no documento.`
 
 	var userContent interface{}
 
@@ -269,6 +267,50 @@ func extractJSONFromText(text string) string {
 	return text
 }
 
+const maxExtractionItems = 5000
+
+func validateExtractionPayload(payload *ExtractionPayload) error {
+	if payload == nil {
+		return fmt.Errorf("AI payload is nil")
+	}
+	if len(payload.Itens) == 0 {
+		return fmt.Errorf("AI payload contains no budget items")
+	}
+	if len(payload.Itens) > maxExtractionItems {
+		return fmt.Errorf("AI payload contains too many items: %d (maximum %d)", len(payload.Itens), maxExtractionItems)
+	}
+	if !isFiniteNonNegative(payload.BDI) || payload.BDI > 100 {
+		return fmt.Errorf("AI payload has an invalid BDI: %v", payload.BDI)
+	}
+
+	for index, item := range payload.Itens {
+		if !isFiniteNonNegative(item.Quantidade) {
+			return fmt.Errorf("AI payload item %d has an invalid quantity", index+1)
+		}
+		if !isFiniteNonNegative(item.PrecoUnitario) {
+			return fmt.Errorf("AI payload item %d has an invalid unit price", index+1)
+		}
+		if !isFiniteNonNegative(item.PrecoTotal) {
+			return fmt.Errorf("AI payload item %d has an invalid total price", index+1)
+		}
+		if item.Confianca < 0 || item.Confianca > 1 || math.IsNaN(item.Confianca) || math.IsInf(item.Confianca, 0) {
+			return fmt.Errorf("AI payload item %d has an invalid confidence", index+1)
+		}
+		if !isFiniteNonNegative(item.Quantidade * item.PrecoUnitario) {
+			return fmt.Errorf("AI payload item %d has an overflowing derived total", index+1)
+		}
+		if strings.TrimSpace(item.Descricao) == "" && strings.TrimSpace(item.Unidade) == "" && item.Quantidade == 0 && item.PrecoUnitario == 0 && item.PrecoTotal == 0 {
+			return fmt.Errorf("AI payload item %d has no description, unit, or values", index+1)
+		}
+	}
+
+	return nil
+}
+
+func isFiniteNonNegative(value float64) bool {
+	return value >= 0 && !math.IsNaN(value) && !math.IsInf(value, 0)
+}
+
 func (e *AIExtractor) buildOrcamentoFromPayload(payload *ExtractionPayload, filename, fileType string) *domain.Orcamento {
 	orcamentoID := uuid.New().String()
 
@@ -289,9 +331,6 @@ func (e *AIExtractor) buildOrcamentoFromPayload(payload *ExtractionPayload, file
 	if orc.Titulo == "" {
 		orc.Titulo = filename
 	}
-	if orc.BDI <= 0 {
-		orc.BDI = 25.0
-	}
 	if orc.DataPrecoBase == "" {
 		orc.DataPrecoBase = "SINAPI 01/2026 Não Desonerado"
 	}
@@ -305,11 +344,8 @@ func (e *AIExtractor) buildOrcamentoFromPayload(payload *ExtractionPayload, file
 		}
 
 		confianca := itemPayload.Confianca
-		if confianca <= 0 {
-			confianca = 0.95
-		}
 
-		flagRevisao := confianca < 0.80 || itemPayload.CodigoReferencia == "" || unitPrice == 0
+		flagRevisao := payload.BDI <= 0 || confianca < 0.80 || itemPayload.CodigoReferencia == "" || unitPrice == 0 || qty == 0 || strings.TrimSpace(itemPayload.Descricao) == "" || strings.TrimSpace(itemPayload.Unidade) == ""
 
 		orc.Itens = append(orc.Itens, domain.OrcamentoItem{
 			ID:               uuid.New().String(),
@@ -344,7 +380,7 @@ func (e *AIExtractor) extractHeuristicFallback(fileBytes []byte, filename, fileT
 		Orgao:            "Órgão Licitante (Ceará)",
 		Localidade:       "Fortaleza / CE",
 		DataPrecoBase:    "SINAPI 01/2026 Não Desonerado",
-		BDI:              25.0,
+		BDI:              0,
 		Status:           domain.OrcamentoStatusAguardandoRevisao,
 		OriginalFileName: filename,
 		FileType:         fileType,
@@ -355,83 +391,45 @@ func (e *AIExtractor) extractHeuristicFallback(fileBytes []byte, filename, fileT
 	matches := reItem.FindAllStringSubmatch(text, -1)
 
 	if len(matches) == 0 {
-		orc.Itens = []domain.OrcamentoItem{
-			{
-				ID:               uuid.New().String(),
-				OrcamentoID:      orcamentoID,
-				ItemNumero:       "1.1",
-				CodigoReferencia: "88247",
-				Fonte:            "SINAPI",
-				Descricao:        "PINTURA LATEX ACRILICA EM PAREDES DUAS DEMAOS",
-				Unidade:          "M2",
-				Categoria:        domain.InferCategoria("PINTURA LATEX ACRILICA EM PAREDES DUAS DEMAOS", "M2"),
-				Quantidade:       450.0,
-				PrecoUnitario:    19.80,
-				PrecoTotal:       8910.0,
-				Confianca:        0.96,
-				FlagRevisao:      false,
-			},
-			{
-				ID:               uuid.New().String(),
-				OrcamentoID:      orcamentoID,
-				ItemNumero:       "1.2",
-				CodigoReferencia: "98520",
-				Fonte:            "SINAPI",
-				Descricao:        "PISO CERAMICO ESMALTADO PEI-4 COM ARGAMASSA AC-I",
-				Unidade:          "M2",
-				Categoria:        domain.InferCategoria("PISO CERAMICO ESMALTADO PEI-4 COM ARGAMASSA AC-I", "M2"),
-				Quantidade:       180.0,
-				PrecoUnitario:    48.50,
-				PrecoTotal:       8730.0,
-				Confianca:        0.94,
-				FlagRevisao:      false,
-			},
-			{
-				ID:               uuid.New().String(),
-				OrcamentoID:      orcamentoID,
-				ItemNumero:       "2.1",
-				CodigoReferencia: "90776",
-				Fonte:            "SINAPI",
-				Descricao:        "INSTALACAO DE LOUCAS SANITARIAS E ACESSORIOS",
-				Unidade:          "UN",
-				Categoria:        domain.InferCategoria("INSTALACAO DE LOUCAS SANITARIAS E ACESSORIOS", "UN"),
-				Quantidade:       12.0,
-				PrecoUnitario:    230.00,
-				PrecoTotal:       2760.0,
-				Confianca:        0.91,
-				FlagRevisao:      false,
-			},
-		}
-	} else {
-		for _, m := range matches {
-			itemNum := m[1]
-			code := m[2]
-			desc := strings.TrimSpace(m[3])
-			und := strings.ToUpper(m[4])
-			qty := parseNumericVal(m[5])
-			unitPrice := parseNumericVal(m[6])
+		return nil, fmt.Errorf("heuristic extraction found no budget items in %q", filename)
+	}
 
-			fonte := "PROPRIO"
-			if len(code) >= 5 {
-				fonte = "SINAPI"
-			}
+	for _, m := range matches {
+		itemNum := m[1]
+		code := m[2]
+		desc := strings.TrimSpace(m[3])
+		und := strings.ToUpper(m[4])
+		qty := parseNumericVal(m[5])
+		unitPrice := parseNumericVal(m[6])
 
-			orc.Itens = append(orc.Itens, domain.OrcamentoItem{
-				ID:               uuid.New().String(),
-				OrcamentoID:      orcamentoID,
-				ItemNumero:       itemNum,
-				CodigoReferencia: code,
-				Fonte:            fonte,
-				Descricao:        desc,
-				Unidade:          und,
-				Categoria:        domain.InferCategoria(desc, und),
-				Quantidade:       qty,
-				PrecoUnitario:    unitPrice,
-				PrecoTotal:       qty * unitPrice,
-				Confianca:        0.88,
-				FlagRevisao:      code == "",
-			})
+		if desc == "" {
+			continue
 		}
+
+		fonte := "PROPRIO"
+		if len(code) >= 5 {
+			fonte = "SINAPI"
+		}
+
+		orc.Itens = append(orc.Itens, domain.OrcamentoItem{
+			ID:               uuid.New().String(),
+			OrcamentoID:      orcamentoID,
+			ItemNumero:       itemNum,
+			CodigoReferencia: code,
+			Fonte:            fonte,
+			Descricao:        desc,
+			Unidade:          und,
+			Categoria:        domain.InferCategoria(desc, und),
+			Quantidade:       qty,
+			PrecoUnitario:    unitPrice,
+			PrecoTotal:       qty * unitPrice,
+			Confianca:        0,
+			FlagRevisao:      true,
+		})
+	}
+
+	if len(orc.Itens) == 0 {
+		return nil, fmt.Errorf("heuristic extraction found no usable budget items in %q", filename)
 	}
 
 	orc.RecalculateTotals()

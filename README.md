@@ -54,6 +54,16 @@ npm run dev
 
 ---
 
+### Variáveis de autenticação e CORS
+
+Configure as seguintes variáveis no Render, sem valores secretos no arquivo:
+
+- `API_AUTH_TOKEN`: token Bearer compartilhado pelo backend.
+- `CORS_ALLOWED_ORIGINS`: origens explícitas separadas por vírgulas, por exemplo `https://construmar-radar-frontend.onrender.com,http://localhost:3000`.
+- `NEXT_PUBLIC_API_AUTH_TOKEN`: o mesmo token configurado em `API_AUTH_TOKEN` para as chamadas do frontend.
+
+---
+
 ## 🧪 Execução de Testes Automatizados
 
 ### Testes do Backend (Go):

@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,10 +31,71 @@ type SyncService struct {
 	currentRun *domain.LicitacaoSyncRun
 }
 
+type PncpHealth struct {
+	Status    string    `json:"status"`
+	LatencyMs int64     `json:"latencyMs"`
+	CheckedAt time.Time `json:"checkedAt"`
+	Message   string    `json:"message"`
+}
+
 func NewSyncService(repo *repository.OpportunityRepository, pncpClient *pncp.Client) *SyncService {
 	return &SyncService{
 		repo:       repo,
 		pncpClient: pncpClient,
+	}
+}
+
+func (s *SyncService) CheckPncpHealth(ctx context.Context) PncpHealth {
+	params := url.Values{}
+	params.Set("uf", "CE")
+	params.Set("dataFinal", time.Now().UTC().Format("2006")+"1231")
+	params.Set("pagina", "1")
+	params.Set("tamanhoPagina", "10")
+	endpoint := fmt.Sprintf("%s/v1/contratacoes/proposta?%s", strings.TrimRight(s.pncpClient.BaseURL, "/"), params.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return PncpHealth{
+			Status:    "DOWN",
+			LatencyMs: 0,
+			CheckedAt: time.Now().UTC(),
+			Message:   err.Error(),
+		}
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "Construmar-RadarLicitacoes/1.0")
+
+	start := time.Now()
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Do(req)
+	latencyMs := time.Since(start).Milliseconds()
+	checkedAt := time.Now().UTC()
+
+	if resp != nil {
+		if resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+		return PncpHealth{
+			Status:    "UP",
+			LatencyMs: latencyMs,
+			CheckedAt: checkedAt,
+			Message:   fmt.Sprintf("PNCP API respondendo (HTTP %d)", resp.StatusCode),
+		}
+	}
+	if err == nil {
+		err = errors.New("PNCP API não retornou resposta")
+	}
+
+	return PncpHealth{
+		Status:    "DOWN",
+		LatencyMs: latencyMs,
+		CheckedAt: checkedAt,
+		Message:   err.Error(),
 	}
 }
 
@@ -197,6 +262,11 @@ func (s *SyncService) RunSync(ctx context.Context, uf string, minEstimatedValue 
 		s.publishRun(run)
 
 		currentPage++
+
+		// Rate-limit: wait between pages to avoid PNCP 429 (limit ~16 pages/min)
+		if currentPage <= totalPages {
+			time.Sleep(2 * time.Second)
+		}
 	}
 
 	finishTime := time.Now().UTC()

@@ -222,7 +222,7 @@ export default function OrcamentosPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg"
+            accept=".pdf,.xlsx,.png,.jpg,.jpeg"
             style={{ display: 'none' }}
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {

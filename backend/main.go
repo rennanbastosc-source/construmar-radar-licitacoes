@@ -21,6 +21,9 @@ import (
 
 func main() {
 	cfg := config.LoadConfig()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Fatal: invalid configuration: %v", err)
+	}
 
 	log.Printf("=====================================================")
 	log.Printf("  CONSTRUMAR — Radar de Licitações MVP PNCP (Go)     ")
@@ -37,7 +40,7 @@ func main() {
 	// 2. Initialize Repositories and Clients
 	oppRepo := repository.NewOpportunityRepository(db)
 	orcRepo := repository.NewOrcamentoRepository(db)
-	pncpClient := pncp.NewClient(cfg.PNCPBaseURL, 25*time.Second)
+	pncpClient := pncp.NewClient(cfg.PNCPBaseURL, 60*time.Second)
 	aiExtractor := ai.NewAIExtractor(cfg.AIAPIURL, cfg.AIAPIKey, cfg.AIModel)
 	seobraClient := seobra.NewClient(orcRepo)
 
@@ -50,7 +53,7 @@ func main() {
 	oppHandler := api.NewOpportunityHandler(oppService)
 	syncHandler := api.NewSyncHandler(syncService, oppService)
 	orcHandler := api.NewOrcamentoHandler(orcService, seobraClient)
-	router := api.NewRouter(oppHandler, syncHandler, orcHandler)
+	router := api.NewRouter(oppHandler, syncHandler, orcHandler, cfg.APIAuthToken, cfg.CORSAllowedOrigins)
 
 	// 5. Periodic Background Sync (optional ticker)
 	if cfg.SyncIntervalHours > 0 {

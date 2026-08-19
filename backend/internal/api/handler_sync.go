@@ -101,3 +101,8 @@ func (h *SyncHandler) ListSyncHistory(w http.ResponseWriter, r *http.Request) {
 		"data": history,
 	})
 }
+
+func (h *SyncHandler) GetPncpHealth(w http.ResponseWriter, r *http.Request) {
+	health := h.syncService.CheckPncpHealth(r.Context())
+	writeJSON(w, http.StatusOK, map[string]interface{}{"data": health})
+}

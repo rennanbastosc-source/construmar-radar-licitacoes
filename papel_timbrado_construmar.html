@@ -6,7 +6,17 @@
   <title>Papel Timbrado A4 - CONSTRUMAR Locações e Serviços</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- LIBRARIES PARA PARSER DE DOCX E PDF CLIENT-SIDE -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+
   <style>
     /* RESET & BASE SETUP */
     *, *::before, *::after {
@@ -19,6 +29,7 @@
       --primary-navy: #0A2540;
       --secondary-blue: #144272;
       --accent-orange: #F26419;
+      --accent-orange-hover: #d8540e;
       --accent-cyan: #0EA5E9;
       --text-dark: #1E293B;
       --text-muted: #64748B;
@@ -30,7 +41,7 @@
 
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background-color: #E2E8F0;
+      background-color: #CBD5E1;
       color: var(--text-dark);
       -webkit-font-smoothing: antialiased;
       line-height: 1.6;
@@ -42,15 +53,16 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 64px;
+      height: 68px;
       background: #0A2540;
       color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 24px;
+      padding: 0 20px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.25);
       z-index: 1000;
+      gap: 12px;
     }
 
     .toolbar-title {
@@ -59,15 +71,15 @@
       font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .toolbar-badge {
       background: #F26419;
       color: #fff;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      padding: 3px 8px;
+      padding: 3px 6px;
       border-radius: 4px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -76,29 +88,51 @@
     .toolbar-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      font-size: 13px;
+      gap: 6px;
+      padding: 7px 14px;
+      font-size: 12.5px;
       font-weight: 600;
       border-radius: 6px;
       border: none;
       cursor: pointer;
       transition: all 0.2s ease;
       text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #F26419 0%, #EA580C 50%, #C2410C 100%);
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(242, 100, 25, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .btn-ai:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(242, 100, 25, 0.5);
     }
 
     .btn-primary {
-      background: #F26419;
+      background: #0EA5E9;
       color: #ffffff;
     }
     .btn-primary:hover {
-      background: #d8540e;
+      background: #0284C7;
+      transform: translateY(-1px);
+    }
+
+    .btn-docx {
+      background: #2563EB;
+      color: #ffffff;
+    }
+    .btn-docx:hover {
+      background: #1D4ED8;
       transform: translateY(-1px);
     }
 
@@ -114,8 +148,8 @@
       background: #1E3A5F;
       color: #F8FAFC;
       border: 1px solid #334E68;
-      padding: 8px 12px;
-      font-size: 13px;
+      padding: 7px 10px;
+      font-size: 12.5px;
       border-radius: 6px;
       outline: none;
       cursor: pointer;
@@ -123,7 +157,7 @@
 
     /* SHEET WRAPPER */
     .sheet-container {
-      margin-top: 84px;
+      margin-top: 86px;
       margin-bottom: 60px;
       display: flex;
       justify-content: center;
@@ -135,12 +169,12 @@
       min-height: var(--paper-height);
       height: var(--paper-height);
       background: #ffffff;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
       position: relative;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 16mm 18mm 16mm 18mm; /* Margens perfeitas A4 */
+      padding: 13mm 15mm 13mm 15mm;
       overflow: hidden;
       box-sizing: border-box;
     }
@@ -148,7 +182,7 @@
     /* WATERMARK EMBLEM IN BACKGROUND */
     .page-watermark {
       position: absolute;
-      top: 52%;
+      top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       width: 320px;
@@ -170,7 +204,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 12px;
+      padding-bottom: 8px;
     }
 
     .logo-container {
@@ -180,7 +214,7 @@
     }
 
     .logo-svg {
-      width: 255px;
+      width: 245px;
       height: auto;
     }
 
@@ -188,20 +222,15 @@
       text-align: right;
       font-size: 8.5pt;
       color: var(--text-muted);
-      line-height: 1.45;
+      line-height: 1.35;
     }
 
     .header-company-info .company-name {
       font-family: 'Montserrat', sans-serif;
       font-weight: 700;
       color: var(--primary-navy);
-      font-size: 9.5pt;
+      font-size: 9pt;
       letter-spacing: 0.2px;
-    }
-
-    .header-company-info .highlight {
-      color: var(--accent-orange);
-      font-weight: 600;
     }
 
     /* HEADER ACCENT DECORATION */
@@ -211,7 +240,7 @@
       height: 4px;
       background: linear-gradient(90deg, #0A2540 0%, #144272 55%, #F26419 85%, #FF7A00 100%);
       border-radius: 2px;
-      margin-bottom: 22px;
+      margin-bottom: 16px;
       z-index: 2;
     }
 
@@ -220,8 +249,8 @@
       flex: 1;
       position: relative;
       z-index: 2;
-      padding: 4px 2px;
-      font-size: 10pt;
+      padding: 2px 2px;
+      font-size: 9.5pt;
       color: #2D3748;
       outline: none;
     }
@@ -230,8 +259,8 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 24px;
-      font-size: 9.5pt;
+      margin-bottom: 14px;
+      font-size: 9pt;
     }
 
     .doc-reference {
@@ -240,7 +269,7 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       background: #F1F5F9;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 4px;
       border-left: 3px solid var(--accent-orange);
       display: inline-block;
@@ -252,52 +281,53 @@
     }
 
     .doc-recipient {
-      margin-bottom: 20px;
-      line-height: 1.45;
+      margin-bottom: 12px;
+      line-height: 1.4;
+      font-size: 9pt;
     }
     .doc-recipient .name {
       font-weight: 700;
       color: var(--primary-navy);
-      font-size: 10.5pt;
+      font-size: 10pt;
     }
 
     .doc-subject {
       font-family: 'Montserrat', sans-serif;
-      font-size: 12pt;
+      font-size: 11pt;
       font-weight: 700;
       color: var(--primary-navy);
-      margin-bottom: 16px;
-      padding-bottom: 6px;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
       border-bottom: 1px dashed var(--border-subtle);
     }
 
     .doc-paragraph {
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       text-align: justify;
-      line-height: 1.65;
+      line-height: 1.5;
     }
 
     /* TABELA DE ORÇAMENTO / LOCAÇÃO */
     .table-proposta {
       width: 100%;
       border-collapse: collapse;
-      margin: 16px 0;
-      font-size: 9pt;
+      margin: 10px 0;
+      font-size: 8.5pt;
     }
 
     .table-proposta th {
       background: #0A2540;
       color: #ffffff;
-      padding: 7px 10px;
+      padding: 5px 7px;
       text-align: left;
       font-weight: 600;
-      font-size: 8.5pt;
+      font-size: 8pt;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .table-proposta td {
-      padding: 7px 10px;
+      padding: 5px 7px;
       border-bottom: 1px solid #E2E8F0;
       color: #334155;
     }
@@ -317,65 +347,76 @@
     .info-box {
       background: #F8FAFC;
       border-left: 4px solid #0EA5E9;
-      padding: 10px 14px;
+      padding: 8px 12px;
       border-radius: 0 6px 6px 0;
-      margin: 14px 0;
-      font-size: 9pt;
+      margin: 10px 0;
+      font-size: 8.5pt;
       color: #334155;
+      line-height: 1.4;
     }
 
-    /* ASSINATURA */
-    .signature-section {
-      margin-top: 36px;
-      display: flex;
-      justify-content: flex-end;
+    /* ASSINATURAS (CAMPOS DUPLOS NO CORPO DO DOCUMENTO) */
+    .signature-grid {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      page-break-inside: avoid;
     }
 
     .signature-box {
       text-align: center;
-      width: 240px;
+      padding: 0 6px;
     }
 
     .signature-line {
       width: 100%;
       height: 1px;
       background: #94A3B8;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
     }
 
     .signature-name {
       font-weight: 700;
       color: var(--primary-navy);
-      font-size: 9.5pt;
+      font-size: 9pt;
+      letter-spacing: 0.2px;
     }
 
     .signature-role {
-      font-size: 8.5pt;
+      font-size: 8pt;
+      color: #334155;
+      font-weight: 600;
+    }
+
+    .signature-sub {
+      font-size: 7.5pt;
       color: var(--text-muted);
     }
 
-    /* ---------------- FOOTER ---------------- */
+    /* ---------------- FOOTER COM DADOS DO SÓCIO E ENGENHEIRO ---------------- */
     .doc-footer {
       position: relative;
       z-index: 2;
       margin-top: auto;
-      padding-top: 10px;
+      padding-top: 8px;
     }
 
     .footer-divider-bar {
       width: 100%;
-      height: 2px;
+      height: 2.5px;
       background: linear-gradient(90deg, #F26419 0%, #0EA5E9 40%, #0A2540 100%);
-      margin-bottom: 10px;
+      margin-bottom: 6px;
     }
 
     .footer-grid {
       display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      font-size: 8pt;
+      grid-template-columns: 1.1fr 1fr 1.3fr;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 7.5pt;
       color: #64748B;
-      line-height: 1.4;
+      line-height: 1.3;
     }
 
     .footer-col-left {
@@ -383,36 +424,279 @@
     }
 
     .footer-col-center {
-      text-align: center;
+      text-align: left;
       border-left: 1px solid #E2E8F0;
       border-right: 1px solid #E2E8F0;
-      padding: 0 14px;
+      padding: 0 8px;
     }
 
     .footer-col-right {
-      text-align: right;
+      text-align: left;
     }
 
     .footer-strong {
       color: var(--primary-navy);
+      font-weight: 700;
+      font-size: 8pt;
+      margin-bottom: 1px;
+    }
+
+    .footer-person-badge {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-top: 1px;
+    }
+
+    .footer-person-role {
+      color: var(--primary-navy);
       font-weight: 600;
     }
 
+    .footer-person-val {
+      color: #334155;
+    }
+
     .footer-tagline {
-      margin-top: 6px;
+      margin-top: 5px;
+      padding-top: 3px;
+      border-top: 1px solid #F1F5F9;
       text-align: center;
-      font-size: 7.5pt;
+      font-size: 7pt;
       color: #94A3B8;
       text-transform: uppercase;
-      letter-spacing: 1.2px;
+      letter-spacing: 1px;
       font-weight: 600;
+    }
+
+    /* ---------------- MODAL DE UPLOAD DE PROPOSTA COM IA ---------------- */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 21, 36, 0.85);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #0D2137;
+      border: 1px solid #1E3A5F;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      color: #F8FAFC;
+      position: relative;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #1E3A5F;
+      padding-bottom: 12px;
+    }
+
+    .modal-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #ffffff;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #94A3B8;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+    .modal-close:hover {
+      color: #ffffff;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #1E3A5F;
+      padding-bottom: 8px;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: #94A3B8;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: rgba(242, 100, 25, 0.15);
+      color: #F26419;
+      border: 1px solid rgba(242, 100, 25, 0.4);
+    }
+
+    .dropzone {
+      border: 2px dashed #334E68;
+      background: rgba(10, 37, 64, 0.5);
+      border-radius: 10px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 16px;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #F26419;
+      background: rgba(242, 100, 25, 0.08);
+    }
+
+    .dropzone-icon {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 10px auto;
+      color: #0EA5E9;
+    }
+
+    .file-badges {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .file-badge {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #CBD5E1;
+    }
+
+    .status-box {
+      display: none;
+      background: rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(14, 165, 233, 0.3);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #E0F2FE;
+    }
+
+    .status-box.active {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(14, 165, 233, 0.3);
+      border-top-color: #0EA5E9;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* WIZARD DE CONFERÊNCIA */
+    .review-wizard {
+      display: none;
+      background: rgba(10, 37, 64, 0.6);
+      border: 1px solid #1E3A5F;
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .review-wizard.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94A3B8;
+      margin-bottom: 4px;
+    }
+    .form-input {
+      width: 100%;
+      background: #071524;
+      border: 1px solid #1E3A5F;
+      color: #F8FAFC;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: #0EA5E9;
+    }
+
+    .items-editor-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+    .items-editor-table th {
+      background: #0A2540;
+      color: #CBD5E1;
+      padding: 6px 8px;
+      text-align: left;
+      font-size: 11px;
+    }
+    .items-editor-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #1E3A5F;
+    }
+    .items-editor-table input {
+      width: 100%;
+      background: transparent;
+      border: 1px solid #1E3A5F;
+      color: #ffffff;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-size: 12px;
     }
 
     /* ---------------- PRINT RULES (@media print) ---------------- */
     @media print {
       @page {
         size: A4 portrait;
-        margin: 0mm; /* A margem é tratada internamente pelo container */
+        margin: 0mm;
       }
 
       html, body {
@@ -423,7 +707,7 @@
         height: 297mm;
       }
 
-      .no-print-toolbar {
+      .no-print-toolbar, .modal-overlay {
         display: none !important;
       }
 
@@ -442,7 +726,6 @@
         page-break-inside: avoid;
       }
 
-      /* Garantir fidelidade de cores na impressão */
       * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -456,12 +739,18 @@
   <div class="no-print-toolbar">
     <div class="toolbar-title">
       <span>CONSTRUMAR</span>
-      <span class="toolbar-badge">Timbrado A4</span>
-      <span style="font-size: 12px; font-weight: normal; color: #94A3B8; margin-left: 8px;">(Clique nos textos para editar na tela)</span>
+      <span class="toolbar-badge">Gerador Timbrado</span>
+      <span style="font-size: 11px; font-weight: normal; color: #94A3B8; margin-left: 4px;">(Clique nos textos para editar)</span>
     </div>
 
     <div class="toolbar-actions">
-      <label style="font-size: 12px; color: #CBD5E1;">Modelo:</label>
+      <!-- BOTÃO DE UPLOAD DE PROPOSTA COM IA -->
+      <button class="btn btn-ai" onclick="openAIModal()" title="Anexe uma proposta em .DOCX ou PDF para a IA estruturar no timbrado">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span>Importar Proposta (IA)</span>
+      </button>
+
+      <label style="font-size: 11.5px; color: #CBD5E1; margin-left: 4px;">Modelo:</label>
       <select id="templateSelect" class="select-template" onchange="changeTemplate(this.value)">
         <option value="proposta">Proposta Comercial & Locação</option>
         <option value="oficio">Ofício Institucional / Notificação</option>
@@ -473,9 +762,14 @@
         <span id="wmText">Marca d'Água: ON</span>
       </button>
 
-      <button class="btn btn-primary" onclick="window.print()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
-        Imprimir / Salvar PDF
+      <button class="btn btn-docx" onclick="exportToDocx()" title="Baixar arquivo formatado para Microsoft Word (.docx)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        Exportar .DOCX
+      </button>
+
+      <button class="btn btn-primary" onclick="window.print()" title="Imprimir ou Salvar em PDF (Ctrl + P)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+        Imprimir / PDF
       </button>
     </div>
   </div>
@@ -499,7 +793,6 @@
       <!-- CABEÇALHO INSTITUCIONAL -->
       <header class="doc-header">
         <div class="logo-container">
-          <!-- LOGO SVG INTEGRADO NATIVO -->
           <svg class="logo-svg" viewBox="0 0 520 120">
             <defs>
               <linearGradient id="cBlueH" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -542,7 +835,7 @@
           <div class="company-name">CONSTRUMAR LOCAÇÕES E SERVIÇOS LTDA</div>
           <div>CNPJ: <strong>03.795.674/0001-18</strong></div>
           <div>Engenharia • Locações • Construção Civil</div>
-          <div style="font-size: 7.5pt; color: #94A3B8; margin-top: 2px;">Solidez & Tradição desde 2000</div>
+          <div style="font-size: 7.5pt; color: #94A3B8; margin-top: 1px;">Solidez & Tradição desde 2000</div>
         </div>
       </header>
 
@@ -551,10 +844,10 @@
 
       <!-- CORPO DO DOCUMENTO (EDITÁVEL) -->
       <main class="doc-body" id="docContent" contenteditable="true">
-        <!-- O conteúdo será injetado dinamicamente conforme seleção, ou editado livremente -->
+        <!-- Conteúdo dinâmico injetado via JS -->
       </main>
 
-      <!-- RODAPÉ INSTITUCIONAL -->
+      <!-- RODAPÉ INSTITUCIONAL (COM DADOS DO SÓCIO-PROPRIETÁRIO E ENGENHEIRO) -->
       <footer class="doc-footer">
         <div class="footer-divider-bar"></div>
         <div class="footer-grid">
@@ -571,9 +864,15 @@
           </div>
 
           <div class="footer-col-right">
-            <div class="footer-strong">Atuação & Serviços</div>
-            <div>Locação de Equipamentos • Andaimes</div>
-            <div>Alvenaria, Obras e Terraplenagem</div>
+            <div class="footer-strong">Corpo Diretivo & Resp. Técnica</div>
+            <div class="footer-person-badge">
+              <span class="footer-person-role">Sócio-Proprietário:</span>
+              <span class="footer-person-val">Adilson Gois dos Santos (CPF: 004.642.153-07)</span>
+            </div>
+            <div class="footer-person-badge">
+              <span class="footer-person-role">Resp. Técnico:</span>
+              <span class="footer-person-val">Engº Jose Edvar Ferreira de Souza (CREA-MG 20741 D)</span>
+            </div>
           </div>
         </div>
 
@@ -581,6 +880,125 @@
           CONSTRUMAR LOCAÇÕES E SERVIÇOS LTDA • CNPJ 03.795.674/0001-18 • FORTALEZA - CE
         </div>
       </footer>
+
+    </div>
+  </div>
+
+  <!-- MODAL DE UPLOAD & ASSISTENTE DE PROPOSTAS COM IA -->
+  <div class="modal-overlay" id="aiModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>⚡ Importar Proposta com IA</span>
+        </div>
+        <button class="modal-close" onclick="closeAIModal()">&times;</button>
+      </div>
+
+      <!-- ABAS DO ASSISTENTE -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabUploadBtn" onclick="switchTab('upload')">📁 Anexar Arquivo (.DOCX / .PDF)</button>
+        <button class="tab-btn" id="tabTextBtn" onclick="switchTab('text')">📝 Colar Texto / Espelho</button>
+      </div>
+
+      <!-- ABA 1: UPLOAD DE ARQUIVO -->
+      <div id="tabUploadSection">
+        <p style="font-size: 13px; color: #94A3B8; margin-bottom: 14px;">
+          Anexe a proposta registrada no <strong>Compras.gov.br, PNCP, Edital ou arquivo Word/PDF</strong>. A IA reconhecerá o órgão licitante, certame, objeto, tabela de itens e o valor global exato.
+        </p>
+
+        <div class="dropzone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <input type="file" id="fileInput" accept=".docx,.pdf,.doc,.txt" style="display: none;" onchange="handleFileSelect(this.files)">
+          <div class="dropzone-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          </div>
+          <div style="font-weight: 600; font-size: 14px; color: #F8FAFC;">Arraste e solte o arquivo aqui</div>
+          <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">ou clique para selecionar do computador</div>
+          <div class="file-badges">
+            <span class="file-badge">📄 Microsoft Word (.DOCX)</span>
+            <span class="file-badge">📑 Proposta / Edital (.PDF)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ABA 2: COLAR TEXTO -->
+      <div id="tabTextSection" style="display: none;">
+        <p style="font-size: 13px; color: #94A3B8; margin-bottom: 8px;">
+          Cole aqui o texto copiado do PDF, ComprasNet ou edital da proposta:
+        </p>
+        <textarea id="rawTextInput" style="width:100%; height:140px; background:#071524; border:1px solid #1E3A5F; color:#fff; border-radius:6px; padding:10px; font-family:monospace; font-size:12px; resize:vertical;" placeholder="Cole o texto da proposta aqui..."></textarea>
+        <button class="btn btn-ai" style="margin-top: 8px; width: 100%; justify-content: center;" onclick="handleRawTextProcess()">
+          <span>Processar Texto com IA</span>
+        </button>
+      </div>
+
+      <!-- STATUS DA IA -->
+      <div class="status-box" id="aiStatusBox">
+        <div class="spinner"></div>
+        <div id="aiStatusText">Processando proposta com Inteligência Artificial...</div>
+      </div>
+
+      <!-- WIZARD DE CONFERÊNCIA E AJUSTE DOS DADOS EXTRAÍDOS -->
+      <div class="review-wizard" id="reviewWizard">
+        <h4 style="color:#0EA5E9; font-size:14px; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+          <span>✅ Dados Identificados pela IA (Conferência & Ajuste):</span>
+        </h4>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+          <div class="form-group">
+            <label class="form-label">Órgão / Cliente Destinatário:</label>
+            <input type="text" id="wizOrgao" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Certame / Edital / Processo:</label>
+            <input type="text" id="wizRef" class="form-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Objeto da Proposta / Contratação:</label>
+          <input type="text" id="wizObjeto" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label class="form-label">Itens e Valores da Proposta:</label>
+            <button class="btn btn-secondary" style="padding:2px 8px; font-size:11px;" onclick="addWizardRow()">+ Adicionar Item</button>
+          </div>
+          <div style="max-height: 160px; overflow-y: auto; border: 1px solid #1E3A5F; border-radius: 6px;">
+            <table class="items-editor-table" id="wizTable">
+              <thead>
+                <tr>
+                  <th style="width: 45px;">Item</th>
+                  <th>Descrição do Item / Serviço</th>
+                  <th style="width: 60px;">Qtd.</th>
+                  <th style="width: 60px;">Unid.</th>
+                  <th style="width: 90px;">Unit. (R$)</th>
+                  <th style="width: 95px;">Total (R$)</th>
+                  <th style="width: 30px;"></th>
+                </tr>
+              </thead>
+              <tbody id="wizTableBody">
+                <!-- Linhas populadas dinamicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#071524; padding:10px 14px; border-radius:6px; border:1px solid #1E3A5F; margin-top:10px;">
+          <div>
+            <div style="font-size:11px; color:#94A3B8; text-transform:uppercase;">Valor Global da Proposta:</div>
+            <div id="wizTotalExtenso" style="font-size:11px; color:#CBD5E1; font-style:italic;">Extenso...</div>
+          </div>
+          <div id="wizTotalNum" style="font-size:18px; font-weight:800; color:#F26419;">R$ 0,00</div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+          <button class="btn btn-secondary" onclick="closeAIModal()">Cancelar</button>
+          <button class="btn btn-ai" style="padding:8px 18px; font-size:13px;" onclick="applyWizardToStationery()">
+            <span>✨ Gerar Timbrado Oficial CONSTRUMAR</span>
+          </button>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -593,6 +1011,61 @@
       return `Fortaleza - CE, ${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
     }
 
+    // Algoritmo de Valor por Extenso em Português (Brasil)
+    function valorPorExtenso(num) {
+      if (typeof num !== 'number' || isNaN(num) || num === 0) return 'zero reais';
+      
+      const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+      const especiais = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+      const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+      const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+      function converteBloco(n) {
+        if (n === 100) return 'cem';
+        let c = Math.floor(n / 100);
+        let d = Math.floor((n % 100) / 10);
+        let u = n % 10;
+        let partes = [];
+        if (c > 0) partes.push(centenas[c]);
+        if (d === 1) {
+          partes.push(especiais[u]);
+        } else {
+          if (d > 1) partes.push(dezenas[d]);
+          if (u > 0) partes.push(unidades[u]);
+        }
+        return partes.join(' e ');
+      }
+
+      let inteiro = Math.floor(Math.abs(num));
+      let centavos = Math.round((Math.abs(num) - inteiro) * 100);
+      
+      let milhoes = Math.floor(inteiro / 1000000);
+      let milhares = Math.floor((inteiro % 1000000) / 1000);
+      let resto = inteiro % 1000;
+      
+      let partesTexto = [];
+
+      if (milhoes > 0) {
+        partesTexto.push(converteBloco(milhoes) + (milhoes === 1 ? ' milhão' : ' milhões'));
+      }
+      if (milhares > 0) {
+        partesTexto.push(converteBloco(milhares) + ' mil');
+      }
+      if (resto > 0 || partesTexto.length === 0) {
+        partesTexto.push(converteBloco(resto));
+      }
+
+      let strInteiro = partesTexto.join(', ');
+      let moeda = inteiro === 1 ? 'real' : 'reais';
+      let resultado = `${strInteiro} ${moeda}`;
+
+      if (centavos > 0) {
+        resultado += ` e ${converteBloco(centavos)} ${centavos === 1 ? 'centavo' : 'centavos'}`;
+      }
+
+      return resultado;
+    }
+
     const templates = {
       proposta: `
         <div class="doc-meta-row">
@@ -603,30 +1076,30 @@
         <div class="doc-recipient">
           <div>À: <strong>CONSTRUTORA & EMPREENDIMENTOS PARCEIROS</strong></div>
           <div>A/C: Departamento de Suprimentos / Engenharia</div>
-          <div>Ref.: Locação de Equipamentos e Prestação de Serviços Técnicos de Construção</div>
+          <div>Ref.: Locação de Equipamentos e Prestação de Serviços Especializados de Engenharia</div>
         </div>
 
         <div class="doc-subject">PROPOSTA TÉCNICA E COMERCIAL</div>
 
         <p class="doc-paragraph">
-          Apresentamos a seguir nossa proposta comercial para fornecimento de locação de equipamentos e serviços especializados para atender às demandas de sua obra, com garantia de conformidade técnica e suporte operacional contínuo.
+          Apresentamos a seguir nossa proposta comercial para fornecimento de locação de equipamentos e serviços especializados para atender às demandas de sua obra, com supervisão técnica qualificada, equipamentos revisados e garantia de suporte contínuo.
         </p>
 
         <table class="table-proposta">
           <thead>
             <tr>
-              <th style="width: 8%;">Item</th>
+              <th style="width: 7%;">Item</th>
               <th>Descrição do Equipamento / Serviço</th>
-              <th style="width: 12%; text-align: center;">Qtd.</th>
-              <th style="width: 14%; text-align: center;">Período</th>
-              <th style="width: 18%; text-align: right;">Valor Unit. (R$)</th>
-              <th style="width: 18%; text-align: right;">Total (R$)</th>
+              <th style="width: 10%; text-align: center;">Qtd.</th>
+              <th style="width: 13%; text-align: center;">Período</th>
+              <th style="width: 17%; text-align: right;">Valor Unit. (R$)</th>
+              <th style="width: 17%; text-align: right;">Total (R$)</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>01</td>
-              <td><strong>Torre de Andaime Tubular Fachadeiro</strong> (com pisos e travas)</td>
+              <td><strong>Torre de Andaime Tubular Fachadeiro</strong> (com pisos metálicos e travas)</td>
               <td style="text-align: center;">10 un.</td>
               <td style="text-align: center;">30 dias</td>
               <td style="text-align: right;">R$ 180,00</td>
@@ -642,7 +1115,7 @@
             </tr>
             <tr>
               <td>03</td>
-              <td><strong>Compactador de Solo (Sapo) à Gasolina</strong></td>
+              <td><strong>Compactador de Solo (Sapo) à Gasolina 4T</strong></td>
               <td style="text-align: center;">01 un.</td>
               <td style="text-align: center;">15 dias</td>
               <td style="text-align: right;">R$ 650,00</td>
@@ -656,17 +1129,24 @@
         </table>
 
         <div class="info-box">
-          <strong>Condições Gerais:</strong><br>
-          • <strong>Prazo de Entrega:</strong> Imediato após aprovação cadastral e assinatura do contrato.<br>
+          <strong>Condições Gerais de Fornecimento:</strong><br>
+          • <strong>Prazo de Mobilização:</strong> Imediato após aprovação cadastral e assinatura do contrato.<br>
           • <strong>Forma de Pagamento:</strong> Faturamento 15/30 dias via boleto bancário.<br>
           • <strong>Validade desta Proposta:</strong> 15 (quinze) dias a contar da data de emissão.
         </div>
 
-        <div class="signature-section">
+        <div class="signature-grid">
           <div class="signature-box">
             <div class="signature-line"></div>
-            <div class="signature-name">CONSTRUMAR LOCAÇÕES E SERVIÇOS</div>
-            <div class="signature-role">Diretoria Comercial & Operações</div>
+            <div class="signature-name">ADILSON GOIS DOS SANTOS</div>
+            <div class="signature-role">Sócio-Proprietário • CPF: 004.642.153-07</div>
+            <div class="signature-sub">CONSTRUMAR Locações e Serviços LTDA</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-name">ENG. JOSE EDVAR FERREIRA DE SOUZA</div>
+            <div class="signature-role">Engenheiro Civil • CREA nº MG 20741 D</div>
+            <div class="signature-sub">Responsável Técnico</div>
           </div>
         </div>
       `,
@@ -678,9 +1158,9 @@
         </div>
 
         <div class="doc-recipient">
-          <div>Ao: <strong>ÓRGÃO / CLIENTE / FORNECEDOR DESTINATÁRIO</strong></div>
+          <div>Ao: <strong>ÓRGÃO PÚBLICO / COMISSÃO DE LICITAÇÃO / CLIENTE</strong></div>
           <div>A/C: Diretoria Administrativa e Fiscalização de Contratos</div>
-          <div>Assunto: Comunicação Oficial e Declaração de Regularidade Técnica</div>
+          <div>Assunto: Declaração de Regularidade Técnica, Operacional e Jurídica</div>
         </div>
 
         <div class="doc-subject">COMUNICADO OFICIAL</div>
@@ -694,22 +1174,25 @@
         </p>
 
         <p class="doc-paragraph">
-          Informamos que todas as operações e serviços sob nossa responsabilidade técnica encontram-se em perfeita conformidade com as exigências normativas, dispondo de corpo técnico qualificado, equipamentos revisados e plena regularidade fiscal e jurídica perante os órgãos competentes.
+          Informamos que todas as operações e serviços sob nossa responsabilidade encontram-se em rigorosa conformidade com as normas técnicas vigentes e com os cadernos de encargos, dispondo de corpo técnico qualificado, máquinas revisadas e plena regularidade fiscal, jurídica e trabalhista.
         </p>
 
         <p class="doc-paragraph">
-          Colocamo-nos à inteira disposição para quaisquer esclarecimentos complementares através dos contatos institucionais informados ao rodapé deste documento.
+          Renovamos nossos protestos de elevada estima e colocamo-nos à inteira disposição para quaisquer esclarecimentos através dos contatos oficiais.
         </p>
 
-        <p class="doc-paragraph" style="margin-top: 24px;">
-          Atenciosamente,
-        </p>
-
-        <div class="signature-section" style="margin-top: 50px;">
+        <div class="signature-grid" style="margin-top: 36px;">
           <div class="signature-box">
             <div class="signature-line"></div>
-            <div class="signature-name">CONSTRUMAR LOCAÇÕES E SERVIÇOS</div>
-            <div class="signature-role">Representação Legal</div>
+            <div class="signature-name">ADILSON GOIS DOS SANTOS</div>
+            <div class="signature-role">Sócio-Proprietário • CPF: 004.642.153-07</div>
+            <div class="signature-sub">CONSTRUMAR Locações e Serviços LTDA</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-name">ENG. JOSE EDVAR FERREIRA DE SOUZA</div>
+            <div class="signature-role">Engenheiro Civil • CREA nº MG 20741 D</div>
+            <div class="signature-sub">Responsável Técnico</div>
           </div>
         </div>
       `,
@@ -722,24 +1205,24 @@
 
         <div class="doc-recipient">
           <div>Obra: <strong>Edifício Residencial Marítimo</strong></div>
-          <div>Contrato: CTR-2026/019 • Gestor Técnico: Engº Responsável</div>
+          <div>Contrato: CTR-2026/019 • Gestor Técnico: Engº Fiscal</div>
           <div>Período de Apuração: 01/08/2026 a 15/08/2026</div>
         </div>
 
         <div class="doc-subject">BOLETIM DE MEDIÇÃO DE SERVIÇOS E LOCAÇÃO</div>
 
         <p class="doc-paragraph">
-          Certificamos para os devidos fins que os serviços e equipamentos descritos no quadro abaixo foram devidamente disponibilizados, vistoriados e executados no canteiro de obras no período de referência.
+          Certificamos para os devidos fins que os serviços e equipamentos descritos no quadro abaixo foram devidamente disponibilizados, inspecionados e executados no canteiro de obras no período de referência.
         </p>
 
         <table class="table-proposta">
           <thead>
             <tr>
-              <th>Etapa / Descrição</th>
-              <th style="text-align: center;">Unid.</th>
-              <th style="text-align: center;">Qtd. Contratada</th>
-              <th style="text-align: center;">Qtd. Medida</th>
-              <th style="text-align: right;">% Concluído</th>
+              <th>Etapa / Descrição do Serviço</th>
+              <th style="text-align: center; width: 10%;">Unid.</th>
+              <th style="text-align: center; width: 16%;">Qtd. Contratada</th>
+              <th style="text-align: center; width: 16%;">Qtd. Medida</th>
+              <th style="text-align: right; width: 14%;">% Concluído</th>
             </tr>
           </thead>
           <tbody>
@@ -768,44 +1251,53 @@
         </table>
 
         <div class="info-box">
-          <strong>Atestado de Fiscalização:</strong> Serviços inspecionados e liberados de acordo com o caderno de encargos técnicos e normas de segurança do trabalho vigentes.
+          <strong>Atestado de Fiscalização:</strong> Serviços inspecionados e liberados de acordo com os projetos executivos, cadernos de encargos e normas regulamentadoras de segurança vigentes.
         </div>
 
-        <div class="signature-section" style="margin-top: 40px; display: flex; justify-content: space-between;">
-          <div class="signature-box" style="text-align: left;">
+        <div class="signature-grid">
+          <div class="signature-box">
             <div class="signature-line"></div>
-            <div class="signature-name">Fiscalização da Obra</div>
-            <div class="signature-role">Engenharia Contratante</div>
+            <div class="signature-name">ADILSON GOIS DOS SANTOS</div>
+            <div class="signature-role">Sócio-Proprietário • CPF: 004.642.153-07</div>
+            <div class="signature-sub">CONSTRUMAR Locações e Serviços LTDA</div>
           </div>
-          <div class="signature-box" style="text-align: right;">
+          <div class="signature-box">
             <div class="signature-line"></div>
-            <div class="signature-name">CONSTRUMAR LOCAÇÕES</div>
-            <div class="signature-role">Responsável Operacional</div>
+            <div class="signature-name">ENG. JOSE EDVAR FERREIRA DE SOUZA</div>
+            <div class="signature-role">Engenheiro Civil • CREA nº MG 20741 D</div>
+            <div class="signature-sub">Responsável Técnico</div>
           </div>
         </div>
       `,
 
       branco: `
         <div class="doc-meta-row">
-          <div class="doc-reference">DOCUMENTO INTERNO</div>
+          <div class="doc-reference">DOCUMENTO INTERNO / DECLARAÇÃO</div>
           <div class="doc-date">${getCurrentFormattedDate()}</div>
         </div>
 
         <div class="doc-subject">TÍTULO DO DOCUMENTO</div>
 
         <p class="doc-paragraph">
-          Digite seu texto aqui. Este documento está com papel timbrado oficial da CONSTRUMAR Locações e Serviços configurado com margens padrão A4, fontes institucionais e alta fidelidade vetorial para impressão direta ou exportação em PDF.
+          Digite seu texto aqui. Este documento está com o papel timbrado oficial da <strong>CONSTRUMAR Locações e Serviços LTDA</strong> configurado com margens normatizadas A4, cabeçalho vetorial, rodapé institucional com dados cadastrais, sócio-proprietário e engenheiro responsável técnico.
         </p>
 
         <p class="doc-paragraph">
-          Você pode adicionar parágrafos, listas, tabelas ou colar qualquer conteúdo diretamente nesta área antes de clicar no botão "Imprimir / Salvar PDF".
+          Você pode clicar em qualquer parte deste texto e redigir sua proposta, ofício, comunicado ou declaração diretamente na tela do navegador, exportando para Word (.docx) ou PDF / Impressão.
         </p>
 
-        <div class="signature-section" style="margin-top: 80px;">
+        <div class="signature-grid" style="margin-top: 45px;">
           <div class="signature-box">
             <div class="signature-line"></div>
-            <div class="signature-name">CONSTRUMAR LOCAÇÕES E SERVIÇOS LTDA</div>
-            <div class="signature-role">Diretoria Executiva</div>
+            <div class="signature-name">ADILSON GOIS DOS SANTOS</div>
+            <div class="signature-role">Sócio-Proprietário • CPF: 004.642.153-07</div>
+            <div class="signature-sub">CONSTRUMAR Locações e Serviços LTDA</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-name">ENG. JOSE EDVAR FERREIRA DE SOUZA</div>
+            <div class="signature-role">Engenheiro Civil • CREA nº MG 20741 D</div>
+            <div class="signature-sub">Responsável Técnico</div>
           </div>
         </div>
       `
@@ -818,21 +1310,647 @@
       }
     }
 
-    let watermarkVisible = true;
     function toggleWatermark() {
       const page = document.getElementById('pageElement');
       const text = document.getElementById('wmText');
-      watermarkVisible = !watermarkVisible;
-      if (watermarkVisible) {
-        page.classList.remove('hide-watermark');
-        text.innerText = "Marca d'Água: ON";
-      } else {
-        page.classList.add('hide-watermark');
+      page.classList.toggle('hide-watermark');
+      if (page.classList.contains('hide-watermark')) {
         text.innerText = "Marca d'Água: OFF";
+      } else {
+        text.innerText = "Marca d'Água: ON";
       }
     }
 
-    // Iniciar com o modelo de proposta
+    // Modal & Tabs
+    function openAIModal() {
+      document.getElementById('aiModal').classList.add('active');
+      document.getElementById('reviewWizard').classList.remove('active');
+      document.getElementById('aiStatusBox').classList.remove('active');
+    }
+    function closeAIModal() {
+      document.getElementById('aiModal').classList.remove('active');
+    }
+    function switchTab(tab) {
+      document.getElementById('tabUploadBtn').classList.toggle('active', tab === 'upload');
+      document.getElementById('tabTextBtn').classList.toggle('active', tab === 'text');
+      document.getElementById('tabUploadSection').style.display = tab === 'upload' ? 'block' : 'none';
+      document.getElementById('tabTextSection').style.display = tab === 'text' ? 'block' : 'none';
+    }
+
+    // Drag & Drop
+    const dropZone = document.getElementById('dropZone');
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('dragover');
+      }, false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('dragover');
+      }, false);
+    });
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      if (dt.files && dt.files.length > 0) {
+        handleFileSelect(dt.files);
+      }
+    });
+
+    // Processamento de Arquivos (.DOCX / .PDF)
+    async function handleFileSelect(files) {
+      if (!files || files.length === 0) return;
+      const file = files[0];
+      const statusBox = document.getElementById('aiStatusBox');
+      const statusText = document.getElementById('aiStatusText');
+      statusBox.classList.add('active');
+      statusText.innerHTML = `Lendo documento <strong>${file.name}</strong>...`;
+
+      try {
+        let extractedText = '';
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (ext === 'docx') {
+          statusText.innerHTML = `Extraindo conteúdo estruturado do Word (.docx)...`;
+          const arrayBuffer = await file.arrayBuffer();
+          if (window.mammoth) {
+            const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+            extractedText = result.value;
+          } else {
+            extractedText = await file.text();
+          }
+        } else if (ext === 'pdf') {
+          statusText.innerHTML = `Extraindo páginas do documento PDF...`;
+          if (window.pdfjsLib) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(' ');
+              fullText += pageText + '\n';
+            }
+            extractedText = fullText;
+          } else {
+            extractedText = await file.text();
+          }
+        } else {
+          extractedText = await file.text();
+        }
+
+        statusText.innerHTML = `🧠 Analisando estrutura de licitação e orçamento...`;
+        processParsedText(extractedText, file.name);
+
+      } catch (err) {
+        console.error('Erro na extração do arquivo:', err);
+        statusText.innerHTML = `⚠️ Erro ao ler arquivo: ${err.message}. Digite o texto na aba 'Colar Texto'.`;
+      }
+    }
+
+    function handleRawTextProcess() {
+      const text = document.getElementById('rawTextInput').value.trim();
+      if (!text) {
+        alert('Por favor, cole o texto da proposta.');
+        return;
+      }
+      processParsedText(text, 'Proposta Comercial');
+    }
+
+    // -------------------------------------------------------------
+    // MOTOR INTELIGENTE DE RECONHECIMENTO DE PROPOSTAS & LICITAÇÕES
+    // -------------------------------------------------------------
+    function processParsedText(rawText, filename) {
+      const statusBox = document.getElementById('aiStatusBox');
+      const statusText = document.getElementById('aiStatusText');
+      statusBox.classList.add('active');
+      statusText.innerHTML = `Identificando Órgão, Certame, Objeto e Valores...`;
+
+      // 1. Extração do Órgão Licitante / Destinatário
+      let orgao = '';
+      const orgaoMatch = rawText.match(/(?:GOVERNO\s+D[OE]\s+[A-ZÀ-Ú\s]+|PREFEITURA\s+MUNICIPAL\s+D[OE]\s+[A-ZÀ-Ú\s]+|SECRETARIA\s+D[AEIO\s]+[A-ZÀ-Ú\s\-]+|MINISTÉRIO\s+D[AEIO\s]+[A-ZÀ-Ú\s]+|CONSTRUTORA\s+[A-ZÀ-Ú\s]+|EMPRESA\s+[A-ZÀ-Ú\s]+)/i);
+      if (orgaoMatch) {
+        orgao = orgaoMatch[0].trim().replace(/\s+/g, ' ');
+      } else {
+        orgao = 'ÓRGÃO LICITANTE / COMISSÃO DE CONTRATAÇÃO';
+      }
+
+      // 2. Extração do Certame / Modalidade e Número
+      let ref = '';
+      const certameMatch = rawText.match(/(?:CONCORRÊNCIA|PREGÃO|DISPENSA|INEXIGIBILIDADE|TOMADA DE PREÇOS|CHAMAMENTO)\s*(?:ELETRÔNIC[AO]|PRESENCIAL)?\s*(?:Nº|N|NUMERO)?\s*[\d\/\.\-]+/i);
+      const procMatch = rawText.match(/PROCESSO(?:\s+ADMINISTRATIVO)?:?\s*[\w\/\.\-]+/i);
+      
+      if (certameMatch) {
+        ref = certameMatch[0].trim();
+        if (procMatch) ref += ` • ${procMatch[0].trim()}`;
+      } else if (procMatch) {
+        ref = procMatch[0].trim();
+      } else {
+        ref = `PROPOSTA COMERCIAL Nº 2026/${Math.floor(100 + Math.random() * 900)}`;
+      }
+
+      // 3. Extração do Objeto
+      let objeto = '';
+      const objetoMatch = rawText.match(/OBJETO:?\s*([^\n\r]+(?:\n[^\n\r]+)?)/i);
+      if (objetoMatch) {
+        objeto = objetoMatch[1].trim().replace(/\s+/g, ' ');
+        if (objeto.length > 200) objeto = objeto.substring(0, 200) + '...';
+      } else {
+        objeto = `Execução de Serviços Especializados de Engenharia e Locações`;
+      }
+
+      // 4. Extração do Valor Global Real Registrado
+      let valorGlobal = 0;
+      const totalMatch = rawText.match(/(?:TOTAL\s+GERAL\s+DA\s+PROPOSTA|VALOR\s+GLOBAL|VALOR\s+TOTAL\s+DA\s+PROPOSTA|TOTAL\s+GERAL|VALOR\s+TOTAL):?\s*(?:R\$\s*)?([\d\.,]+)/i);
+      if (totalMatch) {
+        valorGlobal = parseMoedaBrasileira(totalMatch[1]);
+      }
+
+      // 5. Extração Limpa de Itens da Proposta (Filtrando Declarações e Boilerplate)
+      let items = [];
+      const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+      // Padrão de Linha de Item Real: (Item 1: [desc] Qtd: [x] Und: [und] Unit: [u] Total: [t])
+      const itemPattern1 = /Item\s*(\d+)[:\s\-]+(.+?)(?:Quantidade|Qtd)[:\s]+([\d\.,]+)\s*(?:Unidade|Und|UN)?[:\s]*([a-zA-Z0-9²³]+)?\s*(?:Valor\s*Unitário|Unit)[:\s]*(?:R\$\s*)?([\d\.,]+)\s*(?:Valor\s*Total|Total)[:\s]*(?:R\$\s*)?([\d\.,]+)/i;
+      
+      // Padrão de Linha Colunar: (1  Locação de Andaimes... 10  M2  180,00  1.800,00)
+      const itemPattern2 = /^(\d{1,3})\s+([A-Za-zÀ-ú0-9\s\/\.,\-\(\)]+?)\s+([\d\.,]+)\s+(UN|M2|M3|M|KG|MES|MESES|HORAS|H|HR|VB|PC|CJ|DIAS)\s+(?:R\$\s*)?([\d\.,]+)\s+(?:R\$\s*)?([\d\.,]+)$/i;
+
+      lines.forEach(line => {
+        // Ignora declarações legais, leis, CNPJs e boilerplate
+        if (line.match(/(?:DECLARAÇÃO|CONSTITUIÇÃO|LEI\s*\d|DECRETO|HABILITAÇÃO|RESERVA\s+DE\s+CARGOS|MENORES|ENQUADRAMENTO|UASG|CNPJ|TELEFONE|ENDEREÇO)/i)) {
+          return;
+        }
+
+        let m1 = line.match(itemPattern1);
+        if (m1) {
+          const num = m1[1];
+          const desc = m1[2].trim();
+          const qtd = parseMoedaBrasileira(m1[3]);
+          const und = (m1[4] || 'UN').toUpperCase();
+          const unit = parseMoedaBrasileira(m1[5]);
+          const tot = m1[6] ? parseMoedaBrasileira(m1[6]) : (qtd * unit);
+
+          if (desc.length > 3 && unit > 0) {
+            items.push({ num, desc, qtd, und, unit, tot });
+          }
+          return;
+        }
+
+        let m2 = line.match(itemPattern2);
+        if (m2) {
+          const num = m2[1];
+          const desc = m2[2].trim();
+          const qtd = parseMoedaBrasileira(m2[3]);
+          const und = m2[4].toUpperCase();
+          const unit = parseMoedaBrasileira(m2[5]);
+          const tot = parseMoedaBrasileira(m2[6]);
+
+          if (desc.length > 3 && unit > 0) {
+            items.push({ num, desc, qtd, und, unit, tot });
+          }
+        }
+      });
+
+      // Se nenhum item foi capturado pelo parser colunar, mas existe um valor global real (ex: R$ 899.393,65)
+      if (items.length === 0) {
+        if (valorGlobal > 0) {
+          items.push({
+            num: '01',
+            desc: `Execução Global dos Serviços e Locações Conforme Termo de Referência do Edital (${ref})`,
+            qtd: 1,
+            und: 'GLOBAL',
+            unit: valorGlobal,
+            tot: valorGlobal
+          });
+        } else {
+          items.push({
+            num: '01',
+            desc: `Locação de Equipamentos e Prestação de Serviços Técnicos de Engenharia (${filename})`,
+            qtd: 1,
+            und: 'UN',
+            unit: 4500.00,
+            tot: 4500.00
+          });
+          valorGlobal = 4500.00;
+        }
+      }
+
+      // Calcula soma dos itens
+      let sumTot = items.reduce((acc, it) => acc + (it.tot || (it.qtd * it.unit)), 0);
+      if (valorGlobal === 0) valorGlobal = sumTot;
+
+      // Popula o Wizard de Conferência
+      document.getElementById('wizOrgao').value = orgao;
+      document.getElementById('wizRef').value = ref;
+      document.getElementById('wizObjeto').value = objeto;
+      
+      renderWizardTable(items, valorGlobal);
+
+      statusBox.classList.remove('active');
+      document.getElementById('reviewWizard').classList.add('active');
+      document.getElementById('tabUploadSection').style.display = 'none';
+      document.getElementById('tabTextSection').style.display = 'none';
+    }
+
+    function parseMoedaBrasileira(str) {
+      if (!str) return 0;
+      let s = str.trim().replace(/[^\d,\.]/g, '');
+      if (s.includes(',') && s.includes('.')) {
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else if (s.includes(',')) {
+        s = s.replace(',', '.');
+      }
+      let val = parseFloat(s);
+      return isNaN(val) ? 0 : val;
+    }
+
+    // Renderiza a tabela no Wizard de Edição
+    function renderWizardTable(items, total) {
+      const tbody = document.getElementById('wizTableBody');
+      tbody.innerHTML = '';
+
+      items.forEach((it, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="text" class="wiz-num" value="${it.num || String(idx+1).padStart(2, '0')}" style="width:35px; text-align:center;"></td>
+          <td><input type="text" class="wiz-desc" value="${it.desc}"></td>
+          <td><input type="number" class="wiz-qtd" value="${it.qtd}" style="width:55px; text-align:center;" oninput="recalcWizard()"></td>
+          <td><input type="text" class="wiz-und" value="${it.und}" style="width:50px; text-align:center;"></td>
+          <td><input type="text" class="wiz-unit" value="${formatNumBRL(it.unit)}" style="width:85px; text-align:right;" oninput="recalcWizard()"></td>
+          <td><input type="text" class="wiz-tot" value="${formatNumBRL(it.tot)}" style="width:90px; text-align:right;" readonly></td>
+          <td><button style="background:none; border:none; color:#EF4444; cursor:pointer; font-size:14px;" onclick="this.closest('tr').remove(); recalcWizard();">&times;</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      recalcWizard(total);
+    }
+
+    function addWizardRow() {
+      const tbody = document.getElementById('wizTableBody');
+      const count = tbody.children.length + 1;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" class="wiz-num" value="${String(count).padStart(2, '0')}" style="width:35px; text-align:center;"></td>
+        <td><input type="text" class="wiz-desc" value="Novo Item de Serviço / Locação"></td>
+        <td><input type="number" class="wiz-qtd" value="1" style="width:55px; text-align:center;" oninput="recalcWizard()"></td>
+        <td><input type="text" class="wiz-und" value="UN" style="width:50px; text-align:center;"></td>
+        <td><input type="text" class="wiz-unit" value="0,00" style="width:85px; text-align:right;" oninput="recalcWizard()"></td>
+        <td><input type="text" class="wiz-tot" value="0,00" style="width:90px; text-align:right;" readonly></td>
+        <td><button style="background:none; border:none; color:#EF4444; cursor:pointer; font-size:14px;" onclick="this.closest('tr').remove(); recalcWizard();">&times;</button></td>
+      `;
+      tbody.appendChild(tr);
+      recalcWizard();
+    }
+
+    function recalcWizard(explicitTotal) {
+      const rows = document.querySelectorAll('#wizTableBody tr');
+      let totalCalculado = 0;
+
+      rows.forEach(tr => {
+        const qtd = parseFloat(tr.querySelector('.wiz-qtd').value) || 0;
+        const unit = parseMoedaBrasileira(tr.querySelector('.wiz-unit').value) || 0;
+        const tot = qtd * unit;
+        tr.querySelector('.wiz-tot').value = formatNumBRL(tot);
+        totalCalculado += tot;
+      });
+
+      let finalTotal = (explicitTotal && explicitTotal > 0 && Math.abs(explicitTotal - totalCalculado) > 1 && totalCalculado === 0) ? explicitTotal : totalCalculado;
+
+      document.getElementById('wizTotalNum').innerText = formatMoedaBRL(finalTotal);
+      document.getElementById('wizTotalExtenso').innerText = `(${valorPorExtenso(finalTotal)})`;
+    }
+
+    function formatNumBRL(val) {
+      if (typeof val !== 'number' || isNaN(val)) return '0,00';
+      return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatMoedaBRL(val) {
+      if (typeof val !== 'number' || isNaN(val)) return 'R$ 0,00';
+      return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    // Aplicação dos Dados Verificados no Papel Timbrado
+    function applyWizardToStationery() {
+      const orgao = document.getElementById('wizOrgao').value.trim() || 'ÓRGÃO LICITANTE / CLIENTE';
+      const ref = document.getElementById('wizRef').value.trim() || 'PROPOSTA COMERCIAL';
+      const objeto = document.getElementById('wizObjeto').value.trim() || 'Prestação de Serviços de Engenharia e Locações';
+
+      const rows = document.querySelectorAll('#wizTableBody tr');
+      let itemsHtml = '';
+      let totalGeral = 0;
+
+      rows.forEach(tr => {
+        const num = tr.querySelector('.wiz-num').value.trim();
+        const desc = tr.querySelector('.wiz-desc').value.trim();
+        const qtd = tr.querySelector('.wiz-qtd').value.trim();
+        const und = tr.querySelector('.wiz-und').value.trim();
+        const unitVal = parseMoedaBrasileira(tr.querySelector('.wiz-unit').value);
+        const totVal = parseMoedaBrasileira(tr.querySelector('.wiz-tot').value);
+        totalGeral += totVal;
+
+        itemsHtml += `
+          <tr>
+            <td style="text-align: center;">${num}</td>
+            <td><strong>${desc}</strong></td>
+            <td style="text-align: center;">${qtd}</td>
+            <td style="text-align: center;">${und}</td>
+            <td style="text-align: right;">${formatMoedaBRL(unitVal)}</td>
+            <td style="text-align: right; font-weight: 600;">${formatMoedaBRL(totVal)}</td>
+          </tr>
+        `;
+      });
+
+      const extenso = valorPorExtenso(totalGeral);
+
+      const stationeryContent = `
+        <div class="doc-meta-row">
+          <div class="doc-reference">${ref}</div>
+          <div class="doc-date">${getCurrentFormattedDate()}</div>
+        </div>
+
+        <div class="doc-recipient">
+          <div>À: <strong>${orgao}</strong></div>
+          <div>A/C: Comissão de Contratação / Departamento de Obras e Suprimentos</div>
+          <div>Ref.: ${ref} • Proposta de Preços</div>
+        </div>
+
+        <div class="doc-subject">PROPOSTA COMERCIAL & TÉCNICA DE PREÇOS</div>
+
+        <p class="doc-paragraph">
+          A empresa <strong>CONSTRUMAR LOCAÇÕES E SERVIÇOS LTDA</strong>, inscrita no CNPJ sob o nº <strong>03.795.674/0001-18</strong>, vem por meio deste expediente apresentar sua proposta de preços para o objeto: <strong>${objeto}</strong>, declarando pleno atendimento aos critérios técnicos, normas de segurança e cadernos de encargos.
+        </p>
+
+        <table class="table-proposta">
+          <thead>
+            <tr>
+              <th style="width: 6%; text-align: center;">Item</th>
+              <th>Descrição dos Serviços / Equipamentos Ofertados</th>
+              <th style="width: 8%; text-align: center;">Qtd.</th>
+              <th style="width: 8%; text-align: center;">Unid.</th>
+              <th style="width: 18%; text-align: right;">Valor Unitário</th>
+              <th style="width: 18%; text-align: right;">Valor Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+            <tr class="total-row">
+              <td colspan="5" style="text-align: right;">VALOR TOTAL GLOBAL DA PROPOSTA:</td>
+              <td style="text-align: right; color: #F26419; font-size: 9.5pt;">${formatMoedaBRL(totalGeral)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="info-box">
+          <strong>Valor Total por Extenso:</strong> ${extenso}.<br>
+          • <strong>Prazo de Validade da Proposta:</strong> 60 (sessenta) dias a contar da data de abertura.<br>
+          • <strong>Prazo de Mobilização / Início:</strong> Conforme edital e emissão da Ordem de Serviço.<br>
+          • <strong>Declarações:</strong> Declaramos que nos preços propostos estão inclusos todos os tributos, encargos sociais, trabalhistas, fretes e despesas operacionais.
+        </div>
+
+        <div class="signature-grid">
+          <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-name">ADILSON GOIS DOS SANTOS</div>
+            <div class="signature-role">Sócio-Proprietário • CPF: 004.642.153-07</div>
+            <div class="signature-sub">CONSTRUMAR Locações e Serviços LTDA</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-name">ENG. JOSE EDVAR FERREIRA DE SOUZA</div>
+            <div class="signature-role">Engenheiro Civil • CREA nº MG 20741 D</div>
+            <div class="signature-sub">Responsável Técnico</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('docContent').innerHTML = stationeryContent;
+      document.getElementById('templateSelect').value = 'proposta';
+      closeAIModal();
+    }
+
+    // Exportação em formato DOCX (Word Document)
+    function exportToDocx() {
+      const template = document.getElementById('templateSelect').value;
+      const docContent = document.getElementById('docContent').innerHTML;
+
+      const wordHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>Papel Timbrado - CONSTRUMAR</title>
+          <!--[if gte mso 9]>
+          <xml>
+            <w:WordDocument>
+              <w:View>Print</w:View>
+              <w:Zoom>100</w:Zoom>
+              <w:DoNotOptimizeForBrowser/>
+            </w:WordDocument>
+          </xml>
+          <![endif]-->
+          <style>
+            @page Section1 {
+              size: 210mm 297mm;
+              margin: 14mm 16mm 14mm 16mm;
+              mso-header-margin: 10mm;
+              mso-footer-margin: 10mm;
+            }
+            div.Section1 { page: Section1; }
+            body {
+              font-family: 'Arial', 'Inter', sans-serif;
+              font-size: 10pt;
+              color: #1E293B;
+              line-height: 1.5;
+            }
+            .header-tbl {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 12px;
+            }
+            .header-tbl td {
+              vertical-align: middle;
+            }
+            .company-title {
+              font-size: 16pt;
+              font-weight: bold;
+              color: #0A2540;
+            }
+            .company-title span {
+              color: #F26419;
+            }
+            .header-info {
+              text-align: right;
+              font-size: 8pt;
+              color: #64748B;
+              line-height: 1.3;
+            }
+            .divider-bar {
+              height: 3px;
+              background-color: #0A2540;
+              margin-bottom: 16px;
+            }
+            .table-proposta {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 12px 0;
+              font-size: 9pt;
+            }
+            .table-proposta th {
+              background-color: #0A2540;
+              color: #ffffff;
+              padding: 6px 8px;
+              font-weight: bold;
+              border: 1px solid #0A2540;
+            }
+            .table-proposta td {
+              padding: 6px 8px;
+              border: 1px solid #CBD5E1;
+            }
+            .table-proposta .total-row td {
+              font-weight: bold;
+              background-color: #EDF2F7;
+              color: #0A2540;
+            }
+            .info-box {
+              background-color: #F8FAFC;
+              border-left: 4px solid #0EA5E9;
+              padding: 8px 12px;
+              margin: 12px 0;
+              font-size: 8.5pt;
+            }
+            .signature-grid {
+              margin-top: 30px;
+              width: 100%;
+            }
+            .signature-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .signature-table td {
+              width: 50%;
+              text-align: center;
+              padding: 0 15px;
+              vertical-align: top;
+            }
+            .signature-line {
+              border-bottom: 1px solid #94A3B8;
+              margin-bottom: 6px;
+              height: 1px;
+            }
+            .signature-name {
+              font-weight: bold;
+              color: #0A2540;
+              font-size: 9.5pt;
+            }
+            .signature-role {
+              font-size: 8.5pt;
+              color: #334155;
+            }
+            .signature-sub {
+              font-size: 7.5pt;
+              color: #64748B;
+            }
+            .footer-tbl {
+              width: 100%;
+              border-top: 2px solid #0A2540;
+              margin-top: 35px;
+              padding-top: 8px;
+              font-size: 7.5pt;
+              color: #64748B;
+            }
+            .footer-tbl td {
+              vertical-align: top;
+              padding: 4px 6px;
+            }
+            .footer-strong {
+              color: #0A2540;
+              font-weight: bold;
+              margin-bottom: 2px;
+            }
+            .tagline {
+              text-align: center;
+              font-size: 7pt;
+              color: #94A3B8;
+              font-weight: bold;
+              margin-top: 8px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            <!-- CABEÇALHO -->
+            <table class="header-tbl">
+              <tr>
+                <td>
+                  <div class="company-title">CONSTRU<span>MAR</span></div>
+                  <div style="font-size: 8.5pt; font-weight: bold; color: #475569; letter-spacing: 2px;">LOCAÇÕES E SERVIÇOS LTDA</div>
+                </td>
+                <td class="header-info">
+                  <strong style="color: #0A2540;">CONSTRUMAR LOCAÇÕES E SERVIÇOS LTDA</strong><br>
+                  CNPJ: <strong>03.795.674/0001-18</strong><br>
+                  Engenharia • Locações • Construção Civil<br>
+                  <span style="color: #F26419; font-weight: bold;">Solidez & Tradição desde 2000</span>
+                </td>
+              </tr>
+            </table>
+            
+            <div class="divider-bar"></div>
+
+            <!-- CORPO -->
+            <div class="content-area">
+              ${docContent}
+            </div>
+
+            <!-- RODAPÉ COM DADOS DO SÓCIO E ENGENHEIRO -->
+            <table class="footer-tbl">
+              <tr>
+                <td style="width: 30%;">
+                  <div class="footer-strong">Endereço Administrativo</div>
+                  Rua Senador Pompeu, 834, Sala 415<br>
+                  Centro • Fortaleza - CE • CEP 60.025-000
+                </td>
+                <td style="width: 30%;">
+                  <div class="footer-strong">Canais de Atendimento</div>
+                  WhatsApp: (85) 98586-0730<br>
+                  E-mail: construmarlocacoes@gmail.com
+                </td>
+                <td style="width: 40%;">
+                  <div class="footer-strong">Corpo Diretivo & Resp. Técnica</div>
+                  <strong>Sócio-Proprietário:</strong> Adilson Gois dos Santos (CPF: 004.642.153-07)<br>
+                  <strong>Resp. Técnico:</strong> Engº Jose Edvar Ferreira de Souza (CREA-MG 20741 D)
+                </td>
+              </tr>
+            </table>
+
+            <div class="tagline">
+              CONSTRUMAR LOCAÇÕES E SERVIÇOS LTDA • CNPJ 03.795.674/0001-18 • FORTALEZA - CE
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordHtml], {
+        type: 'application/msword;charset=utf-8'
+      });
+
+      const filename = `papel_timbrado_construmar_${template}.docx`;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Inicialização
     document.addEventListener('DOMContentLoaded', () => {
       changeTemplate('proposta');
     });

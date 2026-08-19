@@ -4,6 +4,7 @@ import {
   PaginatedOpportunitiesResponse,
   StatsOverviewData,
   LicitacaoSyncRun,
+  PncpHealth,
 } from './types';
 
 function getApiBase(): string {
@@ -23,6 +24,11 @@ function getApiBase(): string {
 }
 
 const API_BASE = getApiBase();
+const API_AUTH_TOKEN = process.env.NEXT_PUBLIC_API_AUTH_TOKEN ?? '';
+
+function authHeaders(): Record<string, string> {
+  return { Authorization: `Bearer ${API_AUTH_TOKEN}` };
+}
 
 export async function fetchOpportunities(
   params: OpportunityFilterParams
@@ -49,6 +55,7 @@ export async function fetchOpportunities(
 
   const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades?${query.toString()}`, {
     cache: 'no-store',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -62,6 +69,7 @@ export async function fetchOpportunities(
 export async function fetchOpportunityDetail(id: string): Promise<OpportunityDetailResponse> {
   const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${id}`, {
     cache: 'no-store',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -83,6 +91,7 @@ export async function fetchStats(
 
   const res = await fetch(`${API_BASE}/api/licitacoes/stats?${query.toString()}`, {
     cache: 'no-store',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -104,6 +113,7 @@ export async function triggerSync(
 
   const res = await fetch(`${API_BASE}/api/licitacoes/sync?${query.toString()}`, {
     method: 'POST',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -123,6 +133,7 @@ export interface SyncStatusResponse {
 export async function fetchSyncStatus(): Promise<SyncStatusResponse> {
   const res = await fetch(`${API_BASE}/api/licitacoes/sync/status`, {
     cache: 'no-store',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -136,6 +147,7 @@ export async function fetchSyncStatus(): Promise<SyncStatusResponse> {
 export async function fetchSyncHistory(limit: number = 20): Promise<LicitacaoSyncRun[]> {
   const res = await fetch(`${API_BASE}/api/licitacoes/sync/history?limit=${limit}`, {
     cache: 'no-store',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -168,6 +180,7 @@ export async function uploadEditalOrcamento(
 
   const res = await fetch(`${API_BASE}/api/orcamentos/upload`, {
     method: 'POST',
+    headers: authHeaders(),
     body: formData,
   });
 
@@ -185,6 +198,7 @@ export async function fetchOrcamentos(
 ): Promise<PaginatedOrcamentosResponse> {
   const res = await fetch(`${API_BASE}/api/orcamentos?limit=${limit}&offset=${offset}`, {
     cache: 'no-store',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -197,6 +211,7 @@ export async function fetchOrcamentos(
 export async function fetchOrcamentoDetail(id: string): Promise<Orcamento> {
   const res = await fetch(`${API_BASE}/api/orcamentos/${id}`, {
     cache: 'no-store',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -210,6 +225,7 @@ export async function updateOrcamentoItens(orcamento: Orcamento): Promise<Orcame
   const res = await fetch(`${API_BASE}/api/orcamentos/${orcamento.id}/itens`, {
     method: 'PUT',
     headers: {
+      ...authHeaders(),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(orcamento),
@@ -223,7 +239,9 @@ export async function updateOrcamentoItens(orcamento: Orcamento): Promise<Orcame
 }
 
 export async function downloadOrcamentoSeobraXlsx(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/orcamentos/${id}/exportar-seobra-xlsx`);
+  const res = await fetch(`${API_BASE}/api/orcamentos/${id}/exportar-seobra-xlsx`, {
+    headers: authHeaders(),
+  });
   if (!res.ok) {
     throw new Error('Erro ao baixar planilha SEOBRA.');
   }
@@ -239,6 +257,7 @@ export async function downloadOrcamentoSeobraXlsx(id: string): Promise<void> {
 export async function despacharParaSeobra(id: string): Promise<Orcamento> {
   const res = await fetch(`${API_BASE}/api/orcamentos/${id}/despachar-seobra`, {
     method: 'POST',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -249,9 +268,20 @@ export async function despacharParaSeobra(id: string): Promise<Orcamento> {
   return res.json();
 }
 
+export async function fetchPncpHealth(): Promise<PncpHealth> {
+  const res = await fetch(`${API_BASE}/api/licitacoes/pncp-health`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error('Erro ao verificar saúde da API PNCP.');
+  const json = await res.json();
+  return json.data;
+}
+
 export async function fetchSeobraStatus(): Promise<SeobraStatusResponse> {
   const res = await fetch(`${API_BASE}/api/seobra/status`, {
     cache: 'no-store',
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
