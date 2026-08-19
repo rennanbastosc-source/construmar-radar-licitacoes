@@ -5,6 +5,7 @@ import {
   StatsOverviewData,
   LicitacaoSyncRun,
   PncpHealth,
+  OpportunityOriginDetail,
 } from './types';
 
 function getApiBase(): string {
@@ -77,6 +78,44 @@ export async function fetchOpportunityDetail(id: string): Promise<OpportunityDet
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error?.message || 'Erro ao carregar detalhes da oportunidade.');
+  }
+
+  return res.json();
+}
+
+export async function fetchOpportunityOrigin(id: string): Promise<OpportunityOriginDetail> {
+  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${id}/origem`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error?.message || 'Erro ao carregar origem da licitação.');
+  }
+
+  const json = await res.json();
+  return json.data;
+}
+
+export async function triggerDirectEditalAnalysis(
+  opportunityId: string,
+  documentUrl?: string
+): Promise<EditalAnalysis> {
+  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${opportunityId}/auditar-edital`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ documentUrl }),
+    signal: AbortSignal.timeout(90000),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error?.message || 'Falha ao processar e auditar o edital.');
   }
 
   return res.json();

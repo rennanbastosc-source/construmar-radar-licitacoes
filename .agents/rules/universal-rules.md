@@ -31,3 +31,11 @@ When user's prompt is NOT in English:
 - **Infra/Safety**: 5-Phase Deployment. Verify secrets security.
 
 ---
+
+## 🛑 Git & Deploy Invariant (STRICT P0)
+
+**NEVER EXECUTE `git commit`, `git push`, OR DEPLOY COMMANDS WITHOUT EXPLICIT USER COMMAND.**
+- File edits, document creation, testing, bugfixes, and code reviews DO NOT grant permission to commit or push.
+- Only run `git commit` / `git push` when the user literally asks for it in the current prompt.
+
+---

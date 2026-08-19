@@ -132,6 +132,8 @@ func createTables(db *sql.DB) error {
 		classification_terms TEXT NOT NULL,
 		classifier_version TEXT NOT NULL,
 		source_url TEXT NOT NULL,
+		is_archived INTEGER NOT NULL DEFAULT 0,
+		archived_at DATETIME,
 		last_seen_at DATETIME NOT NULL,
 		created_at DATETIME NOT NULL,
 		updated_at DATETIME NOT NULL,
@@ -142,6 +144,7 @@ func createTables(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_opp_deadline ON licitacao_oportunidade(proposal_end_at);
 	CREATE INDEX IF NOT EXISTS idx_opp_classification ON licitacao_oportunidade(classification);
 	CREATE INDEX IF NOT EXISTS idx_opp_last_seen ON licitacao_oportunidade(last_seen_at);
+	CREATE INDEX IF NOT EXISTS idx_opp_archived ON licitacao_oportunidade(is_archived);
 
 	CREATE TABLE IF NOT EXISTS licitacao_documento (
 		id TEXT PRIMARY KEY,

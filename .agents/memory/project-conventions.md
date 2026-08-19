@@ -6,7 +6,8 @@ updated: 2026-07-12
 
 # Project Conventions
 
-## Git Workflow
+## Git Workflow & Deploy (STRICT P0)
+- **NUNCA FAZER COMMIT, PUSH OU DEPLOY SEM ORDEM EXPRESSA:** É terminantemente proibido executar `git commit`, `git push` ou acionar pipelines de deploy/produção a menos que o usuário dê a ordem explícita no prompt (ex: "faça o commit e push"). Salvar, criar ou editar arquivos locais NUNCA autoriza commit/push automático.
 - Always create a new dedicated branch for major code changes.
 - Branch name format should follow: `feature/[task-slug]` or `fix/[bug-slug]`.
 

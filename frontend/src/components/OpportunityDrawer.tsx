@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { LicitacaoOportunidade } from '@/lib/types';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  LicitacaoOportunidade,
+  OpportunityOriginDetail,
+} from '@/lib/types';
 import { formatCurrency, formatDateTime, formatCNPJ } from '@/lib/formatters';
+import { fetchOpportunityOrigin, triggerDirectEditalAnalysis } from '@/lib/api';
 import { BadgeClassification } from './BadgeClassification';
 import { UrgencyBadge } from './UrgencyBadge';
 import {
@@ -12,6 +17,12 @@ import {
   MapPin,
   Calendar,
   Sparkles,
+  FileSearch,
+  Download,
+  FileText,
+  RefreshCw,
+  Globe,
+  AlertCircle,
 } from 'lucide-react';
 
 interface Props {
@@ -25,6 +36,13 @@ export const OpportunityDrawer: React.FC<Props> = ({
   onClose,
   onTermClick,
 }) => {
+  const router = useRouter();
+
+  const [originDetail, setOriginDetail] = useState<OpportunityOriginDetail | null>(null);
+  const [isLoadingOrigin, setIsLoadingOrigin] = useState<boolean>(false);
+  const [isAuditing, setIsAuditing] = useState<boolean>(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -32,6 +50,21 @@ export const OpportunityDrawer: React.FC<Props> = ({
     if (opportunity) {
       document.addEventListener('keydown', handleKey);
       document.body.style.overflow = 'hidden';
+
+      // Load origin and parent contracting platform details
+      setIsLoadingOrigin(true);
+      setAuditError(null);
+      fetchOpportunityOrigin(opportunity.id)
+        .then((data) => setOriginDetail(data))
+        .catch((err) => {
+          console.warn('Erro ao carregar plataforma de origem:', err);
+          setOriginDetail(null);
+        })
+        .finally(() => setIsLoadingOrigin(false));
+    } else {
+      setOriginDetail(null);
+      setIsAuditing(false);
+      setAuditError(null);
     }
     return () => {
       document.removeEventListener('keydown', handleKey);
@@ -40,6 +73,28 @@ export const OpportunityDrawer: React.FC<Props> = ({
   }, [opportunity, onClose]);
 
   if (!opportunity) return null;
+
+  const handleDirectAudit = async (customDocUrl?: string) => {
+    try {
+      setIsAuditing(true);
+      setAuditError(null);
+
+      const targetDocUrl = customDocUrl || originDetail?.suggestedDocumentUrl;
+
+      if (!targetDocUrl && (!originDetail?.documents || originDetail.documents.length === 0)) {
+        // If no direct PDF available, redirect to upload page with opportunity prefilled
+        router.push(`/editais?oportunidadeId=${opportunity.id}`);
+        return;
+      }
+
+      const analysis = await triggerDirectEditalAnalysis(opportunity.id, targetDocUrl);
+      onClose();
+      router.push(`/editais/${analysis.id}`);
+    } catch (err: any) {
+      setAuditError(err.message || 'Falha ao baixar e analisar edital.');
+      setIsAuditing(false);
+    }
+  };
 
   return (
     <div
@@ -68,7 +123,7 @@ export const OpportunityDrawer: React.FC<Props> = ({
         style={{
           position: 'relative',
           width: '100%',
-          maxWidth: '680px',
+          maxWidth: '720px',
           height: '100vh',
           backgroundColor: 'var(--bg-surface)',
           borderLeft: '1px solid var(--border-subtle)',
@@ -182,7 +237,7 @@ export const OpportunityDrawer: React.FC<Props> = ({
             <h2
               style={{
                 fontFamily: 'var(--font-heading)',
-                fontSize: '18px',
+                fontSize: '17px',
                 fontWeight: 800,
                 color: '#FFFFFF',
                 lineHeight: 1.45,
@@ -191,6 +246,195 @@ export const OpportunityDrawer: React.FC<Props> = ({
             >
               {opportunity.objectRaw}
             </h2>
+          </div>
+
+          {/* Platform of Origin & Parent Contracting (API Reversa) */}
+          <div
+            style={{
+              backgroundColor: '#101012',
+              padding: '18px 20px',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-subtle)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={16} color="var(--brand-primary)" />
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF' }}>
+                  Plataforma de Origem & Contratação Pai
+                </span>
+              </div>
+
+              {isLoadingOrigin && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--brand-primary)' }}>
+                  <RefreshCw className="animate-spin" size={12} />
+                  <span>Descobrindo origens...</span>
+                </div>
+              )}
+            </div>
+
+            {originDetail && (
+              <div>
+                {/* Primary Detected System Badge */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Sistema Emissor:
+                  </span>
+                  <span
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '11.5px',
+                      fontWeight: 800,
+                      backgroundColor: `${originDetail.primaryPlatform.badgeColor}20`,
+                      color: originDetail.primaryPlatform.badgeColor,
+                      border: `1px solid ${originDetail.primaryPlatform.badgeColor}40`,
+                    }}
+                  >
+                    {originDetail.primaryPlatform.platformName}
+                  </span>
+                  {originDetail.processo && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                      Proc: {originDetail.processo}
+                    </span>
+                  )}
+                </div>
+
+                {/* Reverse Links (Licitamais Brasil & BLL Compras) */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {originDetail.availablePlatforms.map((plat) => (
+                    <a
+                      key={plat.platformCode}
+                      href={plat.directSearchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid var(--border-subtle)',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        color: '#FFFFFF',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        textDecoration: 'none',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <ExternalLink size={12} color={plat.badgeColor} />
+                      <span>{plat.platformName} (CE)</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Official Attached Edital Documents from PNCP */}
+            {originDetail && originDetail.documents && originDetail.documents.length > 0 && (
+              <div style={{ marginTop: '8px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
+                  Documentos Oficiais Anexados ({originDetail.documents.length}):
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {originDetail.documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                        <FileText size={14} color="var(--brand-primary)" />
+                        <span style={{ color: '#FFFFFF', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {doc.title}
+                        </span>
+                        <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
+                          {doc.docType}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Baixar Documento"
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <Download size={12} />
+                          <span>Baixar</span>
+                        </a>
+
+                        <button
+                          onClick={() => handleDirectAudit(doc.url)}
+                          disabled={isAuditing}
+                          title="Auditar este documento no Analista de Editais"
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: 'var(--brand-primary-bg)',
+                            border: '1px solid var(--brand-primary-border)',
+                            color: 'var(--brand-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <FileSearch size={12} />
+                          <span>Auditar</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Audit Error Message */}
+            {auditError && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(255, 129, 178, 0.15)',
+                  border: '1px solid rgba(255, 129, 178, 0.3)',
+                  color: '#FF81B2',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <AlertCircle size={14} />
+                <span>{auditError}</span>
+              </div>
+            )}
           </div>
 
           {/* Key Facts Grid */}
@@ -304,35 +548,73 @@ export const OpportunityDrawer: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Drawer Action Footer */}
+        {/* Drawer Action Footer with 1-Click Analista de Editais Button */}
         <div
           style={{
             padding: '18px 24px',
             borderTop: '1px solid var(--border-subtle)',
             backgroundColor: 'var(--bg-surface-elevated)',
             display: 'flex',
-            gap: '12px',
+            flexDirection: 'column',
+            gap: '10px',
           }}
         >
-          <a
-            href={opportunity.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-secondary"
-            style={{ flex: 1 }}
+          {/* Primary Action: Direct to Analista de Editais */}
+          <button
+            onClick={() => handleDirectAudit()}
+            disabled={isAuditing}
+            style={{
+              width: '100%',
+              padding: '12px 18px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'var(--brand-primary)',
+              border: 'none',
+              color: '#FFFFFF',
+              fontSize: '13.5px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              cursor: isAuditing ? 'default' : 'pointer',
+              boxShadow: '0 4px 14px rgba(242, 100, 25, 0.3)',
+              opacity: isAuditing ? 0.8 : 1,
+            }}
           >
-            <ExternalLink size={15} />
-            <span>Processo no PNCP</span>
-          </a>
+            {isAuditing ? (
+              <>
+                <RefreshCw className="animate-spin" size={16} />
+                <span>Auditor IA analisando edital e cláusulas...</span>
+              </>
+            ) : (
+              <>
+                <FileSearch size={16} />
+                <span>Auditar no Analista de Editais (1-Clique)</span>
+              </>
+            )}
+          </button>
 
-          <a
-            href="/orcamentos"
-            className="btn-primary"
-            style={{ flex: 1.5 }}
-          >
-            <Sparkles size={15} />
-            <span>Orçar com IA SEOBRA</span>
-          </a>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <a
+              href={opportunity.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary"
+              style={{ flex: 1, textDecoration: 'none', textAlign: 'center', justifyContent: 'center' }}
+            >
+              <ExternalLink size={14} />
+              <span>Ver no PNCP</span>
+            </a>
+
+            <a
+              href={`/orcamentos?oportunidadeId=${opportunity.id}`}
+              className="btn-secondary"
+              style={{ flex: 1, textDecoration: 'none', textAlign: 'center', justifyContent: 'center' }}
+            >
+              <Sparkles size={14} color="var(--brand-primary)" />
+              <span>Orçar SEOBRA</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>

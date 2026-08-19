@@ -25,6 +25,12 @@
 
 ## 2. Invariantes Arquiteturais & Regras Anti-Regressão (P0)
 
+### 🛑 2.0 PROIBIÇÃO ABSOLUTA DE COMMIT, PUSH E DEPLOY SEM ORDEM EXPRESSA
+- **Regra:** NUNCA execute comandos de `git commit`, `git push` ou disparo de deploys/produção sem a **ordem expressa e inequívoca do usuário** na mensagem atual (ex: "faça o commit e push").
+- **Escopo:** Tarefas de edição, criação de arquivos, correção de bugs, documentação ou auditoria autorizam EXCLUSIVAMENTE modificações no sistema de arquivos local. Criar ou editar arquivos NÃO concede autorização implícita para commit ou push.
+
+---
+
 ### 🚨 2.1 PROIBIÇÃO ABSOLUTA DE DADOS MOCKADOS / FALLBACKS FICTÍCIOS
 - **Regra:** NUNCA utilize dados mockados (`SAMPLE_OPPORTUNITIES`, `SAMPLE_HISTORY`, `SAMPLE_EDITAIS`, etc.) em estados iniciais, componentes ou blocos `catch` de requisições.
 - **Motivação:** Na semana de 18-19/08/2026, a reintrodução acidental de 3 itens de exemplo mascarou erros reais de timeout e rate-limit do PNCP, fazendo a UI mentir com status de sucesso.

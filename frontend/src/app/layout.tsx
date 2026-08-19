@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
 import '@/styles/globals.css';
+import { RadarProvider } from '@/context/RadarContext';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -27,8 +28,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${plusJakartaSans.variable} ${jetbrainsMono.variable}`}>
       <body className={plusJakartaSans.className}>
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <main style={{ flex: 1 }}>{children}</main>
+        <RadarProvider>
+          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <main style={{ flex: 1 }}>{children}</main>
           
           <footer
             style={{
@@ -51,7 +53,8 @@ export default function RootLayout({
             </div>
           </footer>
         </div>
-      </body>
-    </html>
+      </RadarProvider>
+    </body>
+  </html>
   );
 }

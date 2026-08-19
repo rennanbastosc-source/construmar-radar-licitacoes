@@ -1,209 +1,42 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { Header } from '@/components/Header';
 import { StatsOverview } from '@/components/StatsOverview';
 import { FilterBar } from '@/components/FilterBar';
 import { OpportunityTable } from '@/components/OpportunityTable';
 import { OpportunityDrawer } from '@/components/OpportunityDrawer';
 import { ErrorState } from '@/components/ErrorState';
-import {
-  fetchOpportunities,
-  fetchStats,
-  triggerSync,
-  fetchSyncStatus,
-} from '@/lib/api';
-import {
-  LicitacaoOportunidade,
-  OpportunityFilterParams,
-  StatsOverviewData,
-} from '@/lib/types';
+import { useRadar } from '@/context/RadarContext';
 import { Sparkles, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function RadarDashboardPage() {
-  const [opportunities, setOpportunities] = useState<LicitacaoOportunidade[]>([]);
-  const [stats, setStats] = useState<StatsOverviewData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [statsLoading, setStatsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // View state & Drawer
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-  const [selectedOpp, setSelectedOpp] = useState<LicitacaoOportunidade | null>(null);
-
-  // Pagination state
-  const [page, setPage] = useState<number>(1);
-  const [pageSize] = useState<number>(25);
-  const [totalPages, setTotalPages] = useState<number>(1);
-  const [totalRecords, setTotalRecords] = useState<number>(0);
-
-  // Filter state
-  const [filters, setFilters] = useState<OpportunityFilterParams>({
-    uf: 'CE',
-    status: 'OPEN',
-    minValue: 900000.0,
-    maxValue: undefined,
-    classification: 'IN_SCOPE_AND_REVIEW',
-    search: '',
-    municipality: '',
-    page: 1,
-    pageSize: 25,
-  });
-
-  // Sync state
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
-  const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<string>('UNKNOWN');
-
-  // Load Data
-  const loadData = useCallback(async (currentFilters: OpportunityFilterParams) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await fetchOpportunities(currentFilters);
-      setOpportunities(resp.data || []);
-      setTotalPages(resp.meta?.totalPages || 1);
-      setTotalRecords(resp.meta?.total || 0);
-      setPage(resp.meta?.page || 1);
-      if (resp?.meta?.lastSuccessfulSyncAt) {
-        setLastSuccessfulSyncAt(resp.meta.lastSuccessfulSyncAt);
-      }
-      if (resp?.meta?.syncStatus) {
-        setSyncStatus(resp.meta.syncStatus);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erro ao carregar oportunidades de licitação do backend.');
-      setOpportunities([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Load Stats
-  const loadStats = useCallback(async () => {
-    setStatsLoading(true);
-    try {
-      const data = await fetchStats(filters.uf || 'CE', filters.minValue || 900000.0);
-      setStats(data);
-      if (data.lastSuccessfulSyncAt) {
-        setLastSuccessfulSyncAt(data.lastSuccessfulSyncAt);
-      }
-      if (data.lastSyncStatus) {
-        setSyncStatus(data.lastSyncStatus);
-      }
-    } catch (err) {
-      console.warn('Erro ao carregar estatísticas do radar:', err);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, [filters.uf, filters.minValue]);
-
-  // Initial load
-  useEffect(() => {
-    loadData(filters);
-    loadStats();
-  }, [loadData, loadStats, filters]);
-
-  // Polling for sync status if sync is running
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isSyncing) {
-      interval = setInterval(async () => {
-        try {
-          const status = await fetchSyncStatus();
-          if (!status.isRunning) {
-            setIsSyncing(false);
-            if (status.latestRun?.status === 'SUCCESS') {
-              setSyncFeedback({
-                type: 'success',
-                message: `Sincronização concluída com sucesso! (${status.latestRun.totalReceived} recebidas, ${status.latestRun.totalIncluded} em escopo).`,
-              });
-            } else if (status.latestRun?.status === 'PARTIAL') {
-              setSyncFeedback({
-                type: 'info',
-                message: `Sincronização parcial (${status.latestRun.totalReceived} recebidas, ${status.latestRun.totalIncluded} em escopo). Aviso: ${status.latestRun.errorMessage || 'Alguns lotes pendentes'}.`,
-              });
-            } else if (status.latestRun?.status === 'FAILED') {
-              setSyncFeedback({
-                type: 'error',
-                message: `Falha na sincronização com o PNCP: ${status.latestRun.errorMessage || 'Serviço temporariamente indisponível'}.`,
-              });
-            } else {
-              setSyncFeedback({
-                type: 'success',
-                message: 'Sincronização finalizada. Dados atualizados.',
-              });
-            }
-            loadData(filters);
-            loadStats();
-          }
-        } catch {
-          // Ignore polling errors
-        }
-      }, 3000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isSyncing, filters, loadData, loadStats]);
-
-  // Handlers
-  const handleFilterChange = (updated: Partial<OpportunityFilterParams>) => {
-    const nextFilters = { ...filters, ...updated };
-    setFilters(nextFilters);
-    loadData(nextFilters);
-  };
-
-  const handleResetFilters = () => {
-    const reset = {
-      uf: 'CE',
-      status: 'OPEN',
-      minValue: 900000.0,
-      maxValue: undefined,
-      classification: 'IN_SCOPE_AND_REVIEW',
-      search: '',
-      municipality: '',
-      modality: '',
-      deadlineTo: undefined,
-      deadlinePreset: undefined,
-      term: '',
-      minScore: undefined,
-      page: 1,
-      pageSize: 25,
-    };
-    setFilters(reset);
-    loadData(reset);
-  };
-
-  const handlePageChange = (newPage: number) => {
-    handleFilterChange({ page: newPage });
-  };
-
-  const handleTriggerSync = async () => {
-    try {
-      setIsSyncing(true);
-      setSyncFeedback({
-        type: 'info',
-        message: 'Sincronização com o PNCP iniciada em segundo plano...',
-      });
-      await triggerSync(filters.uf || 'CE', filters.minValue || 900000.0);
-    } catch (err: any) {
-      setIsSyncing(false);
-      setSyncFeedback({
-        type: 'error',
-        message: err.message || 'Falha ao disparar sincronização com o PNCP.',
-      });
-    }
-  };
-
-  const handleSelectCategory = (cat: 'ALL' | 'IN_SCOPE' | 'REVIEW' | 'URGENT') => {
-    if (cat === 'URGENT') {
-      handleFilterChange({ deadlinePreset: '3', page: 1 });
-    } else {
-      handleFilterChange({ classification: cat === 'ALL' ? 'ALL' : cat, deadlinePreset: undefined, page: 1 });
-    }
-  };
+  const {
+    opportunities,
+    stats,
+    loading,
+    statsLoading,
+    error,
+    viewMode,
+    selectedOpp,
+    page,
+    totalPages,
+    totalRecords,
+    filters,
+    isSyncing,
+    syncFeedback,
+    lastSuccessfulSyncAt,
+    syncStatus,
+    setViewMode,
+    setSelectedOpp,
+    setSyncFeedback,
+    handleFilterChange,
+    handleResetFilters,
+    handlePageChange,
+    handleTriggerSync,
+    handleSelectCategory,
+    reload,
+  } = useRadar();
 
   return (
     <div>
@@ -270,7 +103,7 @@ export default function RadarDashboardPage() {
           </div>
         )}
 
-        {/* Hero Wishlabs Title Banner */}
+        {/* Hero Title Banner */}
         <div style={{ marginBottom: '32px' }}>
           <div
             style={{
@@ -342,14 +175,11 @@ export default function RadarDashboardPage() {
         />
 
         {/* Table/Cards View or Error State */}
-        {error ? (
+        {error && opportunities.length === 0 ? (
           <ErrorState
             message={error}
             lastValidSyncAt={lastSuccessfulSyncAt}
-            onRetry={() => {
-              loadData(filters);
-              loadStats();
-            }}
+            onRetry={reload}
           />
         ) : (
           <OpportunityTable

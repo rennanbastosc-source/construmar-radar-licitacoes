@@ -125,6 +125,8 @@ func NewRouter(
 		r.Route("/licitacoes", func(r chi.Router) {
 			r.Get("/oportunidades", oppHandler.ListOpportunities)
 			r.Get("/oportunidades/{id}", oppHandler.GetOpportunityDetail)
+			r.Get("/oportunidades/{id}/origem", oppHandler.GetOpportunityOrigin)
+			r.Post("/oportunidades/{id}/auditar-edital", oppHandler.DirectAuditEdital)
 			r.Get("/stats", oppHandler.GetStatsOverview)
 
 			r.Post("/sync", syncHandler.TriggerSync)
