@@ -4,21 +4,40 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/construmar/radar-licitacoes-backend/internal/domain"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	_ "modernc.org/sqlite"
 )
 
 func InitDB(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", dbPath+"?_pragma=journal_mode(wal)&_pragma=busy_timeout(10000)&_pragma=synchronous(NORMAL)")
-	if err != nil {
-		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
-	}
+	var db *sql.DB
+	var err error
 
-	// For SQLite, strictly serialize writes with 1 open connection to eliminate 'database is locked' errors
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-	db.SetConnMaxLifetime(0)
+	if strings.HasPrefix(dbPath, "libsql://") || strings.HasPrefix(dbPath, "http://") || strings.HasPrefix(dbPath, "https://") {
+		// Connect to Turso / LibSQL Cloud Database
+		db, err = sql.Open("libsql", dbPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to Turso cloud database: %w", err)
+		}
+		db.SetMaxOpenConns(10)
+		db.SetMaxIdleConns(5)
+	} else {
+		// Connect to local SQLite database
+		connStr := dbPath
+		if !strings.Contains(connStr, "?") {
+			connStr += "?_pragma=journal_mode(wal)&_pragma=busy_timeout(10000)&_pragma=synchronous(NORMAL)"
+		}
+		db, err = sql.Open("sqlite", connStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open sqlite database: %w", err)
+		}
+		// For local SQLite, strictly serialize writes with 1 open connection
+		db.SetMaxOpenConns(1)
+		db.SetMaxIdleConns(1)
+		db.SetConnMaxLifetime(0)
+	}
 
 	if err := createTables(db); err != nil {
 		_ = db.Close()
