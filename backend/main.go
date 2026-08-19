@@ -53,7 +53,7 @@ func main() {
 	editalService := service.NewEditalService(editalRepo, editalAnalyst)
 
 	// 4. Initialize Handlers and Router
-	oppHandler := api.NewOpportunityHandler(oppService)
+	oppHandler := api.NewOpportunityHandler(oppService, editalService)
 	syncHandler := api.NewSyncHandler(syncService, oppService)
 	orcHandler := api.NewOrcamentoHandler(orcService, seobraClient)
 	editalHandler := api.NewEditalHandler(editalService)

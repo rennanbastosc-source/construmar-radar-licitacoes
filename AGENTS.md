@@ -4,11 +4,11 @@ Contrato compartilhado de trabalho para agentes neste repositório (**CONSTRUMAR
 
 ---
 
-## 1. Contrato de trabalho
+## 1. Contrato de trabalho & Regra de Ouro (P0)
 
+- 🚨 **NUNCA INICIE COMMIT, PUSH OU DEPLOY SEM ORDEM EXPRESSA E LITERAL DO USUÁRIO NO PROMPT.** Salvar, editar, testar ou auditar arquivos locais NÃO autoriza `git commit` ou `git push`. Apenas execute commit/push quando o usuário pedir explicitamente (ex: "faça o commit e push").
 - Respeite o escopo explícito do usuário, inclusive modo somente leitura, sem edição, sem commit ou sem push.
 - Explore o código e os padrões relevantes antes de editar.
-- Não inicie commit, push, deploy ou operação destrutiva sem autorização explícita.
 - Responda em **PT-BR** por padrão, salvo pedido contrário.
 
 ---

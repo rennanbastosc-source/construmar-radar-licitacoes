@@ -15,11 +15,15 @@ import (
 )
 
 type OpportunityHandler struct {
-	oppService *service.OpportunityService
+	oppService    *service.OpportunityService
+	editalService *service.EditalService
 }
 
-func NewOpportunityHandler(oppService *service.OpportunityService) *OpportunityHandler {
-	return &OpportunityHandler{oppService: oppService}
+func NewOpportunityHandler(oppService *service.OpportunityService, editalService *service.EditalService) *OpportunityHandler {
+	return &OpportunityHandler{
+		oppService:    oppService,
+		editalService: editalService,
+	}
 }
 
 func (h *OpportunityHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
@@ -209,4 +213,55 @@ func (h *OpportunityHandler) GetStatsOverview(w http.ResponseWriter, r *http.Req
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{"data": stats})
+}
+
+// GetOpportunityOrigin returns the reverse parent platform resolution and PNCP attachments for an opportunity.
+func (h *OpportunityHandler) GetOpportunityOrigin(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "Identificador de oportunidade inválido.")
+		return
+	}
+
+	detail, err := h.oppService.GetOpportunityOrigin(r.Context(), id)
+	if err != nil {
+		log.Printf("[OpportunityHandler.GetOpportunityOrigin Error] %v", err)
+		writeError(w, http.StatusInternalServerError, "ORIGIN_ERROR", "Falha ao resolver plataforma de origem: "+err.Error())
+		return
+	}
+
+	if detail == nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "Oportunidade de licitação não encontrada.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{"data": detail})
+}
+
+// DirectAuditEdital downloads the parent edital document and starts the AI audit analysis in 1 click.
+func (h *OpportunityHandler) DirectAuditEdital(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "INVALID_ID", "Identificador de oportunidade inválido.")
+		return
+	}
+
+	var reqBody struct {
+		DocumentURL string `json:"documentUrl"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&reqBody)
+
+	if h.editalService == nil {
+		writeError(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "Serviço de análise de editais não configurado.")
+		return
+	}
+
+	analysis, err := h.oppService.DownloadAndAuditEdital(r.Context(), id, reqBody.DocumentURL, h.editalService)
+	if err != nil {
+		log.Printf("[OpportunityHandler.DirectAuditEdital Error] %v", err)
+		writeError(w, http.StatusInternalServerError, "AUDIT_ERROR", "Falha ao baixar e auditar edital: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, analysis)
 }

@@ -296,3 +296,54 @@ export interface PaginatedEditalAnalysesResponse {
   limit: number;
   offset: number;
 }
+
+// -------------------------------------------------------------
+// ORIGIN PLATFORM & REVERSE API TYPES
+// -------------------------------------------------------------
+
+export type PlatformCode =
+  | 'LICITAMAIS'
+  | 'BLL'
+  | 'COMPRASGOV'
+  | 'SEPLAG_CE'
+  | 'BBMNET'
+  | 'PNCP'
+  | 'OTHER';
+
+export interface OriginPlatformInfo {
+  platformName: string;
+  platformCode: PlatformCode;
+  originUrl: string;
+  directSearchUrl: string;
+  isDirectMatch: boolean;
+  badgeColor: string;
+  extraParams?: Record<string, string>;
+}
+
+export interface EditalDocumentFile {
+  id: string;
+  title: string;
+  docType: string;
+  url: string;
+  dataPublicacao?: string;
+  isDownloadable: boolean;
+}
+
+export interface OpportunityOriginDetail {
+  opportunityId: string;
+  sourceExternalId: string;
+  organizationName: string;
+  organizationCnpj: string;
+  municipalityName: string;
+  uf: string;
+  purchaseNumber?: string;
+  purchaseYear: number;
+  processo?: string;
+  modalityName?: string;
+  primaryPlatform: OriginPlatformInfo;
+  availablePlatforms: OriginPlatformInfo[];
+  documents: EditalDocumentFile[];
+  directAuditAvailable: boolean;
+  suggestedDocumentUrl?: string;
+  suggestedDocumentName?: string;
+}

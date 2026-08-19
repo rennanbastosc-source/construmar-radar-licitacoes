@@ -36,7 +36,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 	oppService := service.NewOpportunityService(oppRepo)
 	orcService := service.NewOrcamentoService(orcRepo, aiExtractor, seobraClient)
 
-	oppHandler := NewOpportunityHandler(oppService)
+	oppHandler := NewOpportunityHandler(oppService, nil)
 	syncHandler := NewSyncHandler(syncService, oppService)
 	orcHandler := NewOrcamentoHandler(orcService, seobraClient)
 
