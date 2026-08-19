@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/construmar/radar-licitacoes-backend/internal/ai"
+	"github.com/construmar/radar-licitacoes-backend/internal/domain"
 	"github.com/construmar/radar-licitacoes-backend/internal/service"
 	"github.com/go-chi/chi/v5"
 )
