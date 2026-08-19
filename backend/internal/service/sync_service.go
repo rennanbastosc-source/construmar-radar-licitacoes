@@ -283,8 +283,9 @@ func (s *SyncService) RunSync(ctx context.Context, uf string, minEstimatedValue 
 	} else {
 		run.Status = domain.SyncStatusSuccess
 
-		// Soft delete opportunities not refreshed in the last 36 hours or whose deadline already passed
-		cutoff := startTime.Add(-36 * time.Hour)
+		// Soft delete opportunities not refreshed recently or whose deadline already passed
+		// ponytail: 7-day window instead of 36h — PNCP outages would otherwise archive everything
+		cutoff := startTime.Add(-168 * time.Hour)
 		archivedCount, err := s.repo.SoftDeleteOldOpportunities(ctx, cutoff)
 		if err == nil && archivedCount > 0 {
 			log.Printf("[Sync %s] Soft-deleted (archived) %d outdated/expired opportunities.", correlationID, archivedCount)

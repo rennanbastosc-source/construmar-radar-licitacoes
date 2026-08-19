@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/construmar/radar-licitacoes-backend/internal/pncp"
@@ -13,7 +14,10 @@ import (
 )
 
 func main() {
-	tursoURL := "libsql://construmar-radar-rennanbastosc-source.aws-us-west-2.turso.io?authToken=eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODcxMTA2MjEsImlkIjoiMDFhMDE4MTctZTMwMS03NmY4LThlMGEtNmZmMzY0ZmVlMTU2Iiwia2lkIjoiYVFJLWpHbTZyUURCVU9KMG5XcWs4WWhPUWlrTXpxellzb2hfX19FYTJyNCIsInJpZCI6IjMwZjZhMTRhLWY3NTYtNDI4Zi04ZjhjLTk5YjRhOGI0NDNkMCJ9.8hGG1nd0-lBLyZF4pcpvz3Puh0j2ud1RKqDr3nun-KZBtMfOV582o8dVPTB1VQVEgQznqhP7969rFbqkHumDDA"
+	tursoURL := os.Getenv("TURSO_DB_URL")
+	if tursoURL == "" {
+		log.Fatal("TURSO_DB_URL environment variable is required (libsql:// URL with authToken)")
+	}
 
 	db, err := repository.InitDB(tursoURL)
 	if err != nil {
