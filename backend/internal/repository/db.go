@@ -144,7 +144,6 @@ func createTables(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_opp_deadline ON licitacao_oportunidade(proposal_end_at);
 	CREATE INDEX IF NOT EXISTS idx_opp_classification ON licitacao_oportunidade(classification);
 	CREATE INDEX IF NOT EXISTS idx_opp_last_seen ON licitacao_oportunidade(last_seen_at);
-	CREATE INDEX IF NOT EXISTS idx_opp_archived ON licitacao_oportunidade(is_archived);
 
 	CREATE TABLE IF NOT EXISTS licitacao_documento (
 		id TEXT PRIMARY KEY,
