@@ -20,106 +20,11 @@ import {
 } from '@/lib/types';
 import { Sparkles, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
-const SAMPLE_OPPORTUNITIES: LicitacaoOportunidade[] = [
-  {
-    id: 'opp-sample-1',
-    source: 'PNCP',
-    sourceExternalId: 'PNCP-2026-001429',
-    sourceUrl: 'https://pncp.gov.br',
-    organizationName: 'SECRETARIA DA INFRAESTRUTURA DO ESTADO DO CEARÁ - SEINFRA',
-    organizationCnpj: '07954580000100',
-    unitName: 'SEINFRA / OBRAS RODOVIÁRIAS',
-    objectRaw: 'Contratação de empresa especializada em engenharia civil para execução de obras de urbanização, terraplenagem, drenagem e pavimentação asfáltica no Polo Industrial de Maracanaú/CE.',
-    objectNormalized: 'contratacao de empresa especializada em engenharia civil para execucao de obras de urbanizacao terraplenagem drenagem e pavimentacao asfaltica no polo industrial de maracanau ce',
-    municipalityName: 'Maracanaú',
-    uf: 'CE',
-    modalityName: 'Concorrência Eletrônica',
-    disputeModeName: 'Aberto',
-    statusSource: 'Divulgação',
-    statusNormalized: 'OPEN',
-    valueStatus: 'KNOWN',
-    estimatedTotalValue: 14580000.0,
-    proposalStartAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    proposalEndAt: new Date(Date.now() + 12 * 86400000).toISOString(),
-    classification: 'IN_SCOPE',
-    classificationScore: 9.0,
-    classificationTerms: ['OBRAS', 'PAVIMENTAÇÃO', 'TERRAPLENAGEM', 'DRENAGEM'],
-    classifierVersion: 'v2.1',
-    lastSeenAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'opp-sample-2',
-    source: 'PNCP',
-    sourceExternalId: 'PNCP-2026-000881',
-    sourceUrl: 'https://pncp.gov.br',
-    organizationName: 'PREFEITURA MUNICIPAL DE FORTALEZA - CE',
-    organizationCnpj: '07954580000199',
-    unitName: 'SMSP - SECRETARIA MUNICIPAL DE SERVIÇOS PÚBLICOS',
-    objectRaw: 'Registro de preços para futura e eventual locação de andaimes tubulares fachadeiros, betoneiras e máquinas pesadas para manutenção predial das unidades da rede municipal.',
-    objectNormalized: 'registro de precos para futura e eventual locacao de andaimes tubulares fachadeiros betoneiras e maquinas pesadas para manutencao predial das unidades da rede municipal',
-    municipalityName: 'Fortaleza',
-    uf: 'CE',
-    modalityName: 'Pregão Eletrônico',
-    disputeModeName: 'Aberto',
-    statusSource: 'Divulgação',
-    statusNormalized: 'OPEN',
-    valueStatus: 'KNOWN',
-    estimatedTotalValue: 3890000.0,
-    proposalStartAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    proposalEndAt: new Date(Date.now() + 4 * 86400000).toISOString(),
-    classification: 'IN_SCOPE',
-    classificationScore: 8.0,
-    classificationTerms: ['LOCAÇÃO DE MÁQUINAS', 'ANDAIMES', 'MANUTENÇÃO'],
-    classifierVersion: 'v2.1',
-    lastSeenAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'opp-sample-3',
-    source: 'PNCP',
-    sourceExternalId: 'PNCP-2026-000315',
-    sourceUrl: 'https://pncp.gov.br',
-    organizationName: 'SUPERINTENDÊNCIA DE OBRAS PÚBLICAS - SOP CEARÁ',
-    organizationCnpj: '07954580000155',
-    unitName: 'DIRETORIA DE ENGENHARIA ESTRUTURAL',
-    objectRaw: 'Execução de serviços remanescentes de engenharia para contenção de encostas, muros de arrimo e estruturas de concreto armado no Litoral Leste.',
-    objectNormalized: 'execucao de servicos remanescentes de engenharia para contencao de encostas muros de arrimo e estruturas de concreto armado no litoral leste',
-    municipalityName: 'Cascavel',
-    uf: 'CE',
-    modalityName: 'Concorrência Eletrônica',
-    disputeModeName: 'Fechado',
-    statusSource: 'Divulgação',
-    statusNormalized: 'OPEN',
-    valueStatus: 'KNOWN',
-    estimatedTotalValue: 8450000.0,
-    proposalStartAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    proposalEndAt: new Date(Date.now() + 1.5 * 86400000).toISOString(),
-    classification: 'IN_SCOPE',
-    classificationScore: 7.0,
-    classificationTerms: ['CONCRETO ARMADO', 'ENGENHARIA', 'CONTENÇÃO'],
-    classifierVersion: 'v2.1',
-    lastSeenAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
 export default function RadarDashboardPage() {
-  const [opportunities, setOpportunities] = useState<LicitacaoOportunidade[]>(SAMPLE_OPPORTUNITIES);
-  const [stats, setStats] = useState<StatsOverviewData | null>({
-    totalOpportunities: 34,
-    totalInScope: 18,
-    totalReview: 16,
-    totalEstimatedValue: 48920000.0,
-    totalUrgent: 4,
-    lastSyncStatus: 'SUCCESS',
-    lastSuccessfulSyncAt: new Date().toISOString(),
-  });
-  const [loading, setLoading] = useState<boolean>(false);
-  const [statsLoading, setStatsLoading] = useState<boolean>(false);
+  const [opportunities, setOpportunities] = useState<LicitacaoOportunidade[]>([]);
+  const [stats, setStats] = useState<StatsOverviewData | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [statsLoading, setStatsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   // View state & Drawer
@@ -130,7 +35,7 @@ export default function RadarDashboardPage() {
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(25);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [totalRecords, setTotalRecords] = useState<number>(SAMPLE_OPPORTUNITIES.length);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
 
   // Filter state
   const [filters, setFilters] = useState<OpportunityFilterParams>({
@@ -149,7 +54,7 @@ export default function RadarDashboardPage() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'info' | 'error'; message: string } | null>(null);
   const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<string>('SUCCESS');
+  const [syncStatus, setSyncStatus] = useState<string>('UNKNOWN');
 
   // Load Data
   const loadData = useCallback(async (currentFilters: OpportunityFilterParams) => {
@@ -157,25 +62,19 @@ export default function RadarDashboardPage() {
     setError(null);
     try {
       const resp = await fetchOpportunities(currentFilters);
-      if (resp && Array.isArray(resp.data) && resp.data.length > 0) {
-        setOpportunities(resp.data);
-        setTotalPages(resp.meta?.totalPages || 1);
-        setTotalRecords(resp.meta?.total || 0);
-        setPage(resp.meta?.page || 1);
-      } else {
-        setOpportunities(SAMPLE_OPPORTUNITIES);
-        setTotalPages(1);
-        setTotalRecords(SAMPLE_OPPORTUNITIES.length);
-      }
+      setOpportunities(resp.data || []);
+      setTotalPages(resp.meta?.totalPages || 1);
+      setTotalRecords(resp.meta?.total || 0);
+      setPage(resp.meta?.page || 1);
       if (resp?.meta?.lastSuccessfulSyncAt) {
         setLastSuccessfulSyncAt(resp.meta.lastSuccessfulSyncAt);
       }
-      setSyncStatus(resp?.meta?.syncStatus || 'SUCCESS');
-    } catch {
-      setOpportunities(SAMPLE_OPPORTUNITIES);
-      setTotalPages(1);
-      setTotalRecords(SAMPLE_OPPORTUNITIES.length);
-      setSyncStatus('SUCCESS');
+      if (resp?.meta?.syncStatus) {
+        setSyncStatus(resp.meta.syncStatus);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar oportunidades de licitação do backend.');
+      setOpportunities([]);
     } finally {
       setLoading(false);
     }
@@ -190,17 +89,11 @@ export default function RadarDashboardPage() {
       if (data.lastSuccessfulSyncAt) {
         setLastSuccessfulSyncAt(data.lastSuccessfulSyncAt);
       }
-      setSyncStatus(data.lastSyncStatus);
-    } catch {
-      setStats({
-        totalOpportunities: 34,
-        totalInScope: 18,
-        totalReview: 16,
-        totalEstimatedValue: 48920000.0,
-        totalUrgent: 4,
-        lastSyncStatus: 'SUCCESS',
-        lastSuccessfulSyncAt: new Date().toISOString(),
-      });
+      if (data.lastSyncStatus) {
+        setSyncStatus(data.lastSyncStatus);
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar estatísticas do radar:', err);
     } finally {
       setStatsLoading(false);
     }
@@ -211,6 +104,49 @@ export default function RadarDashboardPage() {
     loadData(filters);
     loadStats();
   }, [loadData, loadStats, filters]);
+
+  // Polling for sync status if sync is running
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isSyncing) {
+      interval = setInterval(async () => {
+        try {
+          const status = await fetchSyncStatus();
+          if (!status.isRunning) {
+            setIsSyncing(false);
+            if (status.latestRun?.status === 'SUCCESS') {
+              setSyncFeedback({
+                type: 'success',
+                message: `Sincronização concluída com sucesso! (${status.latestRun.totalReceived} recebidas, ${status.latestRun.totalIncluded} em escopo).`,
+              });
+            } else if (status.latestRun?.status === 'PARTIAL') {
+              setSyncFeedback({
+                type: 'info',
+                message: `Sincronização parcial (${status.latestRun.totalReceived} recebidas, ${status.latestRun.totalIncluded} em escopo). Aviso: ${status.latestRun.errorMessage || 'Alguns lotes pendentes'}.`,
+              });
+            } else if (status.latestRun?.status === 'FAILED') {
+              setSyncFeedback({
+                type: 'error',
+                message: `Falha na sincronização com o PNCP: ${status.latestRun.errorMessage || 'Serviço temporariamente indisponível'}.`,
+              });
+            } else {
+              setSyncFeedback({
+                type: 'success',
+                message: 'Sincronização finalizada. Dados atualizados.',
+              });
+            }
+            loadData(filters);
+            loadStats();
+          }
+        } catch {
+          // Ignore polling errors
+        }
+      }, 3000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isSyncing, filters, loadData, loadStats]);
 
   // Handlers
   const handleFilterChange = (updated: Partial<OpportunityFilterParams>) => {
@@ -256,7 +192,7 @@ export default function RadarDashboardPage() {
       setIsSyncing(false);
       setSyncFeedback({
         type: 'error',
-        message: err.message || 'Falha ao disparar sincronização.',
+        message: err.message || 'Falha ao disparar sincronização com o PNCP.',
       });
     }
   };
@@ -283,7 +219,7 @@ export default function RadarDashboardPage() {
         {syncFeedback && (
           <div
             style={{
-              padding: '12px 20px',
+              padding: '14px 20px',
               borderRadius: 'var(--radius-full)',
               marginBottom: '24px',
               display: 'flex',
@@ -405,12 +341,15 @@ export default function RadarDashboardPage() {
           onViewModeChange={setViewMode}
         />
 
-        {/* Table/Cards View */}
+        {/* Table/Cards View or Error State */}
         {error ? (
           <ErrorState
             message={error}
             lastValidSyncAt={lastSuccessfulSyncAt}
-            onRetry={() => loadData(filters)}
+            onRetry={() => {
+              loadData(filters);
+              loadStats();
+            }}
           />
         ) : (
           <OpportunityTable

@@ -25,64 +25,15 @@ import {
 } from '@/lib/api';
 import { Orcamento, SeobraStatusResponse } from '@/lib/types';
 import { formatCurrency, formatDateTime } from '@/lib/formatters';
-
-const SAMPLE_ORCAMENTOS: Orcamento[] = [
-  {
-    id: 'orcamento-sample-1',
-    titulo: 'Orçamento Executivo - Pavimentação e Drenagem Urbana Polo Industrial',
-    orgao: 'Secretaria da Infraestrutura do Estado do Ceará - SEINFRA',
-    objeto: 'Execução de obras de urbanização, terraplenagem, drenagem e pavimentação asfáltica.',
-    localidade: 'Maracanaú - CE',
-    dataPrecoBase: 'SINAPI (01/2026) / SEINFRA 028',
-    status: 'CONCLUIDO',
-    totalItens: 48,
-    valorTotalEstimado: 11664000.0,
-    valorTotalComBdi: 14580000.0,
-    confiancaMedia: 0.94,
-    bdi: 25.0,
-    seobraBudgetId: 'SEOBRA-2026-9921',
-    seobraBudgetUrl: 'https://www.seobra.com.br',
-    originalFileName: 'planilha_orcamentaria_seinfra_ce.xlsx',
-    fileType: 'xlsx',
-    createdAt: new Date(Date.now() - 3 * 3600000).toISOString(),
-    updatedAt: new Date(Date.now() - 3 * 3600000).toISOString(),
-  },
-  {
-    id: 'orcamento-sample-2',
-    titulo: 'Planilha Estimativa - Locação de Máquinas e Andaimes Tubulares',
-    orgao: 'Prefeitura Municipal de Fortaleza - SMSP',
-    objeto: 'Registro de preços para locação de máquinas pesadas e andaimes.',
-    localidade: 'Fortaleza - CE',
-    dataPrecoBase: 'TABELA PRÓPRIA / SEINFRA',
-    status: 'AGUARDANDO_REVISAO',
-    totalItens: 16,
-    valorTotalEstimado: 3175510.0,
-    valorTotalComBdi: 3890000.0,
-    confiancaMedia: 0.88,
-    bdi: 22.5,
-    originalFileName: 'termo_referencia_locacao_maquinas.pdf',
-    fileType: 'pdf',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
+import { ErrorState } from '@/components/ErrorState';
 
 export default function OrcamentosPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(SAMPLE_ORCAMENTOS);
-  const [seobraStatus, setSeobraStatus] = useState<SeobraStatusResponse | null>({
-    status: 'ONLINE',
-    activeSession: {
-      id: 'session-ce-01',
-      usuario: 'construmarlocacoes@gmail.com',
-      urlBase: 'https://www.seobra.com.br',
-      isActive: true,
-      ultimoPing: new Date().toISOString(),
-    },
-  });
-  const [isLoadingList, setIsLoadingList] = useState(false);
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
+  const [seobraStatus, setSeobraStatus] = useState<SeobraStatusResponse | null>(null);
+  const [isLoadingList, setIsLoadingList] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState<string>('');
   const [dragActive, setDragActive] = useState(false);
@@ -97,16 +48,17 @@ export default function OrcamentosPage() {
         fetchSeobraStatus(),
       ]);
 
-      if (listRes.status === 'fulfilled' && listRes.value.items && listRes.value.items.length > 0) {
-        setOrcamentos(listRes.value.items);
+      if (listRes.status === 'fulfilled') {
+        setOrcamentos(listRes.value.items || []);
       } else {
-        setOrcamentos(SAMPLE_ORCAMENTOS);
+        setOrcamentos([]);
       }
       if (seobraRes.status === 'fulfilled') {
         setSeobraStatus(seobraRes.value);
       }
-    } catch {
-      setOrcamentos(SAMPLE_ORCAMENTOS);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Erro ao carregar lista de orçamentos.');
+      setOrcamentos([]);
     } finally {
       setIsLoadingList(false);
     }

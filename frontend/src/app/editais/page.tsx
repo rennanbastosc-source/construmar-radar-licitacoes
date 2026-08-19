@@ -25,76 +25,14 @@ import {
 } from '@/lib/api';
 import { EditalAnalysis } from '@/lib/types';
 import { formatCurrency, formatDateTime } from '@/lib/formatters';
-
-const SAMPLE_EDITAIS: EditalAnalysis[] = [
-  {
-    id: 'edital-sample-1',
-    titulo: 'Concorrência Eletrônica nº 2026/014 - Pavimentação e Drenagem Urbana',
-    orgao: 'Secretaria da Infraestrutura do Estado do Ceará - SEINFRA',
-    numeroEdital: 'CE-2026/014',
-    numeroProcesso: 'PROC-2026-991',
-    modalidade: 'Concorrência Eletrônica',
-    modoDisputa: 'Aberto',
-    objetoCompleto: 'Pavimentação asfáltica e drenagem pluvial no Polo Industrial.',
-    localidade: 'Maracanaú - CE',
-    dataAbertura: new Date(Date.now() + 12 * 86400000).toISOString(),
-    valorEstimado: 14580000.0,
-    prazoExecucao: '12 meses',
-    regimeExecucao: 'Empreitada por Preço Unitário',
-    status: 'CONCLUIDO',
-    originalFileName: 'edital_seinfra_014_2026.pdf',
-    fileType: 'pdf',
-    totalPaginas: 42,
-    resumoExecutivo: 'Edital exige visita técnica obrigatória com prazo exíguo de 3 dias úteis e comprovação de usinagem asfáltica própria em raio de até 50km.',
-    parecerTecnico: 'Risco moderado em virtude da visita técnica mandatória.',
-    scoreAderencia: 9.2,
-    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-    pegadinhas: [
-      {
-        id: 'p1',
-        analysisId: 'edital-sample-1',
-        clausula: 'Item 8.4',
-        titulo: 'Visita Técnica Obrigatória com prazo de 3 dias',
-        descricao: 'Exige agendamento prévio com engenheiro fiscal.',
-        severidade: 'CRITICA',
-        recomendacao: 'Protocolar pedido de visita imediatamente.',
-        impacto: 'DESCLASSIFICACAO',
-      },
-    ],
-  },
-  {
-    id: 'edital-sample-2',
-    titulo: 'Pregão Eletrônico nº 089/2026 - Locação de Máquinas e Equipamentos Pesados',
-    orgao: 'Prefeitura Municipal de Fortaleza - SMSP',
-    numeroEdital: 'PE-089/2026',
-    numeroProcesso: 'PROC-2026-332',
-    modalidade: 'Pregão Eletrônico',
-    modoDisputa: 'Aberto',
-    objetoCompleto: 'Locação de andaimes tubulares e máquinas pesadas.',
-    localidade: 'Fortaleza - CE',
-    dataAbertura: new Date(Date.now() + 4 * 86400000).toISOString(),
-    valorEstimado: 3890000.0,
-    prazoExecucao: '6 meses',
-    regimeExecucao: 'Registro de Preços',
-    status: 'CONCLUIDO',
-    originalFileName: 'termo_referencia_locacao.pdf',
-    fileType: 'pdf',
-    totalPaginas: 18,
-    resumoExecutivo: 'Exigência de frotas com ano de fabricação máximo de 3 anos e operador incluso em regime 24/7.',
-    parecerTecnico: 'Edital favorável sem cláusulas restritivas ilegais.',
-    scoreAderencia: 8.8,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
+import { ErrorState } from '@/components/ErrorState';
 
 export default function EditaisHubPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [analyses, setAnalyses] = useState<EditalAnalysis[]>(SAMPLE_EDITAIS);
-  const [isLoadingList, setIsLoadingList] = useState(false);
+  const [analyses, setAnalyses] = useState<EditalAnalysis[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState<string>('');
   const [dragActive, setDragActive] = useState(false);
@@ -106,13 +44,10 @@ export default function EditaisHubPage() {
     setErrorMessage(null);
     try {
       const res = await fetchEditalAnalyses(50, 0);
-      if (res && res.items && res.items.length > 0) {
-        setAnalyses(res.items);
-      } else {
-        setAnalyses(SAMPLE_EDITAIS);
-      }
-    } catch {
-      setAnalyses(SAMPLE_EDITAIS);
+      setAnalyses(res.items || []);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Erro ao carregar histórico de editais.');
+      setAnalyses([]);
     } finally {
       setIsLoadingList(false);
     }
@@ -404,7 +339,12 @@ export default function EditaisHubPage() {
               </span>
             </div>
 
-            {analyses.length === 0 ? (
+            {isLoadingList ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', textAlign: 'center' }}>
+                <RefreshCw className="animate-spin" size={24} color="var(--brand-primary)" style={{ marginBottom: '12px' }} />
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Carregando auditorias...</p>
+              </div>
+            ) : analyses.length === 0 ? (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', textAlign: 'center', backgroundColor: '#101012', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
                 <FileText size={32} color="var(--text-secondary)" style={{ marginBottom: '12px' }} />
                 <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>

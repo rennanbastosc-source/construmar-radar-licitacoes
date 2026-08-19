@@ -7,72 +7,23 @@ import { fetchSyncHistory, triggerSync } from '@/lib/api';
 import { LicitacaoSyncRun } from '@/lib/types';
 import { formatDateTime } from '@/lib/formatters';
 import { ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, X, Clock, Activity } from 'lucide-react';
-
-const SAMPLE_HISTORY: LicitacaoSyncRun[] = [
-  {
-    id: 'sync-1',
-    source: 'PNCP',
-    startedAt: new Date(Date.now() - 15 * 60000).toISOString(),
-    finishedAt: new Date(Date.now() - 14 * 60000).toISOString(),
-    status: 'SUCCESS',
-    parameters: '{"uf":"CE","minValue":900000}',
-    correlationId: 'sync-auto-ce-01',
-    totalReceived: 42,
-    totalIncluded: 18,
-    totalReviewed: 14,
-    totalExcluded: 10,
-    totalUpdated: 4,
-    totalFailed: 0,
-  },
-  {
-    id: 'sync-2',
-    source: 'PNCP',
-    startedAt: new Date(Date.now() - 3600000).toISOString(),
-    finishedAt: new Date(Date.now() - 3540000).toISOString(),
-    status: 'SUCCESS',
-    parameters: '{"uf":"CE","minValue":900000}',
-    correlationId: 'sync-auto-ce-02',
-    totalReceived: 38,
-    totalIncluded: 15,
-    totalReviewed: 12,
-    totalExcluded: 11,
-    totalUpdated: 2,
-    totalFailed: 0,
-  },
-  {
-    id: 'sync-3',
-    source: 'PNCP',
-    startedAt: new Date(Date.now() - 86400000).toISOString(),
-    finishedAt: new Date(Date.now() - 86340000).toISOString(),
-    status: 'PARTIAL',
-    parameters: '{"uf":"CE","minValue":900000}',
-    correlationId: 'sync-auto-ce-03',
-    totalReceived: 29,
-    totalIncluded: 11,
-    totalReviewed: 9,
-    totalExcluded: 8,
-    totalUpdated: 1,
-    totalFailed: 1,
-    errorMessage: 'Timeout temporário em 1 órgão municipal',
-  },
-];
+import { ErrorState } from '@/components/ErrorState';
 
 export default function SyncHistoryPage() {
-  const [history, setHistory] = useState<LicitacaoSyncRun[]>(SAMPLE_HISTORY);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [history, setHistory] = useState<LicitacaoSyncRun[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const loadHistory = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const data = await fetchSyncHistory(30);
-      if (data && data.length > 0) {
-        setHistory(data);
-      } else {
-        setHistory(SAMPLE_HISTORY);
-      }
-    } catch {
-      setHistory(SAMPLE_HISTORY);
+      const data = await fetchSyncHistory(50);
+      setHistory(data || []);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar histórico operacional do PNCP.');
+      setHistory([]);
     } finally {
       setLoading(false);
     }
@@ -89,9 +40,10 @@ export default function SyncHistoryPage() {
       setTimeout(() => {
         loadHistory();
         setIsSyncing(false);
-      }, 2000);
-    } catch {
+      }, 3000);
+    } catch (err: any) {
       setIsSyncing(false);
+      setError(err.message || 'Falha ao disparar sincronização manual com o PNCP.');
     }
   };
 
@@ -170,7 +122,9 @@ export default function SyncHistoryPage() {
           </div>
         </div>
 
-        {loading ? (
+        {error ? (
+          <ErrorState message={error} onRetry={loadHistory} />
+        ) : loading ? (
           <div className="wishlabs-card" style={{ padding: '48px', textAlign: 'center' }}>
             <div
               style={{
@@ -272,6 +226,11 @@ export default function SyncHistoryPage() {
                           <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: '6px' }}>
                             ({run.source})
                           </span>
+                          {run.errorMessage && (
+                            <div style={{ fontSize: '11px', color: '#FF81B2', marginTop: '4px', maxWidth: '300px' }}>
+                              {run.errorMessage}
+                            </div>
+                          )}
                         </td>
 
                         <td style={{ padding: '18px 20px' }}>

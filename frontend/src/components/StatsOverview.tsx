@@ -16,7 +16,7 @@ export const StatsOverview: React.FC<Props> = ({
   loading = false,
   onSelectCategory,
 }) => {
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div
         style={{
@@ -32,6 +32,10 @@ export const StatsOverview: React.FC<Props> = ({
         <div style={{ gridColumn: 'span 2', height: '140px' }} className="wishlabs-card shimmer-box" />
       </div>
     );
+  }
+
+  if (!stats) {
+    return null;
   }
 
   return (
