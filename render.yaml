@@ -20,7 +20,7 @@ services:
       - key: MIN_ESTIMATED_VALUE
         value: "900000.00"
       - key: SYNC_INTERVAL_HOURS
-        value: "6"
+        value: "24"
       - key: API_AUTH_TOKEN
         sync: false
       - key: CORS_ALLOWED_ORIGINS

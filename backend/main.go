@@ -59,13 +59,22 @@ func main() {
 	editalHandler := api.NewEditalHandler(editalService)
 	router := api.NewRouter(oppHandler, syncHandler, orcHandler, editalHandler, cfg.APIAuthToken, cfg.CORSAllowedOrigins)
 
-	// 5. Periodic Background Sync (optional ticker)
+	// 5. Periodic Background Sync (Daily fallback scheduler aligned with 12:00 PM UTC-3)
 	if cfg.SyncIntervalHours > 0 {
-		ticker := time.NewTicker(time.Duration(cfg.SyncIntervalHours) * time.Hour)
 		go func() {
-			for range ticker.C {
-				log.Printf("[Scheduler] Triggering scheduled sync for UF=%s...", cfg.DefaultUF)
-				ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+			for {
+				now := time.Now().UTC()
+				// 12:00 PM UTC-3 is 15:00 UTC
+				nextSync := time.Date(now.Year(), now.Month(), now.Day(), 15, 0, 0, 0, time.UTC)
+				if !now.Before(nextSync) {
+					nextSync = nextSync.Add(24 * time.Hour)
+				}
+				sleepDuration := time.Until(nextSync)
+				log.Printf("[Scheduler] Next internal daily sync scheduled for %s (in %v)", nextSync.Format(time.RFC3339), sleepDuration.Round(time.Minute))
+				time.Sleep(sleepDuration)
+
+				log.Printf("[Scheduler] Triggering daily scheduled sync (12:00 PM UTC-3) for UF=%s...", cfg.DefaultUF)
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 				_, _ = syncService.RunSync(ctx, cfg.DefaultUF, cfg.MinEstimatedValue)
 				cancel()
 			}

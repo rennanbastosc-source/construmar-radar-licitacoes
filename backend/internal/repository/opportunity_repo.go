@@ -255,9 +255,25 @@ func (r *OpportunityRepository) GetSnapshotsByOpportunityID(ctx context.Context,
 	return list, nil
 }
 
+func (r *OpportunityRepository) SoftDeleteOldOpportunities(ctx context.Context, cutoff time.Time) (int64, error) {
+	query := `
+	UPDATE licitacao_oportunidade 
+	SET is_archived = 1, archived_at = ? 
+	WHERE is_archived = 0 AND (last_seen_at < ? OR (proposal_end_at IS NOT NULL AND proposal_end_at < ?))`
+	
+	res, err := r.db.ExecContext(ctx, query, time.Now().UTC(), cutoff, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("failed to soft delete old opportunities: %w", err)
+	}
+	return res.RowsAffected()
+}
+
 func (r *OpportunityRepository) ListOpportunities(ctx context.Context, filter domain.OpportunityFilter) ([]domain.LicitacaoOportunidade, int, error) {
 	var whereClauses []string
 	var args []interface{}
+
+	// By default, exclude archived opportunities
+	whereClauses = append(whereClauses, "is_archived = 0")
 
 	if filter.UF != "" {
 		whereClauses = append(whereClauses, "uf = ?")
@@ -399,7 +415,7 @@ func (r *OpportunityRepository) GetStatsOverview(ctx context.Context, uf string,
 		COALESCE(SUM(CASE WHEN estimated_total_value IS NOT NULL AND estimated_total_value >= ? THEN estimated_total_value ELSE 0 END), 0),
 		COALESCE(SUM(CASE WHEN proposal_end_at IS NOT NULL AND proposal_end_at >= datetime('now') AND proposal_end_at <= datetime('now', '+3 days') THEN 1 ELSE 0 END), 0)
 	FROM licitacao_oportunidade
-	WHERE uf = ? AND status_normalized = 'OPEN' AND (estimated_total_value IS NOT NULL AND estimated_total_value >= ?)`
+	WHERE is_archived = 0 AND uf = ? AND status_normalized = 'OPEN' AND (estimated_total_value IS NOT NULL AND estimated_total_value >= ?)`
 
 	var total, inScope, review, urgent int
 	var totalValue float64

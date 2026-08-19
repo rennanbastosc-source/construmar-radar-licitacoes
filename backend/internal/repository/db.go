@@ -55,8 +55,24 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to migrate orcamento discounts: %w", err)
 	}
+	if err := migrateLicitacaoArchived(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to migrate licitacao archived columns: %w", err)
+	}
 
 	return db, nil
+}
+
+func migrateLicitacaoArchived(db *sql.DB) error {
+	cols := []string{
+		"ALTER TABLE licitacao_oportunidade ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0",
+		"ALTER TABLE licitacao_oportunidade ADD COLUMN archived_at DATETIME",
+		"CREATE INDEX IF NOT EXISTS idx_opp_archived ON licitacao_oportunidade(is_archived)",
+	}
+	for _, sqlStmt := range cols {
+		_, _ = db.Exec(sqlStmt)
+	}
+	return nil
 }
 
 func migrateOrcamentoProgress(db *sql.DB) error {
