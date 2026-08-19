@@ -259,36 +259,55 @@ export default function EditalDetailPage() {
                   fontSize: '1.65rem',
                   fontWeight: 800,
                   color: 'var(--text-primary)',
-                  margin: '0 0 10px 0',
+                  margin: '0 0 14px 0',
                   lineHeight: 1.3,
                 }}
               >
                 {analysis.titulo || analysis.objetoCompleto}
               </h1>
 
-              <p style={{ margin: '0 0 1.25rem 0', color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.6 }}>
-                {analysis.resumoExecutivo}
-              </p>
+              {/* Briefing Executivo em Destaque */}
+              <div
+                style={{
+                  padding: '16px 18px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(14, 165, 233, 0.06)',
+                  border: '1px solid rgba(14, 165, 233, 0.22)',
+                  marginBottom: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <Sparkles size={16} color="var(--brand-cyan)" />
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--brand-cyan)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Resumo Executivo da Licitação
+                  </span>
+                </div>
+                <p style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.94rem', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                  {analysis.resumoExecutivo}
+                </p>
+              </div>
 
               {/* Technical Opinion Pill */}
               {analysis.parecerTecnico && (
                 <div
                   style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
+                    padding: '16px 18px',
+                    borderRadius: '10px',
                     backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    border: '1px solid rgba(16, 185, 129, 0.28)',
                     color: 'var(--text-primary)',
-                    fontSize: '0.88rem',
+                    fontSize: '0.92rem',
                     display: 'flex',
                     alignItems: 'flex-start',
-                    gap: '10px',
+                    gap: '12px',
                   }}
                 >
-                  <CheckCircle2 size={18} color="#10B981" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <CheckCircle2 size={20} color="#10B981" style={{ flexShrink: 0, marginTop: '2px' }} />
                   <div>
-                    <strong style={{ color: '#34D399', display: 'block', marginBottom: '2px' }}>Parecer do Especialista CONSTRUMAR:</strong>
-                    <span>{analysis.parecerTecnico}</span>
+                    <strong style={{ color: '#34D399', fontSize: '0.95rem', display: 'block', marginBottom: '4px' }}>
+                      Parecer Estratégico do Especialista CONSTRUMAR:
+                    </strong>
+                    <span style={{ lineHeight: 1.55, display: 'block' }}>{analysis.parecerTecnico}</span>
                   </div>
                 </div>
               )}

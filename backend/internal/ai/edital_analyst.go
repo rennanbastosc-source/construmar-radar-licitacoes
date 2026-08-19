@@ -194,34 +194,39 @@ func (a *EditalAIAnalyst) AnalyzeEditalDocument(ctx context.Context, fileBytes [
 func (a *EditalAIAnalyst) callEditalLLMEndpoint(ctx context.Context, fileBytes []byte, mimeType, filename, extractedText string) (*EditalAnalysisPayload, error) {
 	endpoint := fmt.Sprintf("%s/chat/completions", a.apiURL)
 
-	promptSystem := `Você é um Engenheiro Orçamentista Sênior e Advogado Especialista em Licitações Públicas no Brasil (Leis 14.133/2021 e 8.666/93).
+	promptSystem := `Você é um Engenheiro Orçamentista Sênior e Advogado Especialista em Licitações Públicas no Brasil (Leis 14.133/2021 e 8.666/93) da CONSTRUMAR.
 Sua missão é atuar como um AUDITOR E ANALISTA CRÍTICO do Edital / Termo de Referência da Licitação.
+
+DIRETRIZ OBRIGATÓRIA DE IDIOMA (RIGOR ABSOLUTO):
+- TODO O TEXTO, PARECER, RECOMENDAÇÃO, TÍTULOS, DESCRIÇÕES E COMENTÁRIOS DEVEM SER ESCRITOS 100% EM PORTUGUÊS DO BRASIL (PT-BR).
+- É TERMINANTEMENTE PROIBIDO USAR INGLÊS EM QUALQUER CAMPO (ex: não use "demand", "certificate", "check", "challenge", "high risk", "block").
+- Emita recomendações táticas claras e assertivas em português (ex: "Risco Crítico: O item 3.10 exige certificado de pré-qualificação no município de Cariré. Providenciar certidão ou protocolar impugnação ao edital com base na Lei 14.133/2021").
 
 Analise minuciosamente o documento e retorne um JSON ESTRITO com o seguinte formato:
 {
-  "titulo": "Título sucinto do edital",
+  "titulo": "Título sucinto do edital em português",
   "orgao": "Nome do órgão licitante / prefeitura / secretaria",
   "numeroEdital": "ex: Concorrência Eletrônica nº 001/2026",
   "numeroProcesso": "ex: Processo Administrativo nº 2026/0491",
   "modalidade": "Concorrência Eletrônica / Pregão Eletrônico",
   "modoDisputa": "Aberto / Aberto e Fechado",
-  "objetoCompleto": "Objeto integral da contratação",
+  "objetoCompleto": "Objeto integral da contratação em português",
   "localidade": "Município - UF",
   "dataAbertura": "Data e hora da sessão pública",
   "valorEstimado": 0.0,
   "bdiMaximoPermitido": 25.0,
   "prazoExecucao": "ex: 180 (cento e oitenta) dias",
   "regimeExecucao": "Empreitada por Preço Unitário / Empreitada Global",
-  "resumoExecutivo": "Visão geral e estratégica da licitação em 2 parágrafos claros",
-  "parecerTecnico": "Parecer de recomendação de participação para a diretoria da construtora",
+  "resumoExecutivo": "Visão geral e estratégica da licitação em português claro e objetivo em 2 parágrafos",
+  "parecerTecnico": "Parecer executivo detalhado em português com recomendação de participação para a diretoria",
   "scoreAderencia": 8.5,
   "pegadinhas": [
     {
       "clausula": "Item 8.3.1",
       "titulo": "Exigência de Vistoria Técnica Obrigatória ou Declaração com Prazo Rígido",
-      "descricao": "O edital exige atestado de vistoria assinado até 2 dias úteis antes da abertura da sessão, sob pena de inabilitação imediata.",
+      "descricao": "Descrição clara do risco ou pegadinha em português do Brasil",
       "severidade": "CRITICA",
-      "recomendacao": "Agendar visita técnica imediatamente ou impugnar a cláusula com base no art. 67, VI da Lei 14.133/21.",
+      "recomendacao": "Ação tática recomendada em português do Brasil",
       "impacto": "DESCLASSIFICACAO"
     }
   ],
@@ -264,7 +269,7 @@ Analise minuciosamente o documento e retorne um JSON ESTRITO com o seguinte form
   ]
 }
 
-Responda APENAS com o JSON válido. Não inclua texto fora do bloco JSON.`
+Responda APENAS com o JSON válido, 100% em Português (PT-BR). Não inclua texto em inglês nem fora do bloco JSON.`
 
 	var userContent interface{}
 
@@ -361,6 +366,39 @@ Responda APENAS com o JSON válido. Não inclua texto fora do bloco JSON.`
 	return &payload, nil
 }
 
+func sanitizePTBR(s string) string {
+	if s == "" {
+		return ""
+	}
+	replacements := map[string]string{
+		"High risk":                 "Alto risco",
+		"high risk":                 "alto risco",
+		"No certificate mean block": "A ausência de certidão implica inabilitação",
+		"demand":                    "exige",
+		"demand ":                   "exige ",
+		"demand valid":              "exige válido",
+		"certificate":               "certidão/atestado",
+		"Check certificate status":  "Verificar situação da certidão",
+		"Challenge edital if empty": "Impugnar o edital caso não possua",
+		"Challenge rule via":        "Impugnar exigência com base na",
+		"Check certificate":         "Verificar certidão",
+		"if empty":                  "caso ausente",
+		"Habilitation happen in prior process": "A habilitação ocorre em processo prévio",
+		"adjusted proposal":         "proposta readequada",
+		"sheets":                    "planilhas",
+		"schedule":                  "cronograma",
+		"in 2 hours":                "em 2 horas",
+		"Keep sheets ready":         "Manter planilhas prontas",
+		"Adjust fast":               "Ajustar rapidamente",
+	}
+
+	res := s
+	for en, pt := range replacements {
+		res = strings.ReplaceAll(res, en, pt)
+	}
+	return res
+}
+
 func (a *EditalAIAnalyst) buildEditalAnalysisFromPayload(
 	id string,
 	p *EditalAnalysisPayload,
@@ -370,25 +408,25 @@ func (a *EditalAIAnalyst) buildEditalAnalysisFromPayload(
 	now := time.Now()
 	analysis := &domain.EditalAnalysis{
 		ID:                 id,
-		Titulo:             p.Titulo,
-		Orgao:              p.Orgao,
-		NumeroEdital:       p.NumeroEdital,
-		NumeroProcesso:     p.NumeroProcesso,
-		Modalidade:         p.Modalidade,
-		ModoDisputa:        p.ModoDisputa,
-		ObjetoCompleto:     p.ObjetoCompleto,
-		Localidade:         p.Localidade,
+		Titulo:             sanitizePTBR(p.Titulo),
+		Orgao:              sanitizePTBR(p.Orgao),
+		NumeroEdital:       sanitizePTBR(p.NumeroEdital),
+		NumeroProcesso:     sanitizePTBR(p.NumeroProcesso),
+		Modalidade:         sanitizePTBR(p.Modalidade),
+		ModoDisputa:        sanitizePTBR(p.ModoDisputa),
+		ObjetoCompleto:     sanitizePTBR(p.ObjetoCompleto),
+		Localidade:         sanitizePTBR(p.Localidade),
 		DataAbertura:       p.DataAbertura,
 		ValorEstimado:      p.ValorEstimado,
 		BDIMaximoPermitido: p.BDIMaximoPermitido,
-		PrazoExecucao:      p.PrazoExecucao,
-		RegimeExecucao:     p.RegimeExecucao,
+		PrazoExecucao:      sanitizePTBR(p.PrazoExecucao),
+		RegimeExecucao:     sanitizePTBR(p.RegimeExecucao),
 		Status:             domain.EditalStatusConcluido,
 		OriginalFileName:   filename,
 		FileType:           fileType,
 		TotalPaginas:       totalPages,
-		ResumoExecutivo:    p.ResumoExecutivo,
-		ParecerTecnico:     p.ParecerTecnico,
+		ResumoExecutivo:    sanitizePTBR(p.ResumoExecutivo),
+		ParecerTecnico:     sanitizePTBR(p.ParecerTecnico),
 		ScoreAderencia:     p.ScoreAderencia,
 		CreatedAt:          now,
 		UpdatedAt:          now,
@@ -397,18 +435,26 @@ func (a *EditalAIAnalyst) buildEditalAnalysisFromPayload(
 	for _, item := range p.Pegadinhas {
 		item.ID = uuid.New().String()
 		item.AnalysisID = id
+		item.Titulo = sanitizePTBR(item.Titulo)
+		item.Descricao = sanitizePTBR(item.Descricao)
+		item.Recomendacao = sanitizePTBR(item.Recomendacao)
 		analysis.Pegadinhas = append(analysis.Pegadinhas, item)
 	}
 
 	for _, item := range p.QualificacoesTecnicas {
 		item.ID = uuid.New().String()
 		item.AnalysisID = id
+		item.ItemServico = sanitizePTBR(item.ItemServico)
+		item.ParcelaMinima = sanitizePTBR(item.ParcelaMinima)
+		item.Observacao = sanitizePTBR(item.Observacao)
 		analysis.QualificacoesTecnicas = append(analysis.QualificacoesTecnicas, item)
 	}
 
 	for _, item := range p.RequisitosHabilitacao {
 		item.ID = uuid.New().String()
 		item.AnalysisID = id
+		item.Documento = sanitizePTBR(item.Documento)
+		item.Detalhes = sanitizePTBR(item.Detalhes)
 		analysis.RequisitosHabilitacao = append(analysis.RequisitosHabilitacao, item)
 	}
 
@@ -418,12 +464,16 @@ func (a *EditalAIAnalyst) buildEditalAnalysisFromPayload(
 		if item.Numero == 0 {
 			item.Numero = idx + 1
 		}
+		item.Descricao = sanitizePTBR(item.Descricao)
+		item.Observacao = sanitizePTBR(item.Observacao)
 		analysis.ChecklistDocumentos = append(analysis.ChecklistDocumentos, item)
 	}
 
 	for _, item := range p.IndicesFinanceiros {
 		item.ID = uuid.New().String()
 		item.AnalysisID = id
+		item.Nome = sanitizePTBR(item.Nome)
+		item.Observacao = sanitizePTBR(item.Observacao)
 		analysis.IndicesFinanceiros = append(analysis.IndicesFinanceiros, item)
 	}
 
