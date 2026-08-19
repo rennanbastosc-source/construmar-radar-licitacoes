@@ -56,7 +56,7 @@ export async function fetchOpportunities(
   const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades?${query.toString()}`, {
     cache: 'no-store',
     headers: authHeaders(),
-    signal: AbortSignal.timeout(2500),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -71,7 +71,7 @@ export async function fetchOpportunityDetail(id: string): Promise<OpportunityDet
   const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${id}`, {
     cache: 'no-store',
     headers: authHeaders(),
-    signal: AbortSignal.timeout(2500),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -94,7 +94,7 @@ export async function fetchStats(
   const res = await fetch(`${API_BASE}/api/licitacoes/stats?${query.toString()}`, {
     cache: 'no-store',
     headers: authHeaders(),
-    signal: AbortSignal.timeout(2500),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {

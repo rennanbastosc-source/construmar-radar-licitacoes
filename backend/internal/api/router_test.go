@@ -25,7 +25,7 @@ func TestRouterBearerAuthAndHealth(t *testing.T) {
 	oppService := service.NewOpportunityService(oppRepo)
 	oppHandler := NewOpportunityHandler(oppService)
 	syncHandler := NewSyncHandler(service.NewSyncService(oppRepo, nil), oppService)
-	router := NewRouter(oppHandler, syncHandler, nil, apiToken, []string{"http://localhost:3000"})
+	router := NewRouter(oppHandler, syncHandler, nil, nil, apiToken, []string{"http://localhost:3000"})
 
 	tests := []struct {
 		name   string

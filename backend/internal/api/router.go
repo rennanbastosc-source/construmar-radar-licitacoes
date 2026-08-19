@@ -3,13 +3,84 @@ package api
 import (
 	"crypto/sha256"
 	"crypto/subtle"
+	"net"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
+
+// ipRateLimiter implements a token-bucket rate limiter per IP address
+type ipRateLimiter struct {
+	mu       sync.Mutex
+	visitors map[string]*visitor
+	rate     int           // requests allowed per window
+	window   time.Duration // time window
+}
+
+type visitor struct {
+	lastSeen time.Time
+	tokens   int
+}
+
+func newIPRateLimiter(rate int, window time.Duration) *ipRateLimiter {
+	limiter := &ipRateLimiter{
+		visitors: make(map[string]*visitor),
+		rate:     rate,
+		window:   window,
+	}
+
+	// Periodically cleanup old visitors
+	go func() {
+		for {
+			time.Sleep(limiter.window * 2)
+			limiter.mu.Lock()
+			for ip, v := range limiter.visitors {
+				if time.Since(v.lastSeen) > limiter.window*3 {
+					delete(limiter.visitors, ip)
+				}
+			}
+			limiter.mu.Unlock()
+		}
+	}()
+
+	return limiter
+}
+
+func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
+
+		l.mu.Lock()
+		v, exists := l.visitors[ip]
+		now := time.Now()
+		if !exists || now.Sub(v.lastSeen) > l.window {
+			l.visitors[ip] = &visitor{lastSeen: now, tokens: 1}
+			l.mu.Unlock()
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if v.tokens >= l.rate {
+			l.mu.Unlock()
+			http.Error(w, `{"error":"Too Many Requests: limite de requisições excedido. Tente novamente em instantes."}`, http.StatusTooManyRequests)
+			return
+		}
+
+		v.tokens++
+		v.lastSeen = now
+		l.mu.Unlock()
+
+		next.ServeHTTP(w, r)
+	})
+}
 
 func NewRouter(
 	oppHandler *OpportunityHandler,
@@ -21,11 +92,15 @@ func NewRouter(
 ) http.Handler {
 	r := chi.NewRouter()
 
+	// Rate limiter: 120 requests per minute per IP
+	apiLimiter := newIPRateLimiter(120, time.Minute)
+
 	// Standard middlewares
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(apiLimiter.Middleware)
 
 	// CORS is restricted to the explicitly configured origins. An empty list
 	// intentionally installs no CORS middleware, which fails closed.

@@ -161,25 +161,23 @@ export default function RadarDashboardPage() {
     setError(null);
     try {
       const resp = await fetchOpportunities(currentFilters);
-      if (resp.data && resp.data.length > 0) {
+      if (resp && Array.isArray(resp.data)) {
         setOpportunities(resp.data);
-        setTotalPages(resp.meta.totalPages || 1);
-        setTotalRecords(resp.meta.total);
-        setPage(resp.meta.page);
+        setTotalPages(resp.meta?.totalPages || 1);
+        setTotalRecords(resp.meta?.total || 0);
+        setPage(resp.meta?.page || 1);
       } else {
-        setOpportunities(SAMPLE_OPPORTUNITIES);
+        setOpportunities([]);
         setTotalPages(1);
-        setTotalRecords(SAMPLE_OPPORTUNITIES.length);
+        setTotalRecords(0);
       }
       if (resp.meta?.lastSuccessfulSyncAt) {
         setLastSuccessfulSyncAt(resp.meta.lastSuccessfulSyncAt);
       }
       setSyncStatus(resp.meta?.syncStatus || 'SUCCESS');
     } catch (err: any) {
-      console.warn('Backend offline ou cold start, aplicando fallback resiliente:', err);
-      setOpportunities(SAMPLE_OPPORTUNITIES);
-      setTotalPages(1);
-      setTotalRecords(SAMPLE_OPPORTUNITIES.length);
+      console.warn('Falha na comunicação com o backend:', err);
+      setError('Não foi possível carregar as oportunidades do servidor. Verifique a conexão.');
       setSyncStatus('PARTIAL');
     } finally {
       setLoading(false);

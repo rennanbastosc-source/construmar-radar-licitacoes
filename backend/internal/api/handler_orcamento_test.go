@@ -40,7 +40,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 	syncHandler := NewSyncHandler(syncService, oppService)
 	orcHandler := NewOrcamentoHandler(orcService, seobraClient)
 
-	router := NewRouter(oppHandler, syncHandler, orcHandler, apiToken, []string{"http://localhost:3000"})
+	router := NewRouter(oppHandler, syncHandler, orcHandler, nil, apiToken, []string{"http://localhost:3000"})
 
 	// 1. Create a dummy Excel file in memory
 	f := excelize.NewFile()
