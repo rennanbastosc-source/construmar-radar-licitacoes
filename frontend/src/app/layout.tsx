@@ -18,6 +18,15 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Radar de Licitações — CONSTRUMAR',
   description: 'Monitoramento contínuo de oportunidades de licitações públicas em construção civil, obras e engenharia no Ceará (PNCP).',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({
