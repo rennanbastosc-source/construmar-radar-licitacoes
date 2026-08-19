@@ -86,7 +86,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   const navItems = [
     { href: '/', label: 'Radar de Oportunidades', icon: Radio },
-    { href: '/orcamentos', label: 'Orçamentos com IA', icon: Sparkles, badge: 'NOVO' },
+    { href: '/orcamentos', label: 'Orçamentos com IA', icon: Sparkles },
+    { href: '/editais', label: 'Analista de Editais', icon: Layers, badge: 'PRO' },
     { href: '/sync', label: 'Histórico PNCP', icon: History },
   ];
 

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/construmar/radar-licitacoes-backend/internal/domain"
+	"github.com/construmar/radar-licitacoes-backend/internal/parser"
 	"github.com/google/uuid"
 )
 
@@ -157,12 +158,35 @@ Responda APENAS com o JSON válido. Não inclua texto explicativo fora do bloco 
 			},
 		}
 	} else {
-		// Text or PDF content
-		textSample := string(fileBytes)
-		if len(textSample) > 60000 {
-			textSample = textSample[:60000] // safety limit
+		// Digital PDF or text
+		extractedText, _, err := parser.ExtractTextFromPDF(fileBytes)
+		if err == nil && len(extractedText) > 50 {
+			textSample := extractedText
+			if len(textSample) > 70000 {
+				textSample = textSample[:70000] // safety limit
+			}
+			userContent = fmt.Sprintf("Documento (PDF Digital Extraído): %s\n\nTexto Integral da Planilha/Edital:\n%s\n\nPor favor, extraia todos os itens orçamentários, quantitativos e composições SINAPI.", filename, textSample)
+		} else {
+			// Raw fallback or scanned PDF as image
+			b64Data := base64.StdEncoding.EncodeToString(fileBytes)
+			if mimeType == "" || mimeType == "application/octet-stream" {
+				mimeType = "application/pdf"
+			}
+			dataURI := fmt.Sprintf("data:%s;base64,%s", mimeType, b64Data)
+
+			userContent = []map[string]interface{}{
+				{
+					"type": "text",
+					"text": fmt.Sprintf("Por favor, processe este documento/PDF (%s) e extraia todos os itens orçamentários e metadados em JSON.", filename),
+				},
+				{
+					"type": "image_url",
+					"image_url": map[string]string{
+						"url": dataURI,
+					},
+				},
+			}
 		}
-		userContent = fmt.Sprintf("Documento: %s\n\nConteúdo:\n%s\n\nPor favor, extraia todos os itens orçamentários, quantitativos e composições SINAPI.", filename, textSample)
 	}
 
 	reqBody := map[string]interface{}{

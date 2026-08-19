@@ -293,3 +293,80 @@ export async function fetchSeobraStatus(): Promise<SeobraStatusResponse> {
 
   return res.json();
 }
+
+// -------------------------------------------------------------
+// ANALISTA IA DE EDITAIS & REQUISITOS DE HABILITAÇÃO API
+// -------------------------------------------------------------
+
+import {
+  EditalAnalysis,
+  PaginatedEditalAnalysesResponse,
+} from './types';
+
+export async function uploadEditalForAnalysis(
+  file: File,
+  oportunidadeId?: string
+): Promise<EditalAnalysis> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (oportunidadeId) {
+    formData.append('oportunidadeId', oportunidadeId);
+  }
+
+  const res = await fetch(`${API_BASE}/api/editais/analisar`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'Falha na análise do edital');
+    throw new Error(errText || 'Falha ao processar e auditar o edital.');
+  }
+
+  return res.json();
+}
+
+export async function fetchEditalAnalyses(
+  limit: number = 20,
+  offset: number = 0
+): Promise<PaginatedEditalAnalysesResponse> {
+  const res = await fetch(`${API_BASE}/api/editais?limit=${limit}&offset=${offset}`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error('Erro ao carregar histórico de análises de editais.');
+  }
+
+  return res.json();
+}
+
+export async function fetchEditalAnalysisDetail(id: string): Promise<EditalAnalysis> {
+  const res = await fetch(`${API_BASE}/api/editais/${id}`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error('Erro ao carregar detalhes da análise do edital.');
+  }
+
+  return res.json();
+}
+
+export async function toggleEditalChecklist(itemId: string, marcado: boolean): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/editais/checklist/${itemId}`, {
+    method: 'PUT',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ marcado }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Erro ao atualizar item do checklist.');
+  }
+}

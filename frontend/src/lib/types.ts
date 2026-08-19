@@ -201,3 +201,98 @@ export interface PncpHealth {
   checkedAt: string;
   message: string;
 }
+
+export type EditalAnalysisStatusType = 'PROCESSANDO' | 'CONCLUIDO' | 'ERRO';
+export type SeveridadeRiscoType = 'CRITICA' | 'ATENCAO' | 'NORMAL';
+
+export interface EditalPegadinha {
+  id: string;
+  analysisId: string;
+  clausula: string;
+  titulo: string;
+  descricao: string;
+  severidade: SeveridadeRiscoType;
+  recomendacao: string;
+  impacto: 'DESCLASSIFICACAO' | 'FINANCEIRO' | 'OPERACIONAL';
+}
+
+export interface EditalQualificacaoTecnica {
+  id: string;
+  analysisId: string;
+  itemServico: string;
+  unidade: string;
+  quantidadeExigida: number;
+  parcelaMinima: string;
+  exigeVisitaTecnica: boolean;
+  aceitaDeclaracao: boolean;
+  observacao?: string;
+}
+
+export interface EditalRequisitoHabilitacao {
+  id: string;
+  analysisId: string;
+  categoria: 'JURIDICA' | 'FISCAL_TRABALHISTA' | 'ECONOMICA' | 'TECNICA';
+  documento: string;
+  obrigatorio: boolean;
+  detalhes?: string;
+}
+
+export interface EditalChecklistItem {
+  id: string;
+  analysisId: string;
+  numero: number;
+  descricao: string;
+  fase: 'PROPOSTA' | 'HABILITACAO' | 'CONTRATACAO';
+  marcado: boolean;
+  observacao?: string;
+}
+
+export interface EditalIndiceFinanceiro {
+  id: string;
+  analysisId: string;
+  sigla: string;
+  nome: string;
+  valorMinimo: string;
+  formula?: string;
+  observacao?: string;
+}
+
+export interface EditalAnalysis {
+  id: string;
+  oportunidadeId?: string;
+  titulo: string;
+  orgao: string;
+  numeroEdital: string;
+  numeroProcesso: string;
+  modalidade: string;
+  modoDisputa: string;
+  objetoCompleto: string;
+  localidade: string;
+  dataAbertura: string;
+  valorEstimado: number;
+  bdiMaximoPermitido?: number;
+  prazoExecucao: string;
+  regimeExecucao: string;
+  status: EditalAnalysisStatusType;
+  originalFileName: string;
+  fileType: string;
+  totalPaginas: number;
+  resumoExecutivo: string;
+  parecerTecnico: string;
+  scoreAderencia: number;
+  erroMensagem?: string;
+  createdAt: string;
+  updatedAt: string;
+  pegadinhas?: EditalPegadinha[];
+  qualificacoesTecnicas?: EditalQualificacaoTecnica[];
+  requisitosHabilitacao?: EditalRequisitoHabilitacao[];
+  checklistDocumentos?: EditalChecklistItem[];
+  indicesFinanceiros?: EditalIndiceFinanceiro[];
+}
+
+export interface PaginatedEditalAnalysesResponse {
+  items: EditalAnalysis[];
+  total: number;
+  limit: number;
+  offset: number;
+}

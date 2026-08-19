@@ -11,7 +11,14 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func NewRouter(oppHandler *OpportunityHandler, syncHandler *SyncHandler, orcHandler *OrcamentoHandler, apiAuthToken string, allowedOrigins []string) http.Handler {
+func NewRouter(
+	oppHandler *OpportunityHandler,
+	syncHandler *SyncHandler,
+	orcHandler *OrcamentoHandler,
+	editalHandler *EditalHandler,
+	apiAuthToken string,
+	allowedOrigins []string,
+) http.Handler {
 	r := chi.NewRouter()
 
 	// Standard middlewares
@@ -69,6 +76,16 @@ func NewRouter(oppHandler *OpportunityHandler, syncHandler *SyncHandler, orcHand
 
 			r.Route("/seobra", func(r chi.Router) {
 				r.Get("/status", orcHandler.SeobraStatus)
+			})
+		}
+
+		// Analista IA de Editais API
+		if editalHandler != nil {
+			r.Route("/editais", func(r chi.Router) {
+				r.Post("/analisar", editalHandler.UploadAndAnalyze)
+				r.Get("/", editalHandler.ListAnalyses)
+				r.Get("/{id}", editalHandler.GetAnalysis)
+				r.Put("/checklist/{itemId}", editalHandler.ToggleChecklist)
 			})
 		}
 	})

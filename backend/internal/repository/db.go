@@ -215,6 +215,105 @@ func createTables(db *sql.DB) error {
 		created_at DATETIME NOT NULL,
 		updated_at DATETIME NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS edital_analysis (
+		id TEXT PRIMARY KEY,
+		oportunidade_id TEXT,
+		titulo TEXT NOT NULL,
+		orgao TEXT NOT NULL,
+		numero_edital TEXT NOT NULL,
+		numero_processo TEXT NOT NULL,
+		modalidade TEXT NOT NULL,
+		modo_disputa TEXT NOT NULL,
+		objeto_completo TEXT NOT NULL,
+		localidade TEXT NOT NULL,
+		data_abertura TEXT NOT NULL,
+		valor_estimado REAL NOT NULL DEFAULT 0.0,
+		bdi_maximo_permitido REAL,
+		prazo_execucao TEXT NOT NULL,
+		regime_execucao TEXT NOT NULL,
+		status TEXT NOT NULL,
+		original_file_name TEXT NOT NULL,
+		file_type TEXT NOT NULL,
+		total_paginas INTEGER NOT NULL DEFAULT 0,
+		resumo_executivo TEXT NOT NULL,
+		parecer_tecnico TEXT NOT NULL,
+		score_aderencia REAL NOT NULL DEFAULT 0.0,
+		erro_mensagem TEXT,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL,
+		FOREIGN KEY(oportunidade_id) REFERENCES licitacao_oportunidade(id) ON DELETE SET NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_edital_analysis_status ON edital_analysis(status);
+	CREATE INDEX IF NOT EXISTS idx_edital_analysis_created_at ON edital_analysis(created_at DESC);
+
+	CREATE TABLE IF NOT EXISTS edital_pegadinha (
+		id TEXT PRIMARY KEY,
+		analysis_id TEXT NOT NULL,
+		clausula TEXT NOT NULL,
+		titulo TEXT NOT NULL,
+		descricao TEXT NOT NULL,
+		severidade TEXT NOT NULL,
+		recomendacao TEXT NOT NULL,
+		impacto TEXT NOT NULL,
+		FOREIGN KEY(analysis_id) REFERENCES edital_analysis(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_pegadinha_analysis ON edital_pegadinha(analysis_id);
+
+	CREATE TABLE IF NOT EXISTS edital_qualificacao_tecnica (
+		id TEXT PRIMARY KEY,
+		analysis_id TEXT NOT NULL,
+		item_servico TEXT NOT NULL,
+		unidade TEXT NOT NULL,
+		quantidade_exigida REAL NOT NULL DEFAULT 0.0,
+		parcela_minima TEXT NOT NULL,
+		exige_visita_tecnica INTEGER NOT NULL DEFAULT 0,
+		aceita_declaracao INTEGER NOT NULL DEFAULT 1,
+		observacao TEXT,
+		FOREIGN KEY(analysis_id) REFERENCES edital_analysis(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_qualif_analysis ON edital_qualificacao_tecnica(analysis_id);
+
+	CREATE TABLE IF NOT EXISTS edital_requisito_habilitacao (
+		id TEXT PRIMARY KEY,
+		analysis_id TEXT NOT NULL,
+		categoria TEXT NOT NULL,
+		documento TEXT NOT NULL,
+		obrigatorio INTEGER NOT NULL DEFAULT 1,
+		detalhes TEXT,
+		FOREIGN KEY(analysis_id) REFERENCES edital_analysis(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_req_hab_analysis ON edital_requisito_habilitacao(analysis_id);
+
+	CREATE TABLE IF NOT EXISTS edital_checklist_item (
+		id TEXT PRIMARY KEY,
+		analysis_id TEXT NOT NULL,
+		numero INTEGER NOT NULL,
+		descricao TEXT NOT NULL,
+		fase TEXT NOT NULL,
+		marcado INTEGER NOT NULL DEFAULT 0,
+		observacao TEXT,
+		FOREIGN KEY(analysis_id) REFERENCES edital_analysis(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_chk_analysis ON edital_checklist_item(analysis_id);
+
+	CREATE TABLE IF NOT EXISTS edital_indice_financeiro (
+		id TEXT PRIMARY KEY,
+		analysis_id TEXT NOT NULL,
+		sigla TEXT NOT NULL,
+		nome TEXT NOT NULL,
+		valor_minimo TEXT NOT NULL,
+		formula TEXT,
+		observacao TEXT,
+		FOREIGN KEY(analysis_id) REFERENCES edital_analysis(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_ind_fin_analysis ON edital_indice_financeiro(analysis_id);
 	`
 
 	_, err := db.Exec(schema)
