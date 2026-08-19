@@ -69,7 +69,8 @@ export async function fetchOpportunities(
 }
 
 export async function fetchOpportunityDetail(id: string): Promise<OpportunityDetailResponse> {
-  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${id}`, {
+  const encodedId = encodeURIComponent(id);
+  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -84,7 +85,8 @@ export async function fetchOpportunityDetail(id: string): Promise<OpportunityDet
 }
 
 export async function fetchOpportunityOrigin(id: string): Promise<OpportunityOriginDetail> {
-  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${id}/origem`, {
+  const encodedId = encodeURIComponent(id);
+  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}/origem`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(15000),
@@ -103,7 +105,8 @@ export async function triggerDirectEditalAnalysis(
   opportunityId: string,
   documentUrl?: string
 ): Promise<EditalAnalysis> {
-  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${opportunityId}/auditar-edital`, {
+  const encodedId = encodeURIComponent(opportunityId);
+  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}/auditar-edital`, {
     method: 'POST',
     headers: {
       ...authHeaders(),

@@ -4,23 +4,28 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/construmar/radar-licitacoes-backend/internal/domain"
+	"github.com/construmar/radar-licitacoes-backend/internal/normalizer"
 	"github.com/construmar/radar-licitacoes-backend/internal/origin"
+	"github.com/construmar/radar-licitacoes-backend/internal/pncp"
 	"github.com/construmar/radar-licitacoes-backend/internal/repository"
 )
 
 type OpportunityService struct {
 	repo           *repository.OpportunityRepository
 	originResolver *origin.ReverseResolver
+	pncpClient     *pncp.Client
 }
 
 func NewOpportunityService(repo *repository.OpportunityRepository) *OpportunityService {
 	return &OpportunityService{
 		repo:           repo,
 		originResolver: origin.NewReverseResolver(20 * time.Second),
+		pncpClient:     pncp.NewClient("https://pncp.gov.br/api/consulta", 20*time.Second),
 	}
 }
 
@@ -28,6 +33,7 @@ func NewOpportunityServiceWithResolver(repo *repository.OpportunityRepository, r
 	return &OpportunityService{
 		repo:           repo,
 		originResolver: resolver,
+		pncpClient:     pncp.NewClient("https://pncp.gov.br/api/consulta", 20*time.Second),
 	}
 }
 
@@ -36,20 +42,101 @@ func (s *OpportunityService) PingDB(ctx context.Context) error {
 }
 
 func (s *OpportunityService) GetOpportunity(ctx context.Context, id string) (*domain.LicitacaoOportunidade, []domain.LicitacaoPayloadSnapshot, error) {
+	// 1. Try by internal UUID
 	opp, err := s.repo.GetOpportunityByID(ctx, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to fetch opportunity: %w", err)
 	}
+
+	// 2. Try by external ID (e.g. 12359535000132-1-000035/2026)
+	if opp == nil {
+		opp, err = s.repo.GetOpportunityByExternalID(ctx, "PNCP", id)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to fetch opportunity by external id: %w", err)
+		}
+	}
+
+	// 3. Dynamic fetch from PNCP API if id matches PNCP control number format
+	if opp == nil && strings.Contains(id, "-") && strings.Contains(id, "/") {
+		fetchedOpp, snapshot, fetchErr := s.fetchAndStoreFromPNCP(ctx, id)
+		if fetchErr == nil && fetchedOpp != nil {
+			var snaps []domain.LicitacaoPayloadSnapshot
+			if snapshot != nil {
+				snaps = append(snaps, *snapshot)
+			}
+			return fetchedOpp, snaps, nil
+		}
+	}
+
 	if opp == nil {
 		return nil, nil, nil
 	}
 
-	snapshots, err := s.repo.GetSnapshotsByOpportunityID(ctx, id)
+	snapshots, err := s.repo.GetSnapshotsByOpportunityID(ctx, opp.ID)
 	if err != nil {
 		snapshots = []domain.LicitacaoPayloadSnapshot{}
 	}
 
 	return opp, snapshots, nil
+}
+
+func (s *OpportunityService) fetchAndStoreFromPNCP(ctx context.Context, externalID string) (*domain.LicitacaoOportunidade, *domain.LicitacaoPayloadSnapshot, error) {
+	// Format: {cnpj}-{tipo}-{sequencial}/{ano} (e.g. 12359535000132-1-000035/2026)
+	parts := strings.Split(externalID, "-")
+	if len(parts) < 3 {
+		return nil, nil, fmt.Errorf("invalid external ID format: %s", externalID)
+	}
+
+	cnpj := parts[0]
+	subParts := strings.Split(parts[2], "/")
+	if len(subParts) != 2 {
+		return nil, nil, fmt.Errorf("invalid external ID sequence/year format: %s", externalID)
+	}
+
+	seqStr := strings.TrimLeft(subParts[0], "0")
+	if seqStr == "" {
+		seqStr = "0"
+	}
+	sequencial, err := strconv.Atoi(seqStr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid sequence number: %w", err)
+	}
+
+	ano, err := strconv.Atoi(subParts[1])
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid purchase year: %w", err)
+	}
+
+	if s.pncpClient == nil {
+		s.pncpClient = pncp.NewClient("https://pncp.gov.br/api/consulta", 20*time.Second)
+	}
+
+	dto, rawJSON, err := s.pncpClient.FetchCompraDetail(ctx, cnpj, ano, sequencial)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to fetch purchase detail from PNCP: %w", err)
+	}
+	if dto == nil {
+		return nil, nil, fmt.Errorf("purchase detail not found on PNCP")
+	}
+
+	opp := normalizer.NormalizeContratacao(*dto, time.Now())
+	_, err = s.repo.UpsertOpportunity(ctx, &opp)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to upsert dynamically fetched opportunity: %w", err)
+	}
+
+	var snap *domain.LicitacaoPayloadSnapshot
+	if len(rawJSON) > 0 {
+		_ = s.repo.SaveSnapshot(ctx, opp.ID, "detail", rawJSON)
+		snap = &domain.LicitacaoPayloadSnapshot{
+			OpportunityID: opp.ID,
+			ResourceType:  "detail",
+			RawJSON:       string(rawJSON),
+			CreatedAt:     time.Now().UTC(),
+		}
+	}
+
+	return &opp, snap, nil
 }
 
 func (s *OpportunityService) ListOpportunities(ctx context.Context, filter domain.OpportunityFilter) (*domain.PaginatedOpportunities, error) {
@@ -161,5 +248,6 @@ func (s *OpportunityService) DownloadAndAuditEdital(
 		filename = targetName
 	}
 
-	return editalService.ProcessEditalUpload(ctx, fileBytes, filename, contentType, &id)
+	oppID := originDetail.OpportunityID
+	return editalService.ProcessEditalUpload(ctx, fileBytes, filename, contentType, &oppID)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -168,6 +169,9 @@ func (h *OpportunityHandler) ListOpportunities(w http.ResponseWriter, r *http.Re
 
 func (h *OpportunityHandler) GetOpportunityDetail(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	if unescaped, err := url.PathUnescape(id); err == nil && unescaped != "" {
+		id = unescaped
+	}
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "Identificador de oportunidade inválido.")
 		return
@@ -218,6 +222,9 @@ func (h *OpportunityHandler) GetStatsOverview(w http.ResponseWriter, r *http.Req
 // GetOpportunityOrigin returns the reverse parent platform resolution and PNCP attachments for an opportunity.
 func (h *OpportunityHandler) GetOpportunityOrigin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	if unescaped, err := url.PathUnescape(id); err == nil && unescaped != "" {
+		id = unescaped
+	}
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "Identificador de oportunidade inválido.")
 		return
@@ -241,6 +248,9 @@ func (h *OpportunityHandler) GetOpportunityOrigin(w http.ResponseWriter, r *http
 // DirectAuditEdital downloads the parent edital document and starts the AI audit analysis in 1 click.
 func (h *OpportunityHandler) DirectAuditEdital(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	if unescaped, err := url.PathUnescape(id); err == nil && unescaped != "" {
+		id = unescaped
+	}
 	if id == "" {
 		writeError(w, http.StatusBadRequest, "INVALID_ID", "Identificador de oportunidade inválido.")
 		return
