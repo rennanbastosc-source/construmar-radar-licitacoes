@@ -6,8 +6,15 @@ import { Header } from '@/components/Header';
 import { BadgeClassification } from '@/components/BadgeClassification';
 import { UrgencyBadge } from '@/components/UrgencyBadge';
 import { ErrorState } from '@/components/ErrorState';
-import { fetchOpportunityDetail } from '@/lib/api';
-import { LicitacaoOportunidade, LicitacaoPayloadSnapshot } from '@/lib/types';
+import { fetchOpportunityDetail, fetchOpportunityOrigin } from '@/lib/api';
+import {
+  LicitacaoOportunidade,
+  LicitacaoPayloadSnapshot,
+  OpportunityOriginDetail,
+  isTceSource,
+  sourcePortalLabel,
+} from '@/lib/types';
+import { SourceBadge } from '@/components/SourceBadge';
 import {
   formatCurrency,
   formatDateTime,
@@ -21,11 +28,14 @@ import {
   Calendar,
   DollarSign,
   FileCode,
+  FileText,
   ShieldCheck,
   Sparkles,
   Copy,
   Check,
   RefreshCw,
+  Globe,
+  Download,
 } from 'lucide-react';
 
 interface Props {
@@ -42,6 +52,8 @@ export default function OpportunityDetailPage({ params }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showRawJson, setShowRawJson] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
+  const [originDetail, setOriginDetail] = useState<OpportunityOriginDetail | null>(null);
+  const [isLoadingOrigin, setIsLoadingOrigin] = useState<boolean>(false);
 
   const loadDetail = async () => {
     setLoading(true);
@@ -64,6 +76,33 @@ export default function OpportunityDetailPage({ params }: Props) {
   useEffect(() => {
     loadDetail();
   }, [id]);
+
+  useEffect(() => {
+    if (!opportunity?.id) {
+      setOriginDetail(null);
+      setIsLoadingOrigin(false);
+      return;
+    }
+
+    let cancelled = false;
+    setOriginDetail(null);
+    setIsLoadingOrigin(true);
+    fetchOpportunityOrigin(opportunity.id)
+      .then((data) => {
+        if (!cancelled) setOriginDetail(data);
+      })
+      .catch((err) => {
+        console.warn('Erro ao carregar plataforma de origem:', err);
+        if (!cancelled) setOriginDetail(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingOrigin(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [opportunity?.id]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -140,6 +179,7 @@ export default function OpportunityDetailPage({ params }: Props) {
                     terms={opportunity.classificationTerms}
                   />
                   <UrgencyBadge deadlineIso={opportunity.proposalEndAt} />
+                  <SourceBadge source={opportunity.source} />
                   <span
                     style={{
                       fontSize: '11.5px',
@@ -167,7 +207,7 @@ export default function OpportunityDetailPage({ params }: Props) {
                     rel="noopener noreferrer"
                     className="btn-secondary"
                   >
-                    <span>Abrir no PNCP</span>
+                    <span>{sourcePortalLabel(opportunity.source).replace('Ver no', 'Abrir no')}</span>
                     <ExternalLink size={14} />
                   </a>
                 </div>
@@ -221,7 +261,9 @@ export default function OpportunityDetailPage({ params }: Props) {
                 </div>
                 <span>•</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>PNCP:</span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {isTceSource(opportunity.source) ? 'TCE-CE:' : 'PNCP:'}
+                  </span>
                   <span style={{ fontFamily: 'var(--font-mono)' }}>
                     {opportunity.sourceExternalId}
                   </span>
@@ -289,7 +331,7 @@ export default function OpportunityDetailPage({ params }: Props) {
                         : 'Não divulgado'}
                     </div>
                     <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      Status de valor: <strong>{opportunity.valueStatus}</strong> (Fonte: PNCP)
+                      Status de valor: <strong>{opportunity.valueStatus}</strong> (Fonte: {isTceSource(opportunity.source) ? 'TCE-CE' : 'PNCP'})
                     </div>
                   </div>
 
@@ -391,7 +433,7 @@ export default function OpportunityDetailPage({ params }: Props) {
 
                     <div>
                       <span style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>
-                        Publicação no PNCP
+                        {isTceSource(opportunity.source) ? 'Publicação no TCE-CE' : 'Publicação no PNCP'}
                       </span>
                       <strong style={{ color: '#FFFFFF', fontFamily: 'var(--font-mono)' }}>
                         {formatDateTime(opportunity.publishedAt)}
@@ -400,7 +442,7 @@ export default function OpportunityDetailPage({ params }: Props) {
 
                     <div>
                       <span style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'block' }}>
-                        Última Atualização PNCP
+                        {isTceSource(opportunity.source) ? 'Última Atualização TCE-CE' : 'Última Atualização PNCP'}
                       </span>
                       <strong style={{ color: '#FFFFFF', fontFamily: 'var(--font-mono)' }}>
                         {formatDateTime(opportunity.sourceUpdatedAt)}
@@ -418,6 +460,144 @@ export default function OpportunityDetailPage({ params }: Props) {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Card: Origem & Documentos do Edital */}
+            <div className="wishlabs-card" style={{ padding: '24px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Globe size={18} color="var(--brand-primary)" />
+                  <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF' }}>
+                    {isTceSource(opportunity.source) ? 'Documentos de origem (TCE-CE)' : 'Plataforma de Origem & Contratação Pai'}
+                  </h2>
+                </div>
+                {isLoadingOrigin && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--brand-primary)' }}>
+                    <RefreshCw className="animate-spin" size={12} />
+                    <span>Descobrindo origens...</span>
+                  </div>
+                )}
+              </div>
+
+              {isTceSource(opportunity.source) && (
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px' }}>
+                  O portal TCE-CE pede captcha no download. Abra o processo no navegador, baixe o edital e envie depois no Analista de Editais.
+                </p>
+              )}
+
+              {originDetail && (
+                <div style={{ marginBottom: originDetail.documents?.length ? '16px' : 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      Sistema Emissor:
+                    </span>
+                    <span
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '11.5px',
+                        fontWeight: 800,
+                        backgroundColor: `${originDetail.primaryPlatform.badgeColor}20`,
+                        color: originDetail.primaryPlatform.badgeColor,
+                        border: `1px solid ${originDetail.primaryPlatform.badgeColor}40`,
+                      }}
+                    >
+                      {originDetail.primaryPlatform.platformName}
+                    </span>
+                    {originDetail.processo && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        Proc: {originDetail.processo}
+                      </span>
+                    )}
+                  </div>
+
+                  {originDetail.availablePlatforms.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {originDetail.availablePlatforms.map((plat) => (
+                        <a
+                          key={plat.platformCode}
+                          href={plat.directSearchUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid var(--border-subtle)',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            color: '#FFFFFF',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <ExternalLink size={12} color={plat.badgeColor} />
+                          <span>{plat.platformName} (CE)</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {originDetail && originDetail.documents && originDetail.documents.length > 0 && (
+                <div style={{ paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
+                    Documentos Oficiais Anexados ({originDetail.documents.length}):
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {originDetail.documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                          <FileText size={14} color="var(--brand-primary)" />
+                          <span style={{ color: '#FFFFFF', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {doc.title}
+                          </span>
+                          {doc.docType && (
+                            <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
+                              {doc.docType}
+                            </span>
+                          )}
+                        </div>
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={isTceSource(opportunity.source) ? 'Abrir no portal' : 'Baixar Documento'}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          {isTceSource(opportunity.source) ? <ExternalLink size={12} /> : <Download size={12} />}
+                          <span>{isTceSource(opportunity.source) ? 'Abrir' : 'Baixar'}</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Card 3: Auditoria do Classificador */}

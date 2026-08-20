@@ -49,7 +49,7 @@ func TestOpportunityRepository(t *testing.T) {
 	}
 
 	// 1. Insert
-	isNew, err := repo.UpsertOpportunity(ctx, opp)
+	isNew, _, err := repo.UpsertOpportunity(ctx, opp)
 	if err != nil {
 		t.Fatalf("UpsertOpportunity failed: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestOpportunityRepository(t *testing.T) {
 	// 5. Update idempotently
 	valUpdated := 1300000.00
 	opp.EstimatedTotalValue = &valUpdated
-	isNew2, err := repo.UpsertOpportunity(ctx, opp)
+	isNew2, _, err := repo.UpsertOpportunity(ctx, opp)
 	if err != nil {
 		t.Fatalf("Second UpsertOpportunity failed: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestListOpportunitiesValueInterval(t *testing.T) {
 		newOpportunity("opportunity-1000000", 1000000),
 		newOpportunity("opportunity-2500000", 2500000),
 	} {
-		if _, err := repo.UpsertOpportunity(ctx, opportunity); err != nil {
+		if _, _, err := repo.UpsertOpportunity(ctx, opportunity); err != nil {
 			t.Fatalf("UpsertOpportunity failed: %v", err)
 		}
 	}
@@ -224,10 +224,10 @@ func TestOpportunityRepositoryDeduplicatesByProcess(t *testing.T) {
 	first := newOpportunity("07954480000179-1-020427/2026", firstUpdatedAt)
 	second := newOpportunity("07954480000179-1-020559/2026", secondUpdatedAt)
 
-	if _, err := repo.UpsertOpportunity(ctx, first); err != nil {
+	if _, _, err := repo.UpsertOpportunity(ctx, first); err != nil {
 		t.Fatalf("first UpsertOpportunity failed: %v", err)
 	}
-	if _, err := repo.UpsertOpportunity(ctx, second); err != nil {
+	if _, _, err := repo.UpsertOpportunity(ctx, second); err != nil {
 		t.Fatalf("second UpsertOpportunity failed: %v", err)
 	}
 
@@ -284,14 +284,14 @@ func TestUpsertBumpsLastSeenOnSkip(t *testing.T) {
 	}
 
 	first := mk("07954480000179-1-020427/2026", base, base)
-	if _, err := repo.UpsertOpportunity(ctx, first); err != nil {
+	if _, _, err := repo.UpsertOpportunity(ctx, first); err != nil {
 		t.Fatalf("first UpsertOpportunity failed: %v", err)
 	}
 
 	// Same content (source_updated_at not newer) but seen again later:
 	// last_seen_at must be bumped even though content is skipped.
 	seenAgain := mk("07954480000179-1-020427/2026", base, base.Add(time.Hour))
-	if _, err := repo.UpsertOpportunity(ctx, seenAgain); err != nil {
+	if _, _, err := repo.UpsertOpportunity(ctx, seenAgain); err != nil {
 		t.Fatalf("second UpsertOpportunity failed: %v", err)
 	}
 
@@ -301,5 +301,188 @@ func TestUpsertBumpsLastSeenOnSkip(t *testing.T) {
 	}
 	if !fetched.LastSeenAt.Equal(base.Add(time.Hour)) {
 		t.Errorf("expected last_seen_at bumped to %v, got %v", base.Add(time.Hour), fetched.LastSeenAt)
+	}
+}
+
+func newCrossDedupOpportunity(source, externalID, municipality, number string, year int, now time.Time) *domain.LicitacaoOportunidade {
+	return &domain.LicitacaoOportunidade{
+		Source:            source,
+		SourceExternalID:  externalID,
+		CrossDedupKey:     domain.BuildCrossDedupKey(municipality, number, year),
+		OrganizationName:  "PREFEITURA MUNICIPAL",
+		UnitName:          "UNIDADE ADMINISTRATIVA",
+		MunicipalityName:  municipality,
+		UF:                "CE",
+		PurchaseNumber:    &number,
+		PurchaseYear:      &year,
+		StatusSource:      "ABERTA",
+		StatusNormalized:  domain.StatusNormalizedOpen,
+		ObjectRaw:         "OBRAS DE INFRAESTRUTURA",
+		ObjectNormalized:  "obras de infraestrutura",
+		ValueStatus:       domain.ValueStatusUnknown,
+		Classification:    domain.ClassificationInScope,
+		ClassifierVersion: "v1",
+		SourceURL:         "https://example.com/licitacao/" + externalID,
+		LastSeenAt:        now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+}
+
+func TestUpsertSkipsPNCPWhenTCEAlreadyExists(t *testing.T) {
+	db, err := InitDB(":memory:")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewOpportunityRepository(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	tceOpp := newCrossDedupOpportunity(domain.SourceTCECE, "tce-001", "Crateús", "005/2026-CE", 2026, now)
+	if isNew, superseded, err := repo.UpsertOpportunity(ctx, tceOpp); err != nil || !isNew || superseded {
+		t.Fatalf("unexpected TCE upsert result: isNew=%v superseded=%v err=%v", isNew, superseded, err)
+	}
+
+	pncpOpp := newCrossDedupOpportunity(domain.SourcePNCP, "pncp-001", "Crateús", "005/2026-CE", 2026, now)
+	isNew, superseded, err := repo.UpsertOpportunity(ctx, pncpOpp)
+	if err != nil {
+		t.Fatalf("PNCP upsert failed: %v", err)
+	}
+	if isNew || !superseded {
+		t.Fatalf("expected PNCP duplicate to be skipped, got isNew=%v superseded=%v", isNew, superseded)
+	}
+
+	var count int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM licitacao_oportunidade").Scan(&count); err != nil {
+		t.Fatalf("count opportunities failed: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected only the TCE opportunity, got %d rows", count)
+	}
+}
+
+func TestUpsertTCEArchivesExistingPNCPAndRepointsRelations(t *testing.T) {
+	db, err := InitDB(":memory:")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewOpportunityRepository(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	pncpOpp := newCrossDedupOpportunity(domain.SourcePNCP, "pncp-002", "Fortaleza", "005/2026-CE", 2026, now)
+	if isNew, _, err := repo.UpsertOpportunity(ctx, pncpOpp); err != nil || !isNew {
+		t.Fatalf("unexpected PNCP upsert result: isNew=%v err=%v", isNew, err)
+	}
+
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO orcamento (
+			id, oportunidade_id, titulo, objeto, orgao, localidade, data_preco_base,
+			status, original_file_name, file_type, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"budget-001", pncpOpp.ID, "Orçamento", "Objeto", "Órgão", "Fortaleza/CE", "2026",
+		"PENDING", "edital.pdf", "pdf", now, now,
+	); err != nil {
+		t.Fatalf("insert orcamento failed: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `
+		INSERT INTO edital_analysis (
+			id, oportunidade_id, titulo, orgao, numero_edital, numero_processo,
+			modalidade, modo_disputa, objeto_completo, localidade, data_abertura,
+			prazo_execucao, regime_execucao, status, original_file_name, file_type,
+			resumo_executivo, parecer_tecnico, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"analysis-001", pncpOpp.ID, "Edital", "Órgão", "005/2026-CE", "PROC-005/2026-CE",
+		"CONCORRÊNCIA", "ABERTO", "Objeto", "Fortaleza/CE", "2026-01-01",
+		"12 meses", "EMPREITADA", "CONCLUIDO", "edital.pdf", "pdf",
+		"Resumo", "Parecer", now, now,
+	); err != nil {
+		t.Fatalf("insert edital analysis failed: %v", err)
+	}
+
+	tceOpp := newCrossDedupOpportunity(domain.SourceTCECE, "tce-002", "Fortaleza", "005/2026-CE", 2026, now.Add(time.Minute))
+	isNew, superseded, err := repo.UpsertOpportunity(ctx, tceOpp)
+	if err != nil {
+		t.Fatalf("TCE upsert failed: %v", err)
+	}
+	if !isNew || superseded {
+		t.Fatalf("unexpected TCE result: isNew=%v superseded=%v", isNew, superseded)
+	}
+
+	var archived int
+	if err := db.QueryRowContext(ctx, "SELECT is_archived FROM licitacao_oportunidade WHERE id = ?", pncpOpp.ID).Scan(&archived); err != nil {
+		t.Fatalf("query archived PNCP failed: %v", err)
+	}
+	if archived != 1 {
+		t.Fatalf("expected PNCP opportunity to be archived, got %d", archived)
+	}
+
+	var opportunityID string
+	if err := db.QueryRowContext(ctx, "SELECT oportunidade_id FROM orcamento WHERE id = ?", "budget-001").Scan(&opportunityID); err != nil {
+		t.Fatalf("query orcamento relation failed: %v", err)
+	}
+	if opportunityID != tceOpp.ID {
+		t.Errorf("expected orcamento to point to TCE %s, got %s", tceOpp.ID, opportunityID)
+	}
+	if err := db.QueryRowContext(ctx, "SELECT oportunidade_id FROM edital_analysis WHERE id = ?", "analysis-001").Scan(&opportunityID); err != nil {
+		t.Fatalf("query edital analysis relation failed: %v", err)
+	}
+	if opportunityID != tceOpp.ID {
+		t.Errorf("expected edital analysis to point to TCE %s, got %s", tceOpp.ID, opportunityID)
+	}
+}
+
+func TestUpsertPNCPFallbackAfterTCEArchive(t *testing.T) {
+	db, err := InitDB(":memory:")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewOpportunityRepository(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	tceOpp := newCrossDedupOpportunity(domain.SourceTCECE, "tce-fallback", "Itarema", "005/2026-CE", 2026, now)
+	if isNew, superseded, err := repo.UpsertOpportunity(ctx, tceOpp); err != nil || !isNew || superseded {
+		t.Fatalf("unexpected TCE upsert result: isNew=%v superseded=%v err=%v", isNew, superseded, err)
+	}
+
+	pncpOpp := newCrossDedupOpportunity(domain.SourcePNCP, "pncp-fallback", "Itarema", "005/2026-CE", 2026, now)
+	if isNew, superseded, err := repo.UpsertOpportunity(ctx, pncpOpp); err != nil || isNew || !superseded {
+		t.Fatalf("expected active TCE to supersede PNCP: isNew=%v superseded=%v err=%v", isNew, superseded, err)
+	}
+
+	archived, err := repo.SoftDeleteStaleByLastSeen(ctx, domain.SourceTCECE, now.Add(time.Minute))
+	if err != nil || archived != 1 {
+		t.Fatalf("expected one archived TCE opportunity, got archived=%d err=%v", archived, err)
+	}
+
+	var archivedKey string
+	if err := db.QueryRowContext(ctx, "SELECT cross_dedup_key FROM licitacao_oportunidade WHERE id = ?", tceOpp.ID).Scan(&archivedKey); err != nil {
+		t.Fatalf("query archived TCE key failed: %v", err)
+	}
+	if archivedKey != "" {
+		t.Fatalf("expected archived TCE cross key to be cleared, got %q", archivedKey)
+	}
+
+	isNew, superseded, err := repo.UpsertOpportunity(ctx, pncpOpp)
+	if err != nil {
+		t.Fatalf("PNCP fallback upsert failed: %v", err)
+	}
+	if !isNew || superseded {
+		t.Fatalf("expected PNCP fallback insertion, got isNew=%v superseded=%v", isNew, superseded)
+	}
+
+	var activePNCP int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM licitacao_oportunidade WHERE source = ? AND is_archived = 0", domain.SourcePNCP).Scan(&activePNCP); err != nil {
+		t.Fatalf("count active PNCP opportunities failed: %v", err)
+	}
+	if activePNCP != 1 {
+		t.Fatalf("expected one active PNCP fallback, got %d", activePNCP)
 	}
 }

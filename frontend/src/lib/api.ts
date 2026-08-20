@@ -159,11 +159,33 @@ export async function triggerSync(
   const res = await fetch(`${API_BASE}/api/licitacoes/sync?${query.toString()}`, {
     method: 'POST',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error?.message || 'Erro ao disparar sincronização com PNCP.');
+  }
+
+  return res.json();
+}
+
+export async function triggerTCESync(): Promise<{
+  message: string;
+  status: string;
+  startedAt: string;
+}> {
+  const res = await fetch(`${API_BASE}/api/licitacoes/sync-tce`, {
+    method: 'POST',
+    headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.error?.message || 'Erro ao disparar sincronização com o portal TCE-CE.'
+    );
   }
 
   return res.json();
@@ -179,6 +201,7 @@ export async function fetchSyncStatus(): Promise<SyncStatusResponse> {
   const res = await fetch(`${API_BASE}/api/licitacoes/sync/status`, {
     cache: 'no-store',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -193,6 +216,7 @@ export async function fetchSyncHistory(limit: number = 20): Promise<LicitacaoSyn
   const res = await fetch(`${API_BASE}/api/licitacoes/sync/history?limit=${limit}`, {
     cache: 'no-store',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -317,8 +341,20 @@ export async function fetchPncpHealth(): Promise<PncpHealth> {
   const res = await fetch(`${API_BASE}/api/licitacoes/pncp-health`, {
     cache: 'no-store',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
   if (!res.ok) throw new Error('Erro ao verificar saúde da API PNCP.');
+  const json = await res.json();
+  return json.data;
+}
+
+export async function fetchTceHealth(): Promise<PncpHealth> {
+  const res = await fetch(`${API_BASE}/api/licitacoes/tce-health`, {
+    cache: 'no-store',
+    headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!res.ok) throw new Error('Erro ao verificar saúde do portal TCE-CE.');
   const json = await res.json();
   return json.data;
 }

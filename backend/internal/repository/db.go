@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/construmar/radar-licitacoes-backend/internal/domain"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
@@ -59,6 +60,10 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to migrate licitacao archived columns: %w", err)
 	}
+	if err := migrateCrossDedup(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to migrate cross-source deduplication: %w", err)
+	}
 
 	return db, nil
 }
@@ -73,6 +78,81 @@ func migrateLicitacaoArchived(db *sql.DB) error {
 		_, _ = db.Exec(sqlStmt)
 	}
 	return nil
+}
+
+func migrateCrossDedup(db *sql.DB) error {
+	_, _ = db.Exec("ALTER TABLE licitacao_oportunidade ADD COLUMN cross_dedup_key TEXT NOT NULL DEFAULT ''")
+
+	if _, err := db.Exec("DROP INDEX IF EXISTS idx_opp_cross_dedup"); err != nil {
+		return err
+	}
+	if _, err := db.Exec("UPDATE licitacao_oportunidade SET cross_dedup_key = ''"); err != nil {
+		return err
+	}
+	if _, err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_opp_cross_dedup ON licitacao_oportunidade(cross_dedup_key) WHERE cross_dedup_key <> '' AND is_archived = 0"); err != nil {
+		return err
+	}
+
+	rows, err := db.Query(`
+		SELECT id, municipality_name, purchase_number, purchase_year
+		FROM licitacao_oportunidade
+		WHERE cross_dedup_key = '' AND purchase_number IS NOT NULL AND purchase_number <> ''
+		ORDER BY (CASE WHEN source = 'TCE-CE' THEN 0 ELSE 1 END), created_at ASC`)
+	if err != nil {
+		return err
+	}
+
+	type opportunityCrossKey struct {
+		id           string
+		municipality string
+		number       string
+		year         sql.NullInt64
+	}
+	opportunities := make([]opportunityCrossKey, 0)
+	for rows.Next() {
+		var opportunity opportunityCrossKey
+		if err := rows.Scan(&opportunity.id, &opportunity.municipality, &opportunity.number, &opportunity.year); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		opportunities = append(opportunities, opportunity)
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, opportunity := range opportunities {
+		if !opportunity.year.Valid {
+			continue
+		}
+		key := domain.BuildCrossDedupKey(opportunity.municipality, opportunity.number, int(opportunity.year.Int64))
+		if key == "" {
+			continue
+		}
+
+		if _, err := db.Exec("UPDATE licitacao_oportunidade SET cross_dedup_key = ? WHERE id = ?", key, opportunity.id); err == nil {
+			continue
+		} else if !isUniqueConstraintError(err) {
+			return err
+		}
+
+		if _, err := db.Exec("UPDATE licitacao_oportunidade SET is_archived = 1, archived_at = ? WHERE id = ?", time.Now().UTC(), opportunity.id); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func isUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "unique constraint") || strings.Contains(message, "constraint failed") && strings.Contains(message, "unique")
 }
 
 func migrateOrcamentoProgress(db *sql.DB) error {
@@ -358,7 +438,19 @@ func createTables(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_ind_fin_analysis ON edital_indice_financeiro(analysis_id);
 	`
 
-	_, err := db.Exec(schema)
+	if _, err := db.Exec(schema); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`
+		DELETE FROM licitacao_documento
+		WHERE id NOT IN (
+			SELECT MIN(id)
+			FROM licitacao_documento
+			GROUP BY opportunity_id, url
+		)`); err != nil {
+		return err
+	}
+	_, err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_doc_opp_url ON licitacao_documento(opportunity_id, url)")
 	return err
 }
 

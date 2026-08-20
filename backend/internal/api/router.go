@@ -137,9 +137,12 @@ func NewRouter(
 			r.Get("/stats", oppHandler.GetStatsOverview)
 
 			r.Post("/sync", syncHandler.TriggerSync)
+			r.Post("/sync-tce", syncHandler.TriggerTCESync)
 			r.Get("/sync/status", syncHandler.GetSyncStatus)
 			r.Get("/sync/history", syncHandler.ListSyncHistory)
 			r.Get("/pncp-health", syncHandler.GetPncpHealth)
+			r.Get("/tce-health", syncHandler.GetTceHealth)
+			r.Get("/tce/abertas", syncHandler.LiveTCEAbertas)
 		})
 
 		// Orçamentos Inteligentes & SEOBRA API

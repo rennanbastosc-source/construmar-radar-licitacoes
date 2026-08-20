@@ -59,6 +59,26 @@ func (h *SyncHandler) TriggerSync(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *SyncHandler) TriggerTCESync(w http.ResponseWriter, r *http.Request) {
+	if h.syncService.IsTCERunning() {
+		writeError(w, http.StatusConflict, "SYNC_ALREADY_IN_PROGRESS", "Uma sincronização com o portal TCE-CE já está em andamento.")
+		return
+	}
+
+	startedAt := time.Now().UTC()
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 40*time.Minute)
+		defer cancel()
+		_, _ = h.syncService.RunTCESyncUntilComplete(bgCtx, 3, 2*time.Minute)
+	}()
+
+	writeJSON(w, http.StatusAccepted, map[string]interface{}{
+		"message":   "Sincronização com o portal TCE-CE iniciada com sucesso.",
+		"status":    "STARTED",
+		"startedAt": startedAt,
+	})
+}
+
 func (h *SyncHandler) GetSyncStatus(w http.ResponseWriter, r *http.Request) {
 	isRunning := h.syncService.IsRunning()
 	currentRun := h.syncService.GetCurrentRun()
@@ -76,9 +96,11 @@ func (h *SyncHandler) GetSyncStatus(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"data": map[string]interface{}{
-			"isRunning":  isRunning,
-			"currentRun": currentRun,
-			"latestRun":  latestRun,
+			"isRunning":     isRunning,
+			"currentRun":    currentRun,
+			"isTceRunning":  h.syncService.IsTCERunning(),
+			"currentTCERun": h.syncService.GetCurrentTCERun(),
+			"latestRun":     latestRun,
 		},
 	})
 }
@@ -105,4 +127,22 @@ func (h *SyncHandler) ListSyncHistory(w http.ResponseWriter, r *http.Request) {
 func (h *SyncHandler) GetPncpHealth(w http.ResponseWriter, r *http.Request) {
 	health := h.syncService.CheckPncpHealth(r.Context())
 	writeJSON(w, http.StatusOK, map[string]interface{}{"data": health})
+}
+
+func (h *SyncHandler) GetTceHealth(w http.ResponseWriter, r *http.Request) {
+	health := h.syncService.CheckTceHealth(r.Context())
+	writeJSON(w, http.StatusOK, map[string]interface{}{"data": health})
+}
+
+func (h *SyncHandler) LiveTCEAbertas(w http.ResponseWriter, r *http.Request) {
+	opportunities, err := h.syncService.LiveScrapeAbertas(r.Context())
+	if err != nil {
+		writeError(w, http.StatusBadGateway, "TCE_SCRAPE_ERROR", "Não foi possível consultar as licitações abertas do portal TCE-CE.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"data": opportunities,
+		"meta": map[string]int{"count": len(opportunities)},
+	})
 }

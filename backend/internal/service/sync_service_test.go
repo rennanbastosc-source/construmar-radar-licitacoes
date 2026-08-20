@@ -12,7 +12,7 @@ import (
 // concurrent readers never observe in-flight mutations (run with -race),
 // and mutating the source run after publish does not affect the snapshot.
 func TestPublishRunSnapshotsAreIsolated(t *testing.T) {
-	s := NewSyncService(nil, nil)
+	s := NewSyncService(nil, nil, nil)
 
 	run := &domain.LicitacaoSyncRun{
 		ID:            "run-1",

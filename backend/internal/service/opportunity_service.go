@@ -120,7 +120,7 @@ func (s *OpportunityService) fetchAndStoreFromPNCP(ctx context.Context, external
 	}
 
 	opp := normalizer.NormalizeContratacao(*dto, time.Now())
-	_, err = s.repo.UpsertOpportunity(ctx, &opp)
+	_, _, err = s.repo.UpsertOpportunity(ctx, &opp)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to upsert dynamically fetched opportunity: %w", err)
 	}
@@ -155,7 +155,7 @@ func (s *OpportunityService) ListOpportunities(ctx context.Context, filter domai
 	totalPages := int(math.Ceil(float64(total) / float64(filter.PageSize)))
 	hasNext := filter.Page < totalPages
 
-	latestRun, _ := s.repo.GetLatestSyncRun(ctx, "PNCP")
+	latestRun, _ := s.repo.GetLatestSyncRunAnySource(ctx)
 	var lastSyncAt *time.Time
 	syncStatus := "NEVER"
 	if latestRun != nil {
@@ -195,6 +195,61 @@ func (s *OpportunityService) GetOpportunityOrigin(ctx context.Context, id string
 		return nil, nil
 	}
 
+	if opp.Source == domain.SourceTCECE {
+		domainDocuments, err := s.repo.GetDocumentsByOpportunityID(ctx, opp.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch TCE-CE documents: %w", err)
+		}
+
+		purchaseNumber := ""
+		if opp.PurchaseNumber != nil {
+			purchaseNumber = *opp.PurchaseNumber
+		}
+		purchaseYear := 0
+		if opp.PurchaseYear != nil {
+			purchaseYear = *opp.PurchaseYear
+		}
+		modalityName := ""
+		if opp.ModalityName != nil {
+			modalityName = *opp.ModalityName
+		}
+
+		platform := origin.OriginPlatformInfo{
+			PlatformName:    "TCE-CE",
+			PlatformCode:    origin.PlatformCode("TCE_CE"),
+			OriginURL:       opp.SourceURL,
+			DirectSearchURL: opp.SourceURL,
+			IsDirectMatch:   true,
+			BadgeColor:      "#0EA5E9",
+		}
+		documents := make([]origin.EditalDocumentFile, 0, len(domainDocuments))
+		for _, document := range domainDocuments {
+			documents = append(documents, origin.EditalDocumentFile{
+				ID:             document.ID,
+				Title:          document.Title,
+				DocType:        document.DocType,
+				URL:            document.URL,
+				IsDownloadable: tceDocumentIsDownloadable(document.URL),
+			})
+		}
+
+		return &origin.OpportunityOriginDetail{
+			OpportunityID:        opp.ID,
+			SourceExternalID:     opp.SourceExternalID,
+			OrganizationName:     opp.OrganizationName,
+			OrganizationCNPJ:     opp.OrganizationCNPJ,
+			MunicipalityName:     opp.MunicipalityName,
+			UF:                   opp.UF,
+			PurchaseNumber:       purchaseNumber,
+			PurchaseYear:         purchaseYear,
+			ModalityName:         modalityName,
+			PrimaryPlatform:      platform,
+			AvailablePlatforms:   []origin.OriginPlatformInfo{platform},
+			Documents:            documents,
+			DirectAuditAvailable: false,
+		}, nil
+	}
+
 	var snapshotRaw []byte
 	for _, snap := range snapshots {
 		if snap.ResourceType == "list" && len(snap.RawJSON) > 0 {
@@ -207,6 +262,16 @@ func (s *OpportunityService) GetOpportunityOrigin(ctx context.Context, id string
 	}
 
 	return s.originResolver.ResolveOrigin(ctx, opp, snapshotRaw)
+}
+
+func tceDocumentIsDownloadable(rawURL string) bool {
+	lowerURL := strings.ToLower(strings.TrimSpace(rawURL))
+	if lowerURL == "" {
+		return false
+	}
+	return !strings.Contains(lowerURL, "captcha") &&
+		!strings.Contains(lowerURL, "recaptcha") &&
+		!strings.Contains(lowerURL, "baixararquivo")
 }
 
 // DownloadAndAuditEdital downloads the edital document and pipes it into the AI Edital Analyst.

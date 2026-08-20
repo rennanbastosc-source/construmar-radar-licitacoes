@@ -17,6 +17,7 @@ import (
 	"github.com/construmar/radar-licitacoes-backend/internal/repository"
 	"github.com/construmar/radar-licitacoes-backend/internal/seobra"
 	"github.com/construmar/radar-licitacoes-backend/internal/service"
+	"github.com/construmar/radar-licitacoes-backend/internal/tcce"
 )
 
 func main() {
@@ -42,12 +43,13 @@ func main() {
 	orcRepo := repository.NewOrcamentoRepository(db)
 	editalRepo := repository.NewEditalRepository(db)
 	pncpClient := pncp.NewClient(cfg.PNCPBaseURL, 60*time.Second)
+	tceClient := tcce.NewClient(30 * time.Second)
 	aiExtractor := ai.NewAIExtractor(cfg.AIAPIURL, cfg.AIAPIKey, cfg.AIModel)
 	editalAnalyst := ai.NewEditalAIAnalyst(cfg.AIAPIURL, cfg.AIAPIKey, cfg.AIModel)
 	seobraClient := seobra.NewClient(orcRepo)
 
 	// 3. Initialize Services
-	syncService := service.NewSyncService(oppRepo, pncpClient)
+	syncService := service.NewSyncService(oppRepo, pncpClient, tceClient)
 	oppService := service.NewOpportunityService(oppRepo)
 	orcService := service.NewOrcamentoService(orcRepo, aiExtractor, seobraClient)
 	editalService := service.NewEditalService(editalRepo, editalAnalyst)
@@ -67,11 +69,28 @@ func main() {
 		warmCancel()
 
 		if err == nil && stats != nil && stats.TotalOpportunities == 0 {
-			log.Printf("[Auto-Warmup] Database has 0 active opportunities for UF=%s. Triggering initial PNCP sync in background...", cfg.DefaultUF)
-			syncCtx, syncCancel := context.WithTimeout(context.Background(), 40*time.Minute)
-			defer syncCancel()
-			if _, syncErr := syncService.RunSyncUntilComplete(syncCtx, cfg.DefaultUF, cfg.MinEstimatedValue, 5, 2*time.Minute); syncErr != nil {
-				log.Printf("[Auto-Warmup Warning] Initial sync encountered issue: %v", syncErr)
+			log.Printf("[Auto-Warmup] Database has 0 active opportunities for UF=%s. Triggering initial TCE-CE sync first...", cfg.DefaultUF)
+			tceCtx, tceCancel := context.WithTimeout(context.Background(), 40*time.Minute)
+			tceRun, tceErr := syncService.RunTCESyncUntilComplete(tceCtx, 3, 2*time.Minute)
+			tceCancel()
+			if tceErr != nil {
+				log.Printf("[Auto-Warmup Warning] Initial TCE-CE sync encountered issue: %v; continuing with PNCP.", tceErr)
+			} else if tceRun == nil || tceRun.Status != "SUCCESS" {
+				status := "UNKNOWN"
+				if tceRun != nil {
+					status = tceRun.Status
+				}
+				log.Printf("[Auto-Warmup Warning] Initial TCE-CE sync ended with status %q; continuing with PNCP.", status)
+			} else {
+				log.Printf("[Auto-Warmup] Initial TCE-CE sync completed successfully.")
+			}
+
+			log.Printf("[Auto-Warmup] Triggering initial PNCP sync in background...")
+			pncpCtx, pncpCancel := context.WithTimeout(context.Background(), 40*time.Minute)
+			_, pncpErr := syncService.RunSyncUntilComplete(pncpCtx, cfg.DefaultUF, cfg.MinEstimatedValue, 5, 2*time.Minute)
+			pncpCancel()
+			if pncpErr != nil {
+				log.Printf("[Auto-Warmup Warning] Initial PNCP sync encountered issue: %v", pncpErr)
 			} else {
 				log.Printf("[Auto-Warmup Success] Initial database population completed successfully!")
 			}
@@ -94,10 +113,31 @@ func main() {
 				log.Printf("[Scheduler] Next internal daily sync scheduled for %s (in %v)", nextSync.Format(time.RFC3339), sleepDuration.Round(time.Minute))
 				time.Sleep(sleepDuration)
 
-				log.Printf("[Scheduler] Triggering daily scheduled sync (12:00 PM UTC-3) for UF=%s...", cfg.DefaultUF)
-				ctx, cancel := context.WithTimeout(context.Background(), 40*time.Minute)
-				_, _ = syncService.RunSyncUntilComplete(ctx, cfg.DefaultUF, cfg.MinEstimatedValue, 5, 2*time.Minute)
-				cancel()
+				log.Printf("[Scheduler] Triggering daily TCE-CE sync (12:00 PM UTC-3) for UF=%s...", cfg.DefaultUF)
+				tceCtx, tceCancel := context.WithTimeout(context.Background(), 40*time.Minute)
+				tceRun, tceErr := syncService.RunTCESyncUntilComplete(tceCtx, 3, 2*time.Minute)
+				tceCancel()
+				if tceErr != nil {
+					log.Printf("[Scheduler] TCE-CE sync ended with issue: %v; proceeding to PNCP.", tceErr)
+				} else if tceRun == nil || tceRun.Status != "SUCCESS" {
+					status := "UNKNOWN"
+					if tceRun != nil {
+						status = tceRun.Status
+					}
+					log.Printf("[Scheduler] TCE-CE sync ended with status %q; proceeding to PNCP.", status)
+				} else {
+					log.Printf("[Scheduler] TCE-CE sync completed.")
+				}
+
+				log.Printf("[Scheduler] Triggering daily PNCP sync for UF=%s...", cfg.DefaultUF)
+				pncpCtx, pncpCancel := context.WithTimeout(context.Background(), 40*time.Minute)
+				_, pncpErr := syncService.RunSyncUntilComplete(pncpCtx, cfg.DefaultUF, cfg.MinEstimatedValue, 5, 2*time.Minute)
+				pncpCancel()
+				if pncpErr != nil {
+					log.Printf("[Scheduler] PNCP sync ended with issue: %v", pncpErr)
+				} else {
+					log.Printf("[Scheduler] PNCP sync completed.")
+				}
 			}
 		}()
 	}

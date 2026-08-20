@@ -12,7 +12,9 @@ import {
   fetchOpportunities,
   fetchStats,
   triggerSync,
+  triggerTCESync,
   fetchSyncStatus,
+  fetchSyncHistory,
 } from '@/lib/api';
 import {
   LicitacaoOportunidade,
@@ -38,6 +40,7 @@ interface RadarContextType {
   totalRecords: number;
   filters: OpportunityFilterParams;
   isSyncing: boolean;
+  isSyncingTce: boolean;
   syncFeedback: { type: 'success' | 'info' | 'error'; message: string } | null;
   lastSuccessfulSyncAt: string | null;
   syncStatus: string;
@@ -50,6 +53,7 @@ interface RadarContextType {
   handleResetFilters: () => void;
   handlePageChange: (newPage: number) => void;
   handleTriggerSync: () => Promise<void>;
+  handleTriggerTceSync: () => Promise<void>;
   handleSelectCategory: (cat: 'ALL' | 'IN_SCOPE' | 'REVIEW' | 'URGENT') => void;
   reload: () => Promise<void>;
 }
@@ -91,6 +95,8 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Sync state
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isSyncingTce, setIsSyncingTce] = useState<boolean>(false);
+  const tceSyncStartedAtRef = React.useRef<number>(0);
   const [syncFeedback, setSyncFeedback] = useState<{
     type: 'success' | 'info' | 'error';
     message: string;
@@ -255,6 +261,74 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, [isSyncing, filters, loadData, loadStats]);
 
+  // ponytail: poll history for TCE-CE — /sync/status.isRunning is PNCP-only
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (!isSyncingTce) {
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }
+
+    const pollStartedAt = Date.now();
+    interval = setInterval(async () => {
+      try {
+        if (Date.now() - pollStartedAt > 8 * 60 * 1000) {
+          setIsSyncingTce(false);
+          setSyncFeedback({
+            type: 'info',
+            message:
+              'A sincronização com o TCE-CE segue em segundo plano. Atualize o histórico em instantes.',
+          });
+          return;
+        }
+
+        const history = await fetchSyncHistory(20);
+        const latestTce = (history || [])
+          .filter((run) => run.source === 'TCE-CE')
+          .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())[0];
+
+        if (!latestTce) return;
+        const runStarted = new Date(latestTce.startedAt).getTime();
+        if (runStarted + 2000 < tceSyncStartedAtRef.current && latestTce.status !== 'RUNNING') {
+          return;
+        }
+        if (latestTce.status === 'RUNNING') return;
+
+        setIsSyncingTce(false);
+        if (latestTce.status === 'SUCCESS') {
+          setSyncFeedback({
+            type: 'success',
+            message: `Sincronização TCE-CE concluída com sucesso! (${latestTce.totalReceived} recebidas, ${latestTce.totalIncluded} em escopo).`,
+          });
+        } else if (latestTce.status === 'PARTIAL') {
+          setSyncFeedback({
+            type: 'info',
+            message: `Sincronização TCE-CE parcial (${latestTce.totalReceived} recebidas, ${latestTce.totalIncluded} em escopo). Aviso: ${latestTce.errorMessage || 'Alguns lotes pendentes'}.`,
+          });
+        } else if (latestTce.status === 'FAILED') {
+          setSyncFeedback({
+            type: 'error',
+            message: `Falha na sincronização com o TCE-CE: ${latestTce.errorMessage || 'Serviço temporariamente indisponível'}.`,
+          });
+        } else {
+          setSyncFeedback({
+            type: 'success',
+            message: 'Sincronização TCE-CE finalizada. Dados atualizados.',
+          });
+        }
+        loadData(filters);
+        loadStats();
+      } catch {
+        // Ignore polling errors
+      }
+    }, 3000);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isSyncingTce, filters, loadData, loadStats]);
+
   const handleFilterChange = (updated: Partial<OpportunityFilterParams>) => {
     const nextFilters = { ...filters, ...updated };
     setFilters(nextFilters);
@@ -284,6 +358,24 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setSyncFeedback({
         type: 'error',
         message: err.message || 'Falha ao disparar sincronização com o PNCP.',
+      });
+    }
+  };
+
+  const handleTriggerTceSync = async () => {
+    try {
+      tceSyncStartedAtRef.current = Date.now();
+      setIsSyncingTce(true);
+      setSyncFeedback({
+        type: 'info',
+        message: 'Sincronização com o portal TCE-CE iniciada em segundo plano...',
+      });
+      await triggerTCESync();
+    } catch (err: any) {
+      setIsSyncingTce(false);
+      setSyncFeedback({
+        type: 'error',
+        message: err.message || 'Falha ao disparar sincronização com o portal TCE-CE.',
       });
     }
   };
@@ -320,6 +412,7 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         totalRecords,
         filters,
         isSyncing,
+        isSyncingTce,
         syncFeedback,
         lastSuccessfulSyncAt,
         syncStatus,
@@ -330,6 +423,7 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         handleResetFilters,
         handlePageChange,
         handleTriggerSync,
+        handleTriggerTceSync,
         handleSelectCategory,
         reload,
       }}

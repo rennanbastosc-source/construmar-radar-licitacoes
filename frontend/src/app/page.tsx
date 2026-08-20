@@ -160,7 +160,7 @@ export default function RadarDashboardPage() {
             }}
           >
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }} />
-            <span>Radar PNCP Ceará • Oportunidades em Aberto</span>
+            <span>Radar de Licitações Ceará • Oportunidades em Aberto</span>
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', gap: '20px' }}>
@@ -182,7 +182,7 @@ export default function RadarDashboardPage() {
                 </span>
               </h1>
               <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '640px' }}>
-                Monitoramento determinístico no Portal Nacional de Contratações Públicas com classificação técnica automática.
+                Monitoramento de licitações no Ceará (PNCP e TCE-CE) com classificação técnica automática.
               </p>
             </div>
 
@@ -219,17 +219,44 @@ export default function RadarDashboardPage() {
             onRetry={reload}
           />
         ) : (
-          <OpportunityTable
-            opportunities={opportunities}
-            loading={loading}
-            page={page}
-            totalPages={totalPages}
-            total={totalRecords}
-            onPageChange={handlePageChange}
-            onTermClick={(term) => handleFilterChange({ term, page: 1 })}
-            onSelectOpportunity={(opp) => setSelectedOpp(opp)}
-            viewMode={viewMode}
-          />
+          <>
+            {error && (
+              <div
+                style={{
+                  padding: '14px 20px',
+                  borderRadius: 'var(--radius-xl)',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                  backgroundColor: 'rgba(255, 129, 178, 0.12)',
+                  border: '1px solid rgba(255, 129, 178, 0.3)',
+                  color: '#FF81B2',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                }}
+              >
+                <span>{error}</span>
+                <button onClick={reload} className="btn-secondary" style={{ padding: '6px 14px', fontSize: '12px' }}>
+                  <RefreshCw size={13} />
+                  <span>Tentar novamente</span>
+                </button>
+              </div>
+            )}
+            <OpportunityTable
+              opportunities={opportunities}
+              loading={loading}
+              page={page}
+              totalPages={totalPages}
+              total={totalRecords}
+              onPageChange={handlePageChange}
+              onTermClick={(term) => handleFilterChange({ term, page: 1 })}
+              onSelectOpportunity={(opp) => setSelectedOpp(opp)}
+              viewMode={viewMode}
+            />
+          </>
         )}
       </main>
 

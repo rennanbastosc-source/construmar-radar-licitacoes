@@ -5,7 +5,8 @@ import { LicitacaoOportunidade } from '@/lib/types';
 import { formatCurrency, formatDateTime, formatCNPJ } from '@/lib/formatters';
 import { BadgeClassification } from './BadgeClassification';
 import { UrgencyBadge } from './UrgencyBadge';
-import { Eye, FileText, Building2, MapPin, ChevronRight, ExternalLink } from 'lucide-react';
+import { FileText, Building2, MapPin, ChevronRight } from 'lucide-react';
+import { SourceBadge } from './SourceBadge';
 
 interface Props {
   opportunities: LicitacaoOportunidade[];
@@ -53,7 +54,7 @@ export const OpportunityTable: React.FC<Props> = ({
             className="animate-spin"
           />
           <span style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-            Varrendo e classificando oportunidades no PNCP...
+            Varrendo e classificando oportunidades no Ceará...
           </span>
         </div>
 
@@ -177,6 +178,7 @@ export const OpportunityTable: React.FC<Props> = ({
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                    <SourceBadge source={opp.source} />
                     <BadgeClassification classification={opp.classification} score={opp.classificationScore} />
                     <UrgencyBadge deadlineIso={opp.proposalEndAt} />
                   </div>
@@ -323,6 +325,7 @@ export const OpportunityTable: React.FC<Props> = ({
                       </div>
 
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        <SourceBadge source={opp.source} />
                         <span style={{ fontWeight: 600, color: 'var(--brand-cyan)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           <Building2 size={13} />
                           {opp.organizationName}

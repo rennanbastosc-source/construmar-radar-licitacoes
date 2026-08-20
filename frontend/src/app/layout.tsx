@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'Radar de Licitações — CONSTRUMAR',
-  description: 'Monitoramento contínuo de oportunidades de licitações públicas em construção civil, obras e engenharia no Ceará (PNCP).',
+  description: 'Monitoramento contínuo de oportunidades de licitações públicas em construção civil, obras e engenharia no Ceará (PNCP e TCE-CE).',
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },
@@ -54,7 +54,7 @@ export default function RootLayout({
           >
             <div className="container">
               <p>
-                <strong>CONSTRUMAR</strong> — Radar de Licitações MVP • Fonte oficial: Portal Nacional de Contratações Públicas (PNCP)
+                <strong>CONSTRUMAR</strong> — Radar de Licitações • Fontes: PNCP e TCE-CE (municípios do Ceará)
               </p>
               <p style={{ marginTop: '4px' }}>
                 Critérios ativos: UF=CE • Recebimento de propostas aberto • Valor total estimado &ge; R$ 900.000,00

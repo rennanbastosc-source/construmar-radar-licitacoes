@@ -1,10 +1,23 @@
 export type ClassificationType = 'IN_SCOPE' | 'REVIEW' | 'OUT_OF_SCOPE';
 export type ValueStatusType = 'KNOWN' | 'VALUE_CONFIDENTIAL' | 'VALUE_UNKNOWN';
 export type StatusNormalizedType = 'OPEN' | 'CLOSED' | 'UNKNOWN';
+export type OpportunitySource = 'PNCP' | 'TCE-CE';
+
+export function isTceSource(source?: string | null): boolean {
+  return source === 'TCE-CE';
+}
+
+export function resolveOpportunitySource(source?: string | null): OpportunitySource {
+  return source === 'TCE-CE' ? 'TCE-CE' : 'PNCP';
+}
+
+export function sourcePortalLabel(source?: string | null): string {
+  return isTceSource(source) ? 'Ver no portal TCE-CE' : 'Ver no PNCP';
+}
 
 export interface LicitacaoOportunidade {
   id: string;
-  source: string;
+  source: OpportunitySource | string;
   sourceExternalId: string;
   organizationCnpj: string;
   organizationName: string;
@@ -58,7 +71,7 @@ export interface LicitacaoPayloadSnapshot {
 
 export interface LicitacaoSyncRun {
   id: string;
-  source: string;
+  source: OpportunitySource | string;
   startedAt: string;
   finishedAt?: string;
   status: 'RUNNING' | 'SUCCESS' | 'PARTIAL' | 'FAILED';
@@ -308,6 +321,7 @@ export type PlatformCode =
   | 'SEPLAG_CE'
   | 'BBMNET'
   | 'PNCP'
+  | 'TCE_CE'
   | 'OTHER';
 
 export interface OriginPlatformInfo {

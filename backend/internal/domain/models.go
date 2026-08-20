@@ -11,6 +11,12 @@ const (
 	ClassificationOutOfScope = "OUT_OF_SCOPE"
 )
 
+// Opportunity sources
+const (
+	SourcePNCP  = "PNCP"
+	SourceTCECE = "TCE-CE"
+)
+
 // Value statuses
 const (
 	ValueStatusKnown        = "KNOWN"
@@ -40,6 +46,7 @@ type LicitacaoOportunidade struct {
 	SourceExternalID string `json:"sourceExternalId"`
 	// DedupKey is the stable identity (cnpj|processo_digitos); empty means deduplicate by source_external_id.
 	DedupKey            string     `json:"-"`
+	CrossDedupKey       string     `json:"-"`
 	OrganizationCNPJ    string     `json:"organizationCnpj"`
 	OrganizationName    string     `json:"organizationName"`
 	UnitName            string     `json:"unitName"`

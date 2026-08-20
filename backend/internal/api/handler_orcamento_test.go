@@ -32,7 +32,7 @@ func TestOrcamentoAPIWorkflow(t *testing.T) {
 	aiExtractor := ai.NewAIExtractor("", "", "")
 	seobraClient := seobra.NewClient(orcRepo)
 
-	syncService := service.NewSyncService(oppRepo, nil)
+	syncService := service.NewSyncService(oppRepo, nil, nil)
 	oppService := service.NewOpportunityService(oppRepo)
 	orcService := service.NewOrcamentoService(orcRepo, aiExtractor, seobraClient)
 

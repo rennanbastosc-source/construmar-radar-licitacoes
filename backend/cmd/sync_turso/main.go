@@ -27,7 +27,7 @@ func main() {
 
 	oppRepo := repository.NewOpportunityRepository(db)
 	pncpClient := pncp.NewClient("https://pncp.gov.br/api/consulta", 60*time.Second)
-	syncService := service.NewSyncService(oppRepo, pncpClient)
+	syncService := service.NewSyncService(oppRepo, pncpClient, nil)
 
 	fmt.Println("Syncing PNCP Ceará directly into Turso cloud database...")
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
