@@ -155,7 +155,26 @@ sqlite3 backend/radar.db "SELECT started_at, status, total_received, error_messa
 
 ---
 
-## 5. Checklist para Futuras Sessões e Agentes
+## 5. Backlog Prioritário
+
+### 🚨 P0 — Auditoria e correção do acesso direto aos documentos nos portais de origem
+- **Objetivo:** corrigir o acesso aos editais e anexos acionado pelo modal da página principal, sem depender exclusivamente do PNCP. O sistema deve localizar e baixar o documento no portal onde o processo realmente vive.
+- **Portais prioritários:** BLL Compras, BBMNET, M2A, Compras.gov.br, Licita + Brasil e demais portais identificados pelo resolvedor de origem.
+- **Estratégia por portal:**
+  1. Preferir API REST pública/oficial quando existir e for estável.
+  2. Quando não houver API utilizável, mapear de forma controlada os endpoints, parâmetros, headers, tokens públicos e respostas usados por cada URL de processo.
+  3. Usar navegador headless com computer-use assistido por IA como fallback para descoberta e navegação de páginas dinâmicas, sem fabricar documentos nem contornar CAPTCHA, autenticação ou controles anti-bot.
+- **Fluxo esperado:** modal → identificação do portal de origem → adaptador específico → descoberta de edital/anexos → validação do arquivo → download/abertura → envio para auditoria IA.
+- **Critérios de aceite:**
+  - O modal informa claramente a fonte e oferece acesso direto ao edital e aos anexos encontrados.
+  - Cada portal possui resolução isolada, timeout, limite de resposta, logs e mensagem de erro/retry próprios.
+  - A auditoria usa o documento encontrado no portal de origem quando o PNCP estiver incompleto, indisponível ou apontar apenas metadados.
+  - Nenhum fallback mockado ou resultado fictício é permitido; falhas de portal devem permanecer visíveis.
+  - O comportamento é coberto por fixtures/testes por portal e por um smoke test real de cada integração antes de produção.
+- **Ordem sugerida:** auditar `ReverseResolver`, `GetOpportunityOrigin` e o modal `OpportunityDrawer`; implementar um adaptador por vez, começando pelo portal com maior volume de processos válidos; registrar contratos e limites de cada endpoint.
+- **Status:** próxima feature prioritária para transformar o Radar em SaaS operacional.
+
+## 6. Checklist para Futuras Sessões e Agentes
 1. [ ] Consultar `STATE.md` antes de efetuar alterações arquiteturais ou de integração.
 2. [ ] Nunca adicionar dados mockados ou fakes para contornar falhas de backend.
 3. [ ] Respeitar estritamente a paleta e tokens descritos em `DESIGN.md` e `MANUAL_IDENTIDADE_VISUAL.md`.
