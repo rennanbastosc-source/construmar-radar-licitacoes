@@ -44,7 +44,7 @@ func main() {
 	log.Printf("=====================================================")
 	log.Printf("  CONSTRUMAR — Radar de Licitações MVP PNCP (Go)     ")
 	log.Printf("=====================================================")
-	log.Printf("Port: %s | DB: %s | MinValue: R$ %.2f | UF: %s", cfg.Port, cfg.DBPath, cfg.MinEstimatedValue, cfg.DefaultUF)
+	log.Printf("Port: %s | DB: %s | MinValue: R$ %.2f | UF: %s", cfg.Port, maskURL(cfg.DBPath), cfg.MinEstimatedValue, cfg.DefaultUF)
 
 	// 1. Initialize SQLite database
 	db, err := repository.InitDB(cfg.DBPath)

@@ -25,6 +25,12 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
+      - key: AI_API_URL
+        value: https://rennan.tail814f6b.ts.net/v1
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: GeMiNi
 
   # Frontend: Interface Next.js
   - type: web
