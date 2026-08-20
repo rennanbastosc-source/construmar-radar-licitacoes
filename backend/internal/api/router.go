@@ -53,6 +53,13 @@ func newIPRateLimiter(rate int, window time.Duration) *ipRateLimiter {
 
 func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// ponytail: /health is exempt — Render's probes (every 5s from one IP)
+		// would otherwise lock the bucket and mark the service unhealthy
+		if r.URL.Path == "/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		ip, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
 			ip = r.RemoteAddr
