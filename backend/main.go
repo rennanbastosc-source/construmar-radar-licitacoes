@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,8 +22,21 @@ import (
 	"github.com/construmar/radar-licitacoes-backend/internal/tcce"
 )
 
+func maskURL(rawURL string) string {
+	if strings.TrimSpace(rawURL) == "" {
+		return "não configurado"
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "não configurado"
+	}
+	return parsed.Scheme + "://" + parsed.Host
+}
+
 func main() {
 	cfg := config.LoadConfig()
+	log.Printf("[Config] IA endpoint: %s | modelo: %s", maskURL(cfg.AIAPIURL), cfg.AIModel)
 	if err := cfg.Validate(); err != nil {
 		log.Fatalf("Fatal: invalid configuration: %v", err)
 	}
@@ -42,6 +57,12 @@ func main() {
 	oppRepo := repository.NewOpportunityRepository(db)
 	orcRepo := repository.NewOrcamentoRepository(db)
 	editalRepo := repository.NewEditalRepository(db)
+	n, err := editalRepo.DeleteMockAnalyses(context.Background())
+	if err != nil {
+		log.Printf("[Startup] falha ao limpar análises mock: %v", err)
+	} else if n > 0 {
+		log.Printf("[Startup] %d análise(s) mockada(s) removida(s)", n)
+	}
 	pncpClient := pncp.NewClient(cfg.PNCPBaseURL, 60*time.Second)
 	tceClient := tcce.NewClient(30 * time.Second)
 	aiExtractor := ai.NewAIExtractor(cfg.AIAPIURL, cfg.AIAPIKey, cfg.AIModel)

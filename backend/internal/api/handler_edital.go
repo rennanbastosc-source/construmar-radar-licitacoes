@@ -105,6 +105,10 @@ func (h *EditalHandler) UploadAndAnalyze(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err != nil {
+		if errors.Is(err, ai.ErrIAIndisponivel) {
+			http.Error(w, "Serviço de IA indisponível para auditoria de editais. Tente novamente em instantes.", http.StatusServiceUnavailable)
+			return
+		}
 		http.Error(w, fmt.Sprintf("Edital analysis failed: %v", err), http.StatusInternalServerError)
 		return
 	}

@@ -59,6 +59,15 @@ func TestReverseResolver_ResolveOrigin(t *testing.T) {
 		t.Errorf("expected at least 2 available platforms, got %d", len(detail.AvailablePlatforms))
 	}
 
+	// Garante códigos de plataforma únicos (evita chaves duplicadas no frontend)
+	seen := make(map[origin.PlatformCode]bool)
+	for _, p := range detail.AvailablePlatforms {
+		if seen[p.PlatformCode] {
+			t.Errorf("duplicate platform code %q in available platforms", p.PlatformCode)
+		}
+		seen[p.PlatformCode] = true
+	}
+
 	// Verify BLL Compras link has Ceará state filter (fkState=6)
 	var foundBLL bool
 	for _, p := range detail.AvailablePlatforms {

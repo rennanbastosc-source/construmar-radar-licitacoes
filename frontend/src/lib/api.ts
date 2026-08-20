@@ -401,11 +401,31 @@ export async function uploadEditalForAnalysis(
     formData.append('oportunidadeId', oportunidadeId);
   }
 
-  const res = await fetch(`${API_BASE}/api/editais/analisar`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: formData,
-  });
+  const attempt = () =>
+    fetch(`${API_BASE}/api/editais/analisar`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData,
+      signal: AbortSignal.timeout(300_000),
+    });
+
+  let res: Response;
+  try {
+    res = await attempt();
+  } catch (err) {
+    const isTimeoutError =
+      typeof err === 'object' && err !== null && 'name' in err && err.name === 'TimeoutError';
+    if (!(err instanceof TypeError || isTimeoutError)) {
+      throw err;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+    res = await attempt();
+  }
+
+  if (res.status === 503) {
+    throw new Error('Serviço de IA indisponível no momento. Tente novamente em instantes.');
+  }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => 'Falha na análise do edital');

@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -15,6 +17,8 @@ import (
 	"github.com/construmar/radar-licitacoes-backend/internal/parser"
 	"github.com/google/uuid"
 )
+
+var ErrIAIndisponivel = errors.New("serviço de IA indisponível para auditoria de edital")
 
 type EditalAIAnalyst struct {
 	apiURL     string
@@ -77,6 +81,9 @@ func (a *EditalAIAnalyst) AnalyzeMultipleEditalDocuments(ctx context.Context, do
 	if len(docs) == 1 {
 		return a.AnalyzeEditalDocument(ctx, docs[0].Bytes, docs[0].MimeType, docs[0].Filename)
 	}
+	if a.apiURL == "" || a.apiKey == "" {
+		return nil, fmt.Errorf("%w: API de IA não configurada", ErrIAIndisponivel)
+	}
 
 	analysisID := uuid.New().String()
 	var fusedText strings.Builder
@@ -123,34 +130,31 @@ func (a *EditalAIAnalyst) AnalyzeMultipleEditalDocuments(ctx context.Context, do
 	consolidatedFileType := "multi-pdf"
 	combinedTextStr := fusedText.String()
 
-	// 1. If LLM endpoint is configured, send fused multi-document context
-	if a.apiURL != "" && a.apiKey != "" {
-		aiCtx, aiCancel := context.WithTimeout(ctx, 240*time.Second)
-		defer aiCancel()
+	aiCtx, aiCancel := context.WithTimeout(ctx, 240*time.Second)
+	defer aiCancel()
 
-		payload, err := a.callEditalLLMEndpoint(aiCtx, docs[0].Bytes, docs[0].MimeType, consolidatedFilename, combinedTextStr)
-		if err == nil && payload != nil {
-			analysis := a.buildEditalAnalysisFromPayload(analysisID, payload, consolidatedFilename, consolidatedFileType, totalCombinedPages)
-			analysis.ResumoExecutivo = fmt.Sprintf("[ANÁLISE MULTIDOCUMENTAL CONSOLIDADA - %d ARQUIVOS: %s]\n%s", len(docs), consolidatedFilename, analysis.ResumoExecutivo)
-			return analysis, nil
-		}
-		fmt.Printf("[EDITAL-ANALYST] Multi-document LLM endpoint failed (%v), activating fused deterministic parser\n", err)
+	payload, err := a.callEditalLLMEndpoint(aiCtx, docs[0].Bytes, docs[0].MimeType, consolidatedFilename, combinedTextStr)
+	if err != nil {
+		log.Printf("[EDITAL-ANALYST] falha no endpoint LLM: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrIAIndisponivel, err)
+	}
+	if payload == nil {
+		err = errors.New("endpoint LLM retornou resposta vazia")
+		log.Printf("[EDITAL-ANALYST] falha no endpoint LLM: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrIAIndisponivel, err)
 	}
 
-	// 2. Deterministic cross-document extraction
-	if combinedTextStr != "" {
-		analysis, err := ParseEditalRulesDeterministically(combinedTextStr, consolidatedFilename, consolidatedFileType, totalCombinedPages)
-		if err == nil && analysis != nil {
-			analysis.ResumoExecutivo = fmt.Sprintf("[ANÁLISE MULTIDOCUMENTAL INTEGRADA: %d ARQUIVOS CONSOLIDADOS (%s)]\n%s", len(docs), consolidatedFilename, analysis.ResumoExecutivo)
-			return analysis, nil
-		}
-	}
-
-	return a.fallbackHeuristicEditalAnalysis(analysisID, docs[0].Bytes, consolidatedFilename, consolidatedFileType, combinedTextStr, totalCombinedPages)
+	analysis := a.buildEditalAnalysisFromPayload(analysisID, payload, consolidatedFilename, consolidatedFileType, totalCombinedPages)
+	analysis.ResumoExecutivo = fmt.Sprintf("[ANÁLISE MULTIDOCUMENTAL CONSOLIDADA - %d ARQUIVOS: %s]\n%s", len(docs), consolidatedFilename, analysis.ResumoExecutivo)
+	return analysis, nil
 }
 
 // AnalyzeEditalDocument ingests document bytes, runs full parsing and sends prompt to LLM.
 func (a *EditalAIAnalyst) AnalyzeEditalDocument(ctx context.Context, fileBytes []byte, mimeType, filename string) (*domain.EditalAnalysis, error) {
+	if a.apiURL == "" || a.apiKey == "" {
+		return nil, fmt.Errorf("%w: API de IA não configurada", ErrIAIndisponivel)
+	}
+
 	analysisID := uuid.New().String()
 	fileType := "pdf"
 	if strings.Contains(mimeType, "image") || strings.HasSuffix(filename, ".png") || strings.HasSuffix(filename, ".jpg") || strings.HasSuffix(filename, ".jpeg") {
@@ -173,22 +177,21 @@ func (a *EditalAIAnalyst) AnalyzeEditalDocument(ctx context.Context, fileBytes [
 		extractedText = string(fileBytes)
 	}
 
-	if a.apiURL != "" && a.apiKey != "" {
-		aiCtx, aiCancel := context.WithTimeout(ctx, 240*time.Second)
-		defer aiCancel()
+	aiCtx, aiCancel := context.WithTimeout(ctx, 240*time.Second)
+	defer aiCancel()
 
-		payload, err := a.callEditalLLMEndpoint(aiCtx, fileBytes, mimeType, filename, extractedText)
-		if err == nil && payload != nil {
-			return a.buildEditalAnalysisFromPayload(analysisID, payload, filename, fileType, totalPages), nil
-		}
-		fmt.Printf("[EDITAL-ANALYST] LLM endpoint failed (%v), activating expert heuristic fallback\n", err)
+	payload, err := a.callEditalLLMEndpoint(aiCtx, fileBytes, mimeType, filename, extractedText)
+	if err != nil {
+		log.Printf("[EDITAL-ANALYST] falha no endpoint LLM: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrIAIndisponivel, err)
+	}
+	if payload == nil {
+		err = errors.New("endpoint LLM retornou resposta vazia")
+		log.Printf("[EDITAL-ANALYST] falha no endpoint LLM: %v", err)
+		return nil, fmt.Errorf("%w: %v", ErrIAIndisponivel, err)
 	}
 
-	if extractedText != "" && (strings.Contains(strings.ToLower(extractedText), "parambu") || strings.Contains(strings.ToLower(extractedText), "baixio") || strings.Contains(strings.ToLower(extractedText), "concorrência") || strings.Contains(strings.ToLower(extractedText), "seinfra")) {
-		return ParseEditalRulesDeterministically(extractedText, filename, fileType, totalPages)
-	}
-
-	return a.fallbackHeuristicEditalAnalysis(analysisID, fileBytes, filename, fileType, extractedText, totalPages)
+	return a.buildEditalAnalysisFromPayload(analysisID, payload, filename, fileType, totalPages), nil
 }
 
 func (a *EditalAIAnalyst) callEditalLLMEndpoint(ctx context.Context, fileBytes []byte, mimeType, filename, extractedText string) (*EditalAnalysisPayload, error) {
@@ -478,134 +481,4 @@ func (a *EditalAIAnalyst) buildEditalAnalysisFromPayload(
 	}
 
 	return analysis
-}
-
-func (a *EditalAIAnalyst) fallbackHeuristicEditalAnalysis(
-	id string,
-	fileBytes []byte,
-	filename, fileType, extractedText string,
-	totalPages int,
-) (*domain.EditalAnalysis, error) {
-	now := time.Now()
-	analysis := &domain.EditalAnalysis{
-		ID:               id,
-		Titulo:           fmt.Sprintf("Análise de Edital: %s", filename),
-		Orgao:            "Órgão Licitante Oficial (Ceará / CE)",
-		NumeroEdital:     "Edital Concorrência nº 2026/001",
-		NumeroProcesso:   "Proc. Adm. nº 2026/SEINFRA",
-		Modalidade:       "Concorrência Eletrônica",
-		ModoDisputa:      "Aberto",
-		ObjetoCompleto:   "Contratação de empresa especializada para execução de obras civis e serviços de engenharia.",
-		Localidade:       "Fortaleza - CE",
-		DataAbertura:     now.AddDate(0, 0, 15).Format("02/01/2006 10:00"),
-		ValorEstimado:    1450000.00,
-		PrazoExecucao:    "180 dias",
-		RegimeExecucao:   "Empreitada por Preço Unitário",
-		Status:           domain.EditalStatusConcluido,
-		OriginalFileName: filename,
-		FileType:         fileType,
-		TotalPaginas:     totalPages,
-		ResumoExecutivo:  "Oportunidade identificada com alta aderência ao escopo operacional da CONSTRUMAR. Processo regido pela Nova Lei de Licitações (Lei nº 14.133/2021).",
-		ParecerTecnico:   "Recomendada a participação mediante confirmação do atestado de capacidade técnica operacional e visita técnica formalizada.",
-		ScoreAderencia:   9.2,
-		CreatedAt:        now,
-		UpdatedAt:        now,
-	}
-
-	// Default Critical Traps (Pegadinhas)
-	analysis.Pegadinhas = []domain.EditalPegadinha{
-		{
-			ID:           uuid.New().String(),
-			AnalysisID:   id,
-			Clausula:     "Item 9.2.4",
-			Titulo:       "Declaração Formal de Vistoria Técnica ou Renúncia com Responsabilidade Total",
-			Descricao:    "O licitante deve apresentar declaração expressa de conhecimento do local ou atestado de vistoria emitido até 48h antes da sessão.",
-			Severidade:   domain.SeveridadeCritica,
-			Recomendacao: "Protocolar declaração conforme modelo do Anexo III assinado pelo Engenheiro Responsável Técnico.",
-			Impacto:      "DESCLASSIFICACAO",
-		},
-		{
-			ID:           uuid.New().String(),
-			AnalysisID:   id,
-			Clausula:     "Item 12.1.1",
-			Titulo:       "BDI Máximo Fixado e Limite de Desconto em Taxa de Administração",
-			Descricao:    "O BDI proposto não poderá ultrapassar 25,00% e as taxas de encargos sociais devem obedecer à tabela oficial SINAPI/CE.",
-			Severidade:   domain.SeveridadeAtencao,
-			Recomendacao: "Aplicar BDI de 24,50% na planilha de proposta final para evitar corte por sobrepreço.",
-			Impacto:      "FINANCEIRO",
-		},
-	}
-
-	// Technical Qualifications
-	analysis.QualificacoesTecnicas = []domain.EditalQualificacaoTecnica{
-		{
-			ID:                 uuid.New().String(),
-			AnalysisID:         id,
-			ItemServico:        "Execução de pavimentação asfáltica ou serviços de drenagem",
-			Unidade:            "M2",
-			QuantidadeExigida:  10000.0,
-			ParcelaMinima:      "Comprovação mínima de 50% (5.000 m²)",
-			ExigeVisitaTecnica: true,
-			AceitaDeclaracao:   true,
-			Observacao:         "Atestado fornecido por pessoa jurídica de direito público ou privado.",
-		},
-	}
-
-	// Checklist
-	analysis.ChecklistDocumentos = []domain.EditalChecklistItem{
-		{
-			ID:         uuid.New().String(),
-			AnalysisID: id,
-			Numero:     1,
-			Descricao:  "Proposta Comercial assinada digitalmente com planilha orçamentária",
-			Fase:       "PROPOSTA",
-			Marcado:    false,
-		},
-		{
-			ID:         uuid.New().String(),
-			AnalysisID: id,
-			Numero:     2,
-			Descricao:  "Certidão de Registro e Quitação no CREA da empresa e do Engenheiro",
-			Fase:       "HABILITACAO",
-			Marcado:    false,
-		},
-		{
-			ID:         uuid.New().String(),
-			AnalysisID: id,
-			Numero:     3,
-			Descricao:  "Balanço Patrimonial com cálculo de Índices Contábeis (LG, LC, SG >= 1.0)",
-			Fase:       "HABILITACAO",
-			Marcado:    false,
-		},
-	}
-
-	// Financial Indices
-	analysis.IndicesFinanceiros = []domain.EditalIndiceFinanceiro{
-		{
-			ID:          uuid.New().String(),
-			AnalysisID:  id,
-			Sigla:       "LG",
-			Nome:        "Liquidez Geral",
-			ValorMinimo: ">= 1.00",
-			Formula:     "(AC + RLP) / (PC + ELP)",
-		},
-		{
-			ID:          uuid.New().String(),
-			AnalysisID:  id,
-			Sigla:       "LC",
-			Nome:        "Liquidez Corrente",
-			ValorMinimo: ">= 1.00",
-			Formula:     "AC / PC",
-		},
-		{
-			ID:          uuid.New().String(),
-			AnalysisID:  id,
-			Sigla:       "SG",
-			Nome:        "Solvência Geral",
-			ValorMinimo: ">= 1.00",
-			Formula:     "AT / (PC + ELP)",
-		},
-	}
-
-	return analysis, nil
 }

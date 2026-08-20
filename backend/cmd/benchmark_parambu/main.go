@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -81,7 +80,6 @@ type ParambuRunResult struct {
 }
 
 func main() {
-	analyst := ai.NewEditalAIAnalyst("", "", "")
 	runsCount := 5
 	results := make([]ParambuRunResult, 0, runsCount)
 
@@ -92,8 +90,7 @@ func main() {
 
 	for i := 1; i <= runsCount; i++ {
 		start := time.Now()
-		ctx := context.Background()
-		analysis, err := analyst.AnalyzeEditalDocument(ctx, []byte(EditalParambuCE), "application/pdf", "Edital_Parambu_MCMV_2026.pdf")
+		analysis, err := ai.ParseEditalRulesDeterministically(string(EditalParambuCE), "Edital_Parambu_MCMV_2026.pdf", "application/pdf", 20)
 		duration := time.Since(start).Milliseconds()
 
 		if err != nil {

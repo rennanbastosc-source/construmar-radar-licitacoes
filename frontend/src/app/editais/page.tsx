@@ -95,7 +95,11 @@ export default function EditaisHubPage() {
         router.push(`/editais/${newAnalysis.id}`);
       }, 600);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Falha ao processar arquivos do edital.');
+      setErrorMessage(
+        err.name === 'TimeoutError'
+          ? 'Tempo limite excedido ao auditar. O documento pode ser grande — tente novamente.'
+          : err.message || 'Falha ao processar arquivos do edital.'
+      );
       setIsUploading(false);
       setSelectedFiles([]);
     }

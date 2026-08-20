@@ -3,12 +3,14 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
+	"github.com/construmar/radar-licitacoes-backend/internal/ai"
 	"github.com/construmar/radar-licitacoes-backend/internal/domain"
 	"github.com/construmar/radar-licitacoes-backend/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -268,6 +270,10 @@ func (h *OpportunityHandler) DirectAuditEdital(w http.ResponseWriter, r *http.Re
 
 	analysis, err := h.oppService.DownloadAndAuditEdital(r.Context(), id, reqBody.DocumentURL, h.editalService)
 	if err != nil {
+		if errors.Is(err, ai.ErrIAIndisponivel) {
+			writeError(w, http.StatusServiceUnavailable, "IA_UNAVAILABLE", "Serviço de IA indisponível para auditoria de editais. Tente novamente em instantes.")
+			return
+		}
 		log.Printf("[OpportunityHandler.DirectAuditEdital Error] %v", err)
 		writeError(w, http.StatusInternalServerError, "AUDIT_ERROR", "Falha ao baixar e auditar edital: "+err.Error())
 		return

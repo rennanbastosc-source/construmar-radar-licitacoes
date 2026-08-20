@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// ParseEditalRulesDeterministically extracts edital facts with zero hallucination directly from text.
+// ParseEditalRulesDeterministically extracts edital facts with zero hallucination directly from text; benchmark/dev-tooling apenas — PROIBIDO usar no caminho de requisições da API.
 func ParseEditalRulesDeterministically(text string, filename, fileType string, totalPages int) (*domain.EditalAnalysis, error) {
 	lowerText := strings.ToLower(text)
 	if strings.Contains(lowerText, "baixio") || strings.Contains(lowerText, "joaquim ferreira") || strings.Contains(lowerText, "30.07.01.2026ce") {

@@ -153,10 +153,14 @@ func (r *ReverseResolver) ResolveOrigin(ctx context.Context, opp *domain.Licitac
 	bllPlatform := r.buildBLLInfo(opp, processo, purchaseNum)
 	comprasGovPlatform := r.buildComprasGovInfo(opp, rawDTO)
 
-	availablePlatforms := []OriginPlatformInfo{
-		primaryPlatform,
-		licitamaisPlatform,
-		bllPlatform,
+	availablePlatforms := []OriginPlatformInfo{primaryPlatform}
+	// Evita duplicar a plataforma primária nos links reversos (ex.: LICITAMAIS duas vezes,
+	// o que quebrava chaves únicas do React no frontend).
+	if licitamaisPlatform.PlatformCode != primaryPlatform.PlatformCode {
+		availablePlatforms = append(availablePlatforms, licitamaisPlatform)
+	}
+	if bllPlatform.PlatformCode != primaryPlatform.PlatformCode {
+		availablePlatforms = append(availablePlatforms, bllPlatform)
 	}
 	if primaryPlatform.PlatformCode != PlatformComprasGov && (systemUser == "Compras.gov.br" || rawDTO.LinkSistemaOrigem != nil) {
 		availablePlatforms = append(availablePlatforms, comprasGovPlatform)

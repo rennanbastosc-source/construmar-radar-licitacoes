@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -71,7 +70,6 @@ type BaixioRunResult struct {
 }
 
 func main() {
-	analyst := ai.NewEditalAIAnalyst("", "", "")
 	runsCount := 5
 	results := make([]BaixioRunResult, 0, runsCount)
 
@@ -82,8 +80,7 @@ func main() {
 
 	for i := 1; i <= runsCount; i++ {
 		start := time.Now()
-		ctx := context.Background()
-		analysis, err := analyst.AnalyzeEditalDocument(ctx, []byte(EditalBaixioCE), "application/pdf", "Edital_Baixio_Escola_2026.pdf")
+		analysis, err := ai.ParseEditalRulesDeterministically(string(EditalBaixioCE), "Edital_Baixio_Escola_2026.pdf", "application/pdf", 25)
 		duration := time.Since(start).Milliseconds()
 
 		if err != nil {
