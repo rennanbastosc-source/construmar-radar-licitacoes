@@ -180,6 +180,50 @@ func TestListOpportunitiesValueInterval(t *testing.T) {
 	}
 }
 
+func TestListOpportunitiesExcludesExpiredOpenDeadlines(t *testing.T) {
+	db, err := InitDB(":memory:")
+	if err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	defer db.Close()
+
+	repo := NewOpportunityRepository(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	expiredAt := now.Add(-time.Hour)
+	expired := newCrossDedupOpportunity(domain.SourcePNCP, "pncp-expired-open", "Fortaleza", "001/2026-CE", 2026, now)
+	expired.ProposalEndAt = &expiredAt
+
+	futureAt := now.Add(time.Hour)
+	future := newCrossDedupOpportunity(domain.SourcePNCP, "pncp-future-open", "Fortaleza", "002/2026-CE", 2026, now)
+	future.ProposalEndAt = &futureAt
+
+	withoutDeadline := newCrossDedupOpportunity(domain.SourcePNCP, "pncp-no-deadline-open", "Fortaleza", "003/2026-CE", 2026, now)
+	for _, opportunity := range []*domain.LicitacaoOportunidade{expired, future, withoutDeadline} {
+		if _, _, err := repo.UpsertOpportunity(ctx, opportunity); err != nil {
+			t.Fatalf("UpsertOpportunity failed: %v", err)
+		}
+	}
+
+	list, total, err := repo.ListOpportunities(ctx, domain.OpportunityFilter{
+		Status:   domain.StatusNormalizedOpen,
+		Page:     1,
+		PageSize: 10,
+	})
+	if err != nil {
+		t.Fatalf("ListOpportunities failed: %v", err)
+	}
+	if total != 2 || len(list) != 2 {
+		t.Fatalf("expected future and no-deadline OPEN opportunities, got total=%d, len=%d", total, len(list))
+	}
+	for _, opportunity := range list {
+		if opportunity.SourceExternalID == expired.SourceExternalID {
+			t.Fatalf("expired OPEN opportunity was returned")
+		}
+	}
+}
+
 func TestOpportunityRepositoryDeduplicatesByProcess(t *testing.T) {
 	testDBPath := "./test_radar_dedup.db"
 	defer os.Remove(testDBPath)

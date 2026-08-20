@@ -469,6 +469,9 @@ func (r *OpportunityRepository) ListOpportunities(ctx context.Context, filter do
 	if filter.Status != "" && filter.Status != "ALL" {
 		whereClauses = append(whereClauses, "status_normalized = ?")
 		args = append(args, filter.Status)
+		if filter.Status == domain.StatusNormalizedOpen {
+			whereClauses = append(whereClauses, "(proposal_end_at IS NULL OR substr(replace(proposal_end_at, 'T', ' '), 1, 23) >= strftime('%Y-%m-%d %H:%M:%f', 'now'))")
+		}
 	}
 
 	if filter.MinValue != nil && *filter.MinValue > 0 {

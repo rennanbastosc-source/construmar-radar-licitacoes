@@ -81,7 +81,7 @@ func TestNormalizeTCEUsesLastYearOccurrence(t *testing.T) {
 		ValueRaw:     "3.716.445,75",
 	}
 
-	opp := NormalizeTCE(list, nil, time.Now().UTC())
+	opp := NormalizeTCE(list, nil, time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC))
 	if opp.PurchaseYear == nil || *opp.PurchaseYear != 2026 {
 		t.Fatalf("expected last year occurrence 2026, got %v", opp.PurchaseYear)
 	}
@@ -103,5 +103,8 @@ func TestNormalizeTCEKnownValueAndReopeningDate(t *testing.T) {
 	}
 	if opp.ProposalEndAt == nil || !opp.ProposalEndAt.Equal(time.Date(2025, time.June, 11, 3, 0, 0, 0, time.UTC)) {
 		t.Fatalf("unexpected reopening date: %v", opp.ProposalEndAt)
+	}
+	if opp.StatusNormalized != domain.StatusNormalizedClosed {
+		t.Fatalf("expected expired reopening deadline to be closed, got %q", opp.StatusNormalized)
 	}
 }

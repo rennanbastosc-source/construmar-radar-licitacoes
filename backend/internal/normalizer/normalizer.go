@@ -302,6 +302,10 @@ func NormalizeTCE(list tcce.LicitacaoListItem, detail *tcce.LicitacaoDetail, now
 	if list.ReopeningAtRaw != "" {
 		proposalEndAt = ParseBRDateTime(list.ReopeningAtRaw, "")
 	}
+	statusNormalized := domain.StatusNormalizedOpen
+	if proposalEndAt != nil && proposalEndAt.Before(now) {
+		statusNormalized = domain.StatusNormalizedClosed
+	}
 
 	crossDedupKey := ""
 	if purchaseYear != nil {
@@ -337,7 +341,7 @@ func NormalizeTCE(list tcce.LicitacaoListItem, detail *tcce.LicitacaoDetail, now
 		PurchaseYear:        purchaseYear,
 		ModalityName:        modalityName,
 		StatusSource:        statusSource,
-		StatusNormalized:    domain.StatusNormalizedOpen,
+		StatusNormalized:    statusNormalized,
 		ObjectRaw:           list.Object,
 		ObjectNormalized:    classResult.NormalizedText,
 		EstimatedTotalValue: estimatedValue,
