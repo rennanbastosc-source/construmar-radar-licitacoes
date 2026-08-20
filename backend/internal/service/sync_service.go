@@ -321,7 +321,10 @@ func (s *SyncService) RunSyncUntilComplete(ctx context.Context, uf string, minEs
 		if run == nil {
 			break
 		}
-		if run.Status != domain.SyncStatusPartial || attempt == maxAttempts {
+		if run.Status != domain.SyncStatusPartial && run.Status != domain.SyncStatusFailed {
+			break
+		}
+		if attempt == maxAttempts {
 			break
 		}
 
