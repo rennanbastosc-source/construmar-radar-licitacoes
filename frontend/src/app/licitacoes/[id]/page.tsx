@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { BadgeClassification } from '@/components/BadgeClassification';
@@ -36,6 +36,7 @@ import {
   RefreshCw,
   Globe,
   Download,
+  AlertCircle,
 } from 'lucide-react';
 
 interface Props {
@@ -54,6 +55,8 @@ export default function OpportunityDetailPage({ params }: Props) {
   const [copied, setCopied] = useState<boolean>(false);
   const [originDetail, setOriginDetail] = useState<OpportunityOriginDetail | null>(null);
   const [isLoadingOrigin, setIsLoadingOrigin] = useState<boolean>(false);
+  const [originError, setOriginError] = useState<string | null>(null);
+  const originRequestRef = useRef(0);
 
   const loadDetail = async () => {
     setLoading(true);
@@ -77,32 +80,40 @@ export default function OpportunityDetailPage({ params }: Props) {
     loadDetail();
   }, [id]);
 
+  const loadOrigin = useCallback(async (opportunityId: string) => {
+    const requestId = ++originRequestRef.current;
+    setIsLoadingOrigin(true);
+    setOriginError(null);
+    try {
+      const data = await fetchOpportunityOrigin(opportunityId);
+      if (requestId !== originRequestRef.current) return;
+      setOriginDetail(data);
+    } catch (err: unknown) {
+      if (requestId !== originRequestRef.current) return;
+      console.warn('Erro ao carregar plataforma de origem:', err);
+      setOriginDetail(null);
+      setOriginError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Não foi possível descobrir a plataforma de origem da licitação.'
+      );
+    } finally {
+      if (requestId === originRequestRef.current) setIsLoadingOrigin(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!opportunity?.id) {
+      originRequestRef.current += 1;
       setOriginDetail(null);
       setIsLoadingOrigin(false);
+      setOriginError(null);
       return;
     }
 
-    let cancelled = false;
     setOriginDetail(null);
-    setIsLoadingOrigin(true);
-    fetchOpportunityOrigin(opportunity.id)
-      .then((data) => {
-        if (!cancelled) setOriginDetail(data);
-      })
-      .catch((err) => {
-        console.warn('Erro ao carregar plataforma de origem:', err);
-        if (!cancelled) setOriginDetail(null);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingOrigin(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [opportunity?.id]);
+    void loadOrigin(opportunity.id);
+  }, [opportunity?.id, loadOrigin]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -483,6 +494,39 @@ export default function OpportunityDetailPage({ params }: Props) {
                 <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px' }}>
                   O portal TCE-CE pede captcha no download. Abra o processo no navegador, baixe o edital e envie depois no Analista de Editais.
                 </p>
+              )}
+
+              {originError && (
+                <div
+                  role="alert"
+                  style={{
+                    padding: '10px 14px',
+                    marginBottom: '16px',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'rgba(255, 129, 178, 0.15)',
+                    border: '1px solid rgba(255, 129, 178, 0.3)',
+                    color: '#FF81B2',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <AlertCircle size={14} />
+                  <span style={{ flex: 1 }}>{originError}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (opportunity) void loadOrigin(opportunity.id);
+                    }}
+                    disabled={isLoadingOrigin}
+                    className="btn-secondary"
+                    style={{ padding: '6px 10px', fontSize: '12px' }}
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
               )}
 
               {originDetail && (

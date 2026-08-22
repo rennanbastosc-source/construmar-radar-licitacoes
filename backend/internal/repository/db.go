@@ -64,8 +64,23 @@ func InitDB(dbPath string) (*sql.DB, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to migrate cross-source deduplication: %w", err)
 	}
+	if err := recoverInterruptedSyncRuns(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to recover interrupted sync runs: %w", err)
+	}
 
 	return db, nil
+}
+
+// recoverInterruptedSyncRuns marca como FAILED qualquer sync_run órfão deixado
+// em RUNNING por um processo encerrado abruptamente. Sem isso, a UI exibiria
+// "Sincronizando…" para sempre, com tempo decorrido acumulando do run antigo.
+func recoverInterruptedSyncRuns(db *sql.DB) error {
+	_, err := db.Exec(`
+		UPDATE licitacao_sync_run
+		SET status = 'FAILED', finished_at = ?, error_message = 'Interrompida por reinício do servidor'
+		WHERE status = 'RUNNING'`, time.Now().UTC())
+	return err
 }
 
 func migrateLicitacaoArchived(db *sql.DB) error {

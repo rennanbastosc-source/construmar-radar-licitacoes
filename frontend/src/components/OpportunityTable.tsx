@@ -7,6 +7,7 @@ import { BadgeClassification } from './BadgeClassification';
 import { UrgencyBadge } from './UrgencyBadge';
 import { FileText, Building2, MapPin, ChevronRight } from 'lucide-react';
 import { SourceBadge } from './SourceBadge';
+import { useRadar } from '@/context/RadarContext';
 
 interface Props {
   opportunities: LicitacaoOportunidade[];
@@ -31,10 +32,15 @@ export const OpportunityTable: React.FC<Props> = ({
   onSelectOpportunity,
   viewMode = 'table',
 }) => {
-  if (loading) {
+  const { isRefreshing, isSyncing, isSyncingTce } = useRadar();
+  const isScanning = isSyncing || isSyncingTce;
+  const isBusy = loading || isRefreshing || isScanning;
+
+  if ((loading || isScanning) && opportunities.length === 0) {
     return (
       <div
         className="wishlabs-card"
+        aria-busy={true}
         style={{
           padding: '24px',
           display: 'flex',
@@ -53,8 +59,8 @@ export const OpportunityTable: React.FC<Props> = ({
             }}
             className="animate-spin"
           />
-          <span style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-            Varrendo e classificando oportunidades no Ceará...
+          <span role="status" aria-live="polite" style={{ fontSize: '13.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            {isScanning ? 'Varrendo e classificando oportunidades no Ceará...' : 'Carregando oportunidades...'}
           </span>
         </div>
 
@@ -135,7 +141,17 @@ export const OpportunityTable: React.FC<Props> = ({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div aria-busy={isBusy} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {isBusy && opportunities.length > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '12px' }}
+        >
+          <span className="animate-spin" style={{ width: '12px', height: '12px', border: '2px solid var(--border-subtle)', borderTopColor: 'var(--brand-primary)', borderRadius: '50%' }} />
+          <span>{isScanning ? 'Varrendo e classificando oportunidades no Ceará...' : 'Atualizando oportunidades...'}</span>
+        </div>
+      )}
       {viewMode === 'cards' ? (
         /* Bento Cards Grid View */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))', gap: '16px' }}>

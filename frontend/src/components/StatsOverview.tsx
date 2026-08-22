@@ -4,6 +4,7 @@ import React from 'react';
 import { StatsOverviewData } from '@/lib/types';
 import { formatCurrency } from '@/lib/formatters';
 import { Layers, Check, Clock, AlertTriangle, TrendingUp } from 'lucide-react';
+import { useRadar } from '@/context/RadarContext';
 
 interface Props {
   stats: StatsOverviewData | null;
@@ -16,26 +17,29 @@ export const StatsOverview: React.FC<Props> = ({
   loading = false,
   onSelectCategory,
 }) => {
-  if (loading) {
+  const { statsError } = useRadar();
+  const errorMessage = statsError ? `Não foi possível atualizar os indicadores: ${statsError}` : null;
+
+  if (loading && !stats) {
     return (
-      <div className="grid-matrix" style={{ marginBottom: '32px' }}>
-        {[1, 2, 3, 4].map((idx) => (
-          <div key={idx} style={{ height: '140px' }} className="wishlabs-card shimmer-box" />
-        ))}
-      </div>
+      <>
+        {errorMessage && <div role="alert" style={{ marginBottom: '12px', color: '#FF81B2', fontSize: '13px', fontWeight: 700 }}>{errorMessage}</div>}
+        <div className="grid-matrix" aria-busy={true} style={{ marginBottom: '32px' }}>
+          {[1, 2, 3, 4].map((idx) => (
+            <div key={idx} style={{ height: '140px' }} className="wishlabs-card shimmer-box" />
+          ))}
+        </div>
+      </>
     );
   }
 
-  const currentStats = stats || {
-    totalOpportunities: 0,
-    totalEstimatedValue: 0,
-    totalInScope: 0,
-    totalReview: 0,
-    totalUrgent: 0,
-  };
+  const currentStats = stats;
 
   return (
-    <div className="grid-matrix" style={{ marginBottom: '32px' }}>
+    <>
+      {errorMessage && <div role="alert" style={{ marginBottom: '12px', color: '#FF81B2', fontSize: '13px', fontWeight: 700 }}>{errorMessage}</div>}
+      {loading && <div role="status" aria-live="polite" style={{ marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '12px' }}>Atualizando indicadores...</div>}
+      <div className="grid-matrix" aria-busy={loading} style={{ marginBottom: '32px' }}>
       {/* Grid Card 1: Volume Total em Aberto */}
       <div
         onClick={() => onSelectCategory && onSelectCategory('ALL')}
@@ -92,7 +96,7 @@ export const StatsOverview: React.FC<Props> = ({
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {formatCurrency(currentStats.totalEstimatedValue)}
+            {currentStats ? formatCurrency(currentStats.totalEstimatedValue) : '—'}
           </div>
         </div>
 
@@ -108,7 +112,7 @@ export const StatsOverview: React.FC<Props> = ({
             alignItems: 'center',
           }}
         >
-          <span>{currentStats.totalOpportunities} ativas</span>
+          <span>{currentStats ? `${currentStats.totalOpportunities} ativas` : 'Dados indisponíveis'}</span>
           <span style={{ color: 'var(--brand-primary)', fontWeight: 700, fontSize: '11px' }}>≥ R$ 900k</span>
         </div>
       </div>
@@ -153,7 +157,7 @@ export const StatsOverview: React.FC<Props> = ({
               letterSpacing: '-0.04em',
             }}
           >
-            {currentStats.totalInScope}
+            {currentStats ? currentStats.totalInScope : '—'}
           </div>
         </div>
         <div style={{ fontSize: '12px', color: 'var(--brand-primary)', fontWeight: 600, paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
@@ -188,7 +192,7 @@ export const StatsOverview: React.FC<Props> = ({
               letterSpacing: '-0.04em',
             }}
           >
-            {currentStats.totalReview}
+            {currentStats ? currentStats.totalReview : '—'}
           </div>
         </div>
         <div style={{ fontSize: '12px', color: 'var(--status-review)', fontWeight: 600, paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
@@ -223,13 +227,14 @@ export const StatsOverview: React.FC<Props> = ({
               letterSpacing: '-0.04em',
             }}
           >
-            {currentStats.totalUrgent}
+            {currentStats ? currentStats.totalUrgent : '—'}
           </div>
         </div>
         <div style={{ fontSize: '12px', color: 'var(--status-urgent)', fontWeight: 600, paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
           Encerramento próximo
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

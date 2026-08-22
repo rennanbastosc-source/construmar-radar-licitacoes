@@ -27,6 +27,10 @@ import { Orcamento, SeobraStatusResponse } from '@/lib/types';
 import { formatCurrency, formatDateTime } from '@/lib/formatters';
 import { ErrorState } from '@/components/ErrorState';
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 export default function OrcamentosPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,33 +38,45 @@ export default function OrcamentosPage() {
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>([]);
   const [seobraStatus, setSeobraStatus] = useState<SeobraStatusResponse | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(true);
+  const [isBusy, setIsBusy] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState<string>('');
   const [dragActive, setDragActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   const loadData = async () => {
+    setIsBusy(true);
     setIsLoadingList(true);
     setErrorMessage(null);
+    setListError(null);
     try {
       const [listRes, seobraRes] = await Promise.allSettled([
         fetchOrcamentos(50, 0),
         fetchSeobraStatus(),
       ]);
 
+      let loadError: string | null = null;
       if (listRes.status === 'fulfilled') {
         setOrcamentos(listRes.value.items || []);
       } else {
+        loadError = getErrorMessage(listRes.reason, 'Erro ao carregar lista de orçamentos.');
         setOrcamentos([]);
       }
       if (seobraRes.status === 'fulfilled') {
         setSeobraStatus(seobraRes.value);
+      } else if (!loadError) {
+        loadError = getErrorMessage(seobraRes.reason, 'Erro ao verificar o status do SEOBRA.');
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Erro ao carregar lista de orçamentos.');
+      if (loadError) {
+        setListError(loadError);
+      }
+    } catch (err: unknown) {
+      setListError(getErrorMessage(err, 'Erro ao carregar lista de orçamentos.'));
       setOrcamentos([]);
     } finally {
       setIsLoadingList(false);
+      setIsBusy(false);
     }
   };
 
@@ -69,17 +85,20 @@ export default function OrcamentosPage() {
   }, []);
 
   const handleFileUpload = async (file: File) => {
-    if (!file) return;
+    if (!file || isBusy) return;
+    setIsBusy(true);
     setIsUploading(true);
     setErrorMessage(null);
     setUploadStep('Enviando documento para o motor de IA...');
 
+    let timer1: ReturnType<typeof setTimeout> | null = null;
+    let timer2: ReturnType<typeof setTimeout> | null = null;
     try {
-      const timer1 = setTimeout(() => {
+      timer1 = setTimeout(() => {
         setUploadStep('IA Vision processando páginas e tabelas do edital...');
       }, 1000);
 
-      const timer2 = setTimeout(() => {
+      timer2 = setTimeout(() => {
         setUploadStep('Mapeando composições SINAPI/SICRO e calculando BDI...');
       }, 2500);
 
@@ -92,15 +111,20 @@ export default function OrcamentosPage() {
       setTimeout(() => {
         router.push(`/orcamentos/${newOrcamento.id}`);
       }, 800);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Falha ao processar o arquivo anexado.');
+    } catch (err: unknown) {
+      setErrorMessage(getErrorMessage(err, 'Falha ao processar o arquivo anexado.'));
+    } finally {
+      if (timer1 !== null) clearTimeout(timer1);
+      if (timer2 !== null) clearTimeout(timer2);
       setIsUploading(false);
+      setIsBusy(false);
     }
   };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isBusy) return;
     if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
     } else if (e.type === 'dragleave') {
@@ -112,6 +136,7 @@ export default function OrcamentosPage() {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+    if (isBusy) return;
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileUpload(e.dataTransfer.files[0]);
     }
@@ -189,7 +214,7 @@ export default function OrcamentosPage() {
               </p>
             </div>
 
-            <button onClick={loadData} className="btn-secondary">
+            <button onClick={loadData} disabled={isBusy} className="btn-secondary">
               <RefreshCw size={13} className={isLoadingList ? 'animate-spin' : ''} />
               <span>Atualizar</span>
             </button>
@@ -203,13 +228,15 @@ export default function OrcamentosPage() {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            if (!isBusy) fileInputRef.current?.click();
+          }}
           style={{
             border: `2px dashed ${dragActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
             padding: '54px 24px',
             textAlign: 'center',
             marginBottom: '40px',
-            cursor: isUploading ? 'default' : 'pointer',
+            cursor: isBusy ? 'default' : 'pointer',
             backgroundColor: dragActive ? 'var(--brand-primary-bg)' : '#161618',
             transition: 'all 0.2s ease',
           }}
@@ -218,6 +245,7 @@ export default function OrcamentosPage() {
             ref={fileInputRef}
             type="file"
             accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg"
+            disabled={isBusy}
             style={{ display: 'none' }}
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {
@@ -288,6 +316,7 @@ export default function OrcamentosPage() {
 
         {errorMessage && (
           <div
+            role="alert"
             style={{
               padding: '12px 20px',
               borderRadius: 'var(--radius-md)',
@@ -329,6 +358,24 @@ export default function OrcamentosPage() {
               className="animate-spin"
             />
             <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>Carregando histórico de orçamentos...</p>
+          </div>
+        ) : listError ? (
+          <div
+            role="alert"
+            className="wishlabs-card"
+            style={{ padding: '48px 24px', textAlign: 'center' }}
+          >
+            <AlertCircle size={32} color="var(--status-urgent)" style={{ margin: '0 auto 12px' }} />
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
+              Não foi possível carregar os orçamentos
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '8px auto 20px' }}>
+              {listError}
+            </p>
+            <button type="button" onClick={loadData} disabled={isBusy} className="btn-secondary">
+              <RefreshCw size={13} />
+              <span>Tentar novamente</span>
+            </button>
           </div>
         ) : orcamentos.length === 0 ? (
           <div className="wishlabs-card" style={{ padding: '48px', textAlign: 'center' }}>

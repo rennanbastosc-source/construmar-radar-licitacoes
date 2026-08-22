@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { fetchSyncHistory, fetchPncpHealth, fetchTceHealth } from '@/lib/api';
@@ -21,6 +21,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { SourceBadge } from '@/components/SourceBadge';
 
 type HealthTone = 'up' | 'down' | 'amber' | 'loading';
+type SyncSource = 'PNCP' | 'TCE-CE';
 
 function pickLatest(runs: LicitacaoSyncRun[], source: OpportunitySource): LicitacaoSyncRun | undefined {
   return runs
@@ -71,6 +72,7 @@ function HealthPill({
     <div
       style={{
         display: 'inline-flex',
+        flexWrap: 'wrap',
         alignItems: 'center',
         gap: '7px',
         fontSize: '12px',
@@ -80,6 +82,7 @@ function HealthPill({
         borderRadius: 'var(--radius-full)',
         backgroundColor: bg,
         border: `1px solid ${border}`,
+        maxWidth: '100%',
       }}
     >
       <span
@@ -147,7 +150,7 @@ function LastRunSummary({ run }: { run?: LicitacaoSyncRun }) {
         </span>
       </div>
       {run.errorMessage && (
-        <p style={{ fontSize: '11.5px', color: '#FF81B2', margin: 0 }}>{run.errorMessage}</p>
+        <p style={{ fontSize: '11.5px', color: '#FF81B2', margin: 0, overflowWrap: 'anywhere' }}>{run.errorMessage}</p>
       )}
     </div>
   );
@@ -246,7 +249,7 @@ function HistoryTable({ runs }: { runs: LicitacaoSyncRun[] }) {
                       <SourceBadge source={run.source} />
                     </span>
                     {run.errorMessage && (
-                      <div style={{ fontSize: '11px', color: '#FF81B2', marginTop: '4px', maxWidth: '300px' }}>
+                      <div style={{ fontSize: '11px', color: '#FF81B2', marginTop: '4px', maxWidth: '100%', overflowWrap: 'anywhere' }}>
                         {run.errorMessage}
                       </div>
                     )}
@@ -311,6 +314,13 @@ export default function SyncHistoryPage() {
   const [tceHealth, setTceHealth] = useState<PncpHealth | null>(null);
   const [pncpHealthError, setPncpHealthError] = useState(false);
   const [tceHealthError, setTceHealthError] = useState(false);
+  const [pncpTriggering, setPncpTriggering] = useState(false);
+  const [tceTriggering, setTceTriggering] = useState(false);
+  const [pncpStartedAt, setPncpStartedAt] = useState<number | null>(null);
+  const [tceStartedAt, setTceStartedAt] = useState<number | null>(null);
+  const [clockNow, setClockNow] = useState<number | null>(null);
+  const [syncActionError, setSyncActionError] = useState<{ source: SyncSource; message: string } | null>(null);
+  const lastSyncSourceRef = useRef<SyncSource | null>(null);
 
   const loadHistory = useCallback(async (silent = false) => {
     if (!silent) {
@@ -373,30 +383,103 @@ export default function SyncHistoryPage() {
 
   const latestPncp = pickLatest(history, 'PNCP');
   const latestTce = pickLatest(history, 'TCE-CE');
-  const pncpBusy = isSyncing || latestPncp?.status === 'RUNNING';
-  const tceBusy = isSyncingTce || latestTce?.status === 'RUNNING';
+  const pncpBusy = pncpTriggering || isSyncing || latestPncp?.status === 'RUNNING';
+  const tceBusy = tceTriggering || isSyncingTce || latestTce?.status === 'RUNNING';
+
+  useEffect(() => {
+    if (pncpBusy) {
+      setPncpStartedAt((current) => {
+        if (current !== null) return current;
+        const runStartedAt = latestPncp?.status === 'RUNNING' ? Date.parse(latestPncp.startedAt) : Number.NaN;
+        return Number.isFinite(runStartedAt) ? runStartedAt : Date.now();
+      });
+    } else {
+      setPncpStartedAt(null);
+    }
+  }, [latestPncp?.startedAt, latestPncp?.status, pncpBusy]);
+
+  useEffect(() => {
+    if (tceBusy) {
+      setTceStartedAt((current) => {
+        if (current !== null) return current;
+        const runStartedAt = latestTce?.status === 'RUNNING' ? Date.parse(latestTce.startedAt) : Number.NaN;
+        return Number.isFinite(runStartedAt) ? runStartedAt : Date.now();
+      });
+    } else {
+      setTceStartedAt(null);
+    }
+  }, [latestTce?.startedAt, latestTce?.status, tceBusy]);
+
+  useEffect(() => {
+    if (!pncpBusy && !tceBusy) {
+      setClockNow(null);
+      return;
+    }
+
+    const updateClock = () => setClockNow(Date.now());
+    updateClock();
+    const id = window.setInterval(updateClock, 1000);
+    return () => window.clearInterval(id);
+  }, [pncpBusy, tceBusy]);
 
   const triggerPncp = async () => {
+    if (pncpBusy) return;
+    lastSyncSourceRef.current = 'PNCP';
+    setSyncActionError(null);
+    setPncpTriggering(true);
+    setPncpStartedAt(Date.now());
+
     try {
       await handleTriggerSync();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Falha ao iniciar a sincronização com o PNCP.';
+      setSyncActionError({ source: 'PNCP', message });
     } finally {
-      loadHistory(true);
+      setPncpTriggering(false);
+      await loadHistory(true);
     }
   };
 
   const triggerTce = async () => {
+    if (tceBusy) return;
+    lastSyncSourceRef.current = 'TCE-CE';
+    setSyncActionError(null);
+    setTceTriggering(true);
+    setTceStartedAt(Date.now());
+
     try {
       await handleTriggerTceSync();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Falha ao iniciar a sincronização com o TCE-CE.';
+      setSyncActionError({ source: 'TCE-CE', message });
     } finally {
-      loadHistory(true);
+      setTceTriggering(false);
+      await loadHistory(true);
     }
   };
 
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Header isSyncing={isSyncing} onTriggerSync={handleTriggerSync} />
+  const retryLastSync = () => {
+    if (lastSyncSourceRef.current === 'TCE-CE') {
+      void triggerTce();
+      return;
+    }
+    void triggerPncp();
+  };
 
-      <main className="container" style={{ flex: 1, paddingTop: '36px', paddingBottom: '80px', maxWidth: '1400px' }}>
+  const elapsedSeconds = (startedAt: number | null) =>
+    startedAt === null ? 0 : Math.max(0, Math.floor(((clockNow ?? Date.now()) - startedAt) / 1000));
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%' }}>
+      <Header
+        lastSyncAt={latestPncp?.finishedAt || latestPncp?.startedAt}
+        syncStatus={latestPncp?.status}
+        isSyncing={isSyncing}
+        onTriggerSync={triggerPncp}
+        syncFeedback={syncFeedback}
+      />
+
+      <main className="container" style={{ flex: 1, paddingTop: '36px', paddingBottom: '80px' }}>
         <div style={{ marginBottom: '24px' }}>
           <Link
             href="/"
@@ -415,46 +498,20 @@ export default function SyncHistoryPage() {
         </div>
 
         <div style={{ marginBottom: '32px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '4px 14px',
-              borderRadius: 'var(--radius-full)',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid var(--border-subtle)',
-              fontSize: '11px',
-              fontWeight: 800,
-              color: 'var(--brand-primary)',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              marginBottom: '12px',
-            }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }} />
+          <div className="page-eyebrow">
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)', flexShrink: 0 }} />
             <span>Pipeline Operacional & Telemetria</span>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px' }}>
-            <div>
-              <h1
-                style={{
-                  fontFamily: 'var(--font-heading)',
-                  fontSize: '34px',
-                  fontWeight: 900,
-                  color: '#FFFFFF',
-                  letterSpacing: '-0.04em',
-                  lineHeight: 1.15,
-                  margin: 0,
-                }}
-              >
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px', minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: '1 1 220px' }}>
+              <h1 className="page-display-title">
                 Histórico de Sincronizações{' '}
                 <span style={{ fontStyle: 'italic', fontWeight: 600, color: 'var(--brand-primary)' }}>
                   Ceará
                 </span>
               </h1>
-              <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+              <p className="page-display-lead">
                 Varreduras no PNCP e no portal TCE-CE dos municípios do Ceará.
               </p>
             </div>
@@ -468,13 +525,18 @@ export default function SyncHistoryPage() {
 
         {syncFeedback && (
           <div
+            role={syncFeedback.type === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
             style={{
               padding: '14px 20px',
               borderRadius: 'var(--radius-full)',
               marginBottom: '24px',
               display: 'flex',
+              flexWrap: 'wrap',
               alignItems: 'center',
               justifyContent: 'space-between',
+              gap: '10px',
+              minWidth: 0,
               backgroundColor:
                 syncFeedback.type === 'success'
                   ? 'var(--brand-primary-bg)'
@@ -498,40 +560,74 @@ export default function SyncHistoryPage() {
               fontWeight: 700,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
               {syncFeedback.type === 'success' && <CheckCircle2 size={16} />}
               {syncFeedback.type === 'error' && <AlertCircle size={16} />}
               {syncFeedback.type === 'info' && <RefreshCw size={16} className="animate-spin" />}
               <span>{syncFeedback.message}</span>
             </div>
-            <button
-              onClick={() => setSyncFeedback(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'inherit',
-                cursor: 'pointer',
-                fontSize: '14px',
-                opacity: 0.8,
-              }}
-            >
-              ✕
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {syncFeedback.type === 'error' && (
+                <button
+                  onClick={retryLastSync}
+                  disabled={pncpBusy || tceBusy}
+                  className="btn-secondary"
+                  title="Repetir a última sincronização"
+                >
+                  <RefreshCw size={13} />
+                  <span>Tentar novamente</span>
+                </button>
+              )}
+              <button
+                onClick={() => setSyncFeedback(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  opacity: 0.8,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {syncActionError && (
+          <div
+            role="alert"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              padding: '14px 20px',
+              borderRadius: 'var(--radius-full)',
+              minWidth: 0,
+              marginBottom: '24px',
+              backgroundColor: 'rgba(255, 129, 178, 0.15)',
+              border: '1px solid rgba(255, 129, 178, 0.3)',
+              color: '#FF81B2',
+              fontSize: '13px',
+              fontWeight: 700,
+            }}
+          >
+            <span>{syncActionError.message}</span>
+            <button onClick={retryLastSync} disabled={pncpBusy || tceBusy} className="btn-secondary">
+              <RefreshCw size={13} />
+              <span>Tentar novamente</span>
             </button>
           </div>
         )}
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '16px',
-            marginBottom: '32px',
-          }}
-        >
-          <div className="wishlabs-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-              <div>
-                <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
+        <div className="sync-source-grid">
+          <div className="wishlabs-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', minWidth: 0 }}>
+              <div style={{ minWidth: 0 }}>
+                <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: 0, overflowWrap: 'break-word' }}>
                   PNCP Ceará
                 </h2>
                 <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -541,16 +637,35 @@ export default function SyncHistoryPage() {
               <HealthPill label="PNCP" health={pncpHealth} errored={pncpHealthError} />
             </div>
             <LastRunSummary run={latestPncp} />
-            <button onClick={triggerPncp} disabled={pncpBusy} className="btn-primary" style={{ alignSelf: 'flex-start' }}>
+            {pncpBusy && (
+              <div
+                role="status"
+                aria-live="polite"
+                aria-busy={pncpBusy}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38BDF8', fontSize: '12px' }}
+              >
+                <RefreshCw size={14} className="animate-spin" />
+                <span>Sincronizando…</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>{elapsedSeconds(pncpStartedAt)}s</span>
+              </div>
+            )}
+            <button
+              onClick={triggerPncp}
+              disabled={pncpBusy}
+              aria-busy={pncpBusy}
+              title={pncpBusy ? 'Sincronização do PNCP em andamento' : 'Iniciar sincronização com o PNCP'}
+              className="btn-primary"
+              style={{ alignSelf: 'flex-start' }}
+            >
               <RefreshCw size={13} className={pncpBusy ? 'animate-spin' : ''} />
-              <span>{pncpBusy ? 'Varrendo PNCP...' : 'Sincronizar PNCP'}</span>
+              <span>{pncpBusy ? 'Sincronizando…' : 'Sincronizar PNCP'}</span>
             </button>
           </div>
 
-          <div className="wishlabs-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-              <div>
-                <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
+          <div className="wishlabs-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', minWidth: 0 }}>
+              <div style={{ minWidth: 0 }}>
+                <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: 0, overflowWrap: 'break-word' }}>
                   TCE-CE (Municípios do Ceará)
                 </h2>
                 <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -560,9 +675,28 @@ export default function SyncHistoryPage() {
               <HealthPill label="TCE-CE" health={tceHealth} errored={tceHealthError} />
             </div>
             <LastRunSummary run={latestTce} />
-            <button onClick={triggerTce} disabled={tceBusy} className="btn-secondary" style={{ alignSelf: 'flex-start' }}>
+            {tceBusy && (
+              <div
+                role="status"
+                aria-live="polite"
+                aria-busy={tceBusy}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#38BDF8', fontSize: '12px' }}
+              >
+                <RefreshCw size={14} className="animate-spin" />
+                <span>Sincronizando…</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>{elapsedSeconds(tceStartedAt)}s</span>
+              </div>
+            )}
+            <button
+              onClick={triggerTce}
+              disabled={tceBusy}
+              aria-busy={tceBusy}
+              title={tceBusy ? 'Sincronização do TCE-CE em andamento' : 'Iniciar sincronização com o TCE-CE'}
+              className="btn-secondary"
+              style={{ alignSelf: 'flex-start' }}
+            >
               <RefreshCw size={13} className={tceBusy ? 'animate-spin' : ''} />
-              <span>{tceBusy ? 'Varrendo TCE-CE...' : 'Sincronizar TCE-CE'}</span>
+              <span>{tceBusy ? 'Sincronizando…' : 'Sincronizar TCE-CE'}</span>
             </button>
           </div>
         </div>

@@ -34,7 +34,7 @@ export default function EditaisHubPage() {
   const [analyses, setAnalyses] = useState<EditalAnalysis[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStep, setUploadStep] = useState<string>('');
+  const [uploadElapsedSeconds, setUploadElapsedSeconds] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -57,111 +57,70 @@ export default function EditaisHubPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (!isUploading) {
+      setUploadElapsedSeconds(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    const updateElapsedTime = () => {
+      setUploadElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    };
+
+    updateElapsedTime();
+    const timer = window.setInterval(updateElapsedTime, 1000);
+    return () => window.clearInterval(timer);
+  }, [isUploading]);
+
   const handleFilesSelected = async (incomingFiles: FileList | File[]) => {
     const list = Array.from(incomingFiles);
-    if (list.length === 0) return;
+    if (list.length === 0 || isUploading) return;
 
     setSelectedFiles(list);
     setIsUploading(true);
     setErrorMessage(null);
 
-    const fileCount = list.length;
-    setUploadStep(
-      fileCount > 1
-        ? `Consolidando ${fileCount} arquivos em linha contínua de raciocínio...`
-        : 'Extraindo conteúdo e estruturando páginas do edital...'
-    );
-
     try {
-      const timer1 = setTimeout(() => {
-        setUploadStep(
-          fileCount > 1
-            ? `Cruzando cláusulas do Edital, Termo de Ref. e Anexos (${fileCount} docs)...`
-            : 'IA Jurídica & Engenharia auditando exigências e habilitação...'
-        );
-      }, 1400);
-
-      const timer2 = setTimeout(() => {
-        setUploadStep('Mapeando pegadinhas, atestados mínimos e gerando checklist unificado...');
-      }, 3000);
-
       const newAnalysis = await uploadEditalForAnalysis(list);
-
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      setUploadStep('Auditoria concluída com sucesso! Redirecionando...');
-
-      setTimeout(() => {
-        router.push(`/editais/${newAnalysis.id}`);
-      }, 600);
+      setSelectedFiles([]);
+      router.push(`/editais/${newAnalysis.id}`);
     } catch (err: any) {
       setErrorMessage(
         err.name === 'TimeoutError'
           ? 'Tempo limite excedido ao auditar. O documento pode ser grande — tente novamente.'
           : err.message || 'Falha ao processar arquivos do edital.'
       );
+    } finally {
       setIsUploading(false);
-      setSelectedFiles([]);
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%' }}>
       <Header />
 
-      <main className="container" style={{ flex: 1, paddingTop: '36px', paddingBottom: '80px', maxWidth: '1400px' }}>
+      <main className="container" style={{ flex: 1, paddingTop: '36px', paddingBottom: '80px' }}>
         {/* Hub Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '4px 14px',
-              borderRadius: 'var(--radius-full)',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid var(--border-subtle)',
-              fontSize: '11px',
-              fontWeight: 800,
-              color: 'var(--brand-primary)',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              marginBottom: '12px',
-            }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)' }} />
+        <div style={{ marginBottom: '32px', minWidth: 0 }}>
+          <div className="page-eyebrow">
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--brand-primary)', flexShrink: 0 }} />
             <span>Analista IA de Editais • Lei 14.133/2021</span>
           </div>
 
-          <h1
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: '34px',
-              fontWeight: 900,
-              color: '#FFFFFF',
-              letterSpacing: '-0.04em',
-              lineHeight: 1.15,
-              margin: 0,
-            }}
-          >
+          <h1 className="page-display-title">
             Auditoria de Editais, Habilitação &{' '}
             <span style={{ fontStyle: 'italic', fontWeight: 600, color: 'var(--brand-primary)' }}>
               Pegadinhas Jurídicas
             </span>
           </h1>
-          <p style={{ fontSize: '14.5px', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '720px' }}>
+          <p className="page-display-lead" style={{ maxWidth: '720px' }}>
             Envie o PDF do Edital ou Termo de Referência. A IA analisa cláusulas críticas, parcelas mínimas de atestados (CAT/ART) e gera o checklist obrigatório.
           </p>
         </div>
 
         {/* 2-Column Bento Hub */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
-            gap: '24px',
-          }}
-        >
+        <div className="editais-hub-grid">
           {/* Dropzone Bento Card */}
           <div
             className="wishlabs-card"
@@ -170,6 +129,8 @@ export default function EditaisHubPage() {
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
+              minWidth: 0,
+              maxWidth: '100%',
             }}
           >
             <div>
@@ -194,6 +155,7 @@ export default function EditaisHubPage() {
                   }
                 }}
                 onClick={() => !isUploading && fileInputRef.current?.click()}
+                className="editais-dropzone"
                 style={{
                   border: `2px dashed ${dragActive ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
                   borderRadius: 'var(--radius-lg)',
@@ -234,11 +196,12 @@ export default function EditaisHubPage() {
                     >
                       <RefreshCw className="animate-spin" size={20} />
                     </div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
-                      Auditando Documentos
-                    </h3>
-                    <p style={{ fontSize: '13px', color: 'var(--brand-primary)', fontWeight: 600 }}>
-                      {uploadStep}
+                    <p
+                      role="status"
+                      aria-live="polite"
+                      style={{ fontSize: '13px', color: 'var(--brand-primary)', fontWeight: 600 }}
+                    >
+                      Auditando documentos… {uploadElapsedSeconds}s
                     </p>
                   </div>
                 ) : (
@@ -259,13 +222,13 @@ export default function EditaisHubPage() {
                     >
                       <FileText size={22} />
                     </div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', marginBottom: '6px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', marginBottom: '6px', overflowWrap: 'break-word' }}>
                       Clique ou arraste 1 ou múltiplos arquivos
                     </h3>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', overflowWrap: 'break-word' }}>
                       Selecione Edital + Termo de Ref. + Anexos (PDF ou imagens)
                     </p>
-                    <div style={{ display: 'inline-flex', gap: '6px' }}>
+                    <div style={{ display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px' }}>
                       <span style={{ fontSize: '10.5px', fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--radius-full)', backgroundColor: 'var(--brand-primary-bg)', color: 'var(--brand-primary)' }}>
                         MULTI-UPLOAD
                       </span>
@@ -285,6 +248,7 @@ export default function EditaisHubPage() {
 
               {errorMessage && (
                 <div
+                  role="alert"
                   style={{
                     marginTop: '16px',
                     padding: '12px 16px',
@@ -295,28 +259,39 @@ export default function EditaisHubPage() {
                     fontSize: '13px',
                     fontWeight: 700,
                     display: 'flex',
+                    flexWrap: 'wrap',
                     alignItems: 'center',
                     gap: '8px',
+                    minWidth: 0,
                   }}
                 >
                   <AlertCircle size={16} />
-                  <span>{errorMessage}</span>
+                  <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{errorMessage}</span>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => handleFilesSelected(selectedFiles)}
+                    disabled={isUploading || selectedFiles.length === 0}
+                    style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                  >
+                    <RefreshCw size={13} /> Tentar novamente
+                  </button>
                 </div>
               )}
             </div>
 
             {/* Feature Pills Footer */}
             <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                <ShieldAlert size={14} color="#FF81B2" />
+              <div className="editais-feature-row">
+                <ShieldAlert size={14} color="#FF81B2" style={{ flexShrink: 0, marginTop: 2 }} />
                 <span><strong style={{ color: '#FFFFFF' }}>Detector de Pegadinhas:</strong> identifica prazos curtos de vistoria e causas de inabilitação.</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                <Scale size={14} color="var(--brand-primary)" />
+              <div className="editais-feature-row">
+                <Scale size={14} color="var(--brand-primary)" style={{ flexShrink: 0, marginTop: 2 }} />
                 <span><strong style={{ color: '#FFFFFF' }}>Qualificação Técnica:</strong> quantitativos mínimos de atestados (CAT/ART).</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                <CheckSquare size={14} color="var(--brand-cyan)" />
+              <div className="editais-feature-row">
+                <CheckSquare size={14} color="var(--brand-cyan)" style={{ flexShrink: 0, marginTop: 2 }} />
                 <span><strong style={{ color: '#FFFFFF' }}>Checklist de Documentos:</strong> lista interativa dos anexos para envio da proposta.</span>
               </div>
             </div>
@@ -329,9 +304,11 @@ export default function EditaisHubPage() {
               padding: '32px',
               display: 'flex',
               flexDirection: 'column',
+              minWidth: 0,
+              maxWidth: '100%',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '20px', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Clock size={18} color="var(--brand-primary)" />
                 <h2 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>
@@ -388,7 +365,7 @@ export default function EditaisHubPage() {
                           </span>
                         </div>
 
-                        <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.3 }}>
+                        <h3 style={{ fontSize: '14.5px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.3, overflowWrap: 'break-word' }}>
                           {item.titulo}
                         </h3>
 
@@ -396,8 +373,8 @@ export default function EditaisHubPage() {
                           {item.orgao}
                         </p>
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0 }}>
                             <span
                               style={{
                                 padding: '2px 8px',

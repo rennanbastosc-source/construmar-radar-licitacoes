@@ -213,9 +213,14 @@ export const FilterBar: React.FC<Props> = ({
   const [cityQuery, setCityQuery] = useState('');
   const cityWrapRef = useRef<HTMLDivElement>(null);
 
-  // Local price inputs state
+  // Local filter inputs state
+  const [localSearch, setLocalSearch] = useState<string>(() => filters.search || '');
   const [localMinStr, setLocalMinStr] = useState<string>(() => formatBrlInput(filters.minValue));
   const [localMaxStr, setLocalMaxStr] = useState<string>(() => formatBrlInput(filters.maxValue));
+
+  useEffect(() => {
+    setLocalSearch(filters.search || '');
+  }, [filters.search]);
 
   useEffect(() => {
     setLocalMinStr(formatBrlInput(filters.minValue));
@@ -259,6 +264,10 @@ export const FilterBar: React.FC<Props> = ({
     });
   };
 
+  const handleApplySearch = () => {
+    onChange({ search: localSearch, page: 1 });
+  };
+
   return (
     <div
       className="wishlabs-card"
@@ -288,8 +297,15 @@ export const FilterBar: React.FC<Props> = ({
           <input
             type="text"
             placeholder="Buscar por objeto, prefeitura, órgão ou edital..."
-            value={filters.search || ''}
-            onChange={(e) => onChange({ search: e.target.value, page: 1 })}
+            aria-label="Buscar oportunidades por objeto, prefeitura, órgão ou edital"
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleApplySearch();
+              }
+            }}
             style={{
               width: '100%',
               height: '42px',
@@ -299,7 +315,7 @@ export const FilterBar: React.FC<Props> = ({
               borderRadius: 'var(--radius-full)',
               color: '#FFFFFF',
               outline: 'none',
-              fontSize: '13.5px',
+              fontSize: '16px',
               fontFamily: 'var(--font-body)',
               transition: 'border-color 0.15s ease',
             }}
@@ -393,7 +409,7 @@ export const FilterBar: React.FC<Props> = ({
                     border: '1px solid var(--border-subtle)',
                     borderRadius: '8px',
                     color: '#FFFFFF',
-                    fontSize: '12px',
+                    fontSize: '16px',
                     outline: 'none',
                   }}
                 />
@@ -618,7 +634,7 @@ export const FilterBar: React.FC<Props> = ({
                 border: 'none',
                 color: '#FFFFFF',
                 fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
+                fontSize: '16px',
                 fontWeight: 700,
                 textAlign: 'right',
                 outline: 'none',
@@ -646,7 +662,7 @@ export const FilterBar: React.FC<Props> = ({
                 border: 'none',
                 color: '#FFFFFF',
                 fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
+                fontSize: '16px',
                 fontWeight: 700,
                 textAlign: 'right',
                 outline: 'none',

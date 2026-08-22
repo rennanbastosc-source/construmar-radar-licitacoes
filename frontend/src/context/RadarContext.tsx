@@ -30,7 +30,9 @@ interface RadarContextType {
   opportunities: LicitacaoOportunidade[];
   stats: StatsOverviewData | null;
   loading: boolean;
+  isRefreshing: boolean;
   statsLoading: boolean;
+  statsError: string | null;
   error: string | null;
   viewMode: 'table' | 'cards';
   selectedOpp: LicitacaoOportunidade | null;
@@ -75,10 +77,13 @@ const RadarContext = createContext<RadarContextType | undefined>(undefined);
 export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [opportunities, setOpportunities] = useState<LicitacaoOportunidade[]>([]);
   const [stats, setStats] = useState<StatsOverviewData | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [statsLoading, setStatsLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [statsLoading, setStatsLoading] = useState<boolean>(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasLoadedInitially, setHasLoadedInitially] = useState<boolean>(false);
+  const opportunitiesRef = React.useRef<LicitacaoOportunidade[]>([]);
 
   // View state & Drawer
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
@@ -112,6 +117,7 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (cachedOpps) {
           const parsedOpps = JSON.parse(cachedOpps);
           if (Array.isArray(parsedOpps) && parsedOpps.length > 0) {
+            opportunitiesRef.current = parsedOpps;
             setOpportunities(parsedOpps);
           }
         }
@@ -140,12 +146,14 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // 2. Load Data from Backend with Cache Persistence
   const loadData = useCallback(async (currentFilters: OpportunityFilterParams) => {
-    // Only show full loading indicator if we don't have items already rendered
-    setLoading(true);
+    const hasPreviousData = opportunitiesRef.current.length > 0;
+    setLoading(!hasPreviousData);
+    setIsRefreshing(hasPreviousData);
     setError(null);
     try {
       const resp = await fetchOpportunities(currentFilters);
       const data = resp.data || [];
+      opportunitiesRef.current = data;
       setOpportunities(data);
       setTotalPages(resp.meta?.totalPages || 1);
       setTotalRecords(resp.meta?.total || 0);
@@ -175,19 +183,25 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (typeof window !== 'undefined') {
           try {
             const cached = localStorage.getItem(RADAR_CACHE_KEY);
-            if (cached) return JSON.parse(cached);
+            if (cached) {
+              const cachedOpps = JSON.parse(cached);
+              opportunitiesRef.current = cachedOpps;
+              return cachedOpps;
+            }
           } catch {}
         }
         return [];
       });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
   // 3. Load Stats with Cache Persistence
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
+    setStatsError(null);
     try {
       const data = await fetchStats(filters.uf || 'CE', filters.minValue || 900000.0);
       setStats(data);
@@ -202,8 +216,9 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           localStorage.setItem(RADAR_STATS_CACHE_KEY, JSON.stringify(data));
         } catch {}
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[RadarContext] Erro ao carregar estatísticas do radar:', err);
+      setStatsError(err?.message || 'Erro ao carregar os indicadores do radar.');
     } finally {
       setStatsLoading(false);
     }
@@ -402,7 +417,9 @@ export const RadarProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         opportunities,
         stats,
         loading,
+        isRefreshing,
         statsLoading,
+        statsError,
         error,
         viewMode,
         selectedOpp,

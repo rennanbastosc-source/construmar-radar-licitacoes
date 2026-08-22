@@ -45,6 +45,7 @@ export default function RadarDashboardPage() {
         syncStatus={syncStatus}
         isSyncing={isSyncing}
         onTriggerSync={handleTriggerSync}
+        syncFeedback={syncFeedback}
       />
 
       <main className="container" style={{ paddingTop: '36px', paddingBottom: '80px' }}>

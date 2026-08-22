@@ -36,6 +36,9 @@ export default function EditalDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pegadinhas' | 'qualificacao' | 'habilitacao' | 'checklist' | 'indices'>('pegadinhas');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [checklistError, setChecklistError] = useState<string | null>(null);
+  const [pendingChecklistItemId, setPendingChecklistItemId] = useState<string | null>(null);
+  const [checklistRetry, setChecklistRetry] = useState<{ itemId: string; status: boolean } | null>(null);
 
   const loadDetail = async () => {
     if (!id) return;
@@ -60,20 +63,41 @@ export default function EditalDetailPage() {
   }, [id]);
 
   const handleToggleCheck = async (itemId: string, currentStatus: boolean) => {
-    if (!analysis) return;
-    const nextStatus = !currentStatus;
+    if (!analysis || pendingChecklistItemId !== null) return;
+    const previousStatus = currentStatus;
+    const nextStatus = !previousStatus;
 
-    setAnalysis({
-      ...analysis,
-      checklistDocumentos: analysis.checklistDocumentos?.map((c) =>
-        c.id === itemId ? { ...c, marcado: nextStatus } : c
-      ),
-    });
+    setChecklistError(null);
+    setChecklistRetry(null);
+    setPendingChecklistItemId(itemId);
+    setAnalysis((currentAnalysis) =>
+      currentAnalysis
+        ? {
+            ...currentAnalysis,
+            checklistDocumentos: currentAnalysis.checklistDocumentos?.map((c) =>
+              c.id === itemId ? { ...c, marcado: nextStatus } : c
+            ),
+          }
+        : currentAnalysis
+    );
 
     try {
       await toggleEditalChecklist(itemId, nextStatus);
-    } catch (err) {
-      console.error('Falha ao alternar checklist:', err);
+    } catch {
+      setAnalysis((currentAnalysis) =>
+        currentAnalysis
+          ? {
+              ...currentAnalysis,
+              checklistDocumentos: currentAnalysis.checklistDocumentos?.map((c) =>
+                c.id === itemId ? { ...c, marcado: previousStatus } : c
+              ),
+            }
+          : currentAnalysis
+      );
+      setChecklistError('Não foi possível atualizar. Tentar novamente?');
+      setChecklistRetry({ itemId, status: previousStatus });
+    } finally {
+      setPendingChecklistItemId(null);
     }
   };
 
@@ -342,6 +366,41 @@ export default function EditalDetailPage() {
             </div>
 
             {/* Tab Contents */}
+            {checklistError && checklistRetry && (
+              <div
+                role="alert"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'rgba(255, 129, 178, 0.15)',
+                  border: '1px solid rgba(255, 129, 178, 0.3)',
+                  color: '#FF81B2',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                }}
+              >
+                <AlertCircle size={16} />
+                <span style={{ flex: 1 }}>{checklistError}</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    if (checklistRetry) {
+                      void handleToggleCheck(checklistRetry.itemId, checklistRetry.status);
+                    }
+                  }}
+                  disabled={pendingChecklistItemId !== null}
+                  style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                >
+                  <RefreshCw size={13} /> Tentar novamente
+                </button>
+              </div>
+            )}
+
             {activeTab === 'pegadinhas' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {(analysis.pegadinhas || []).length === 0 ? (
@@ -442,7 +501,12 @@ export default function EditalDetailPage() {
                   {(analysis.checklistDocumentos || []).map((item) => (
                     <div
                       key={item.id}
-                      onClick={() => handleToggleCheck(item.id, item.marcado)}
+                      onClick={() => {
+                        if (pendingChecklistItemId === null) {
+                          void handleToggleCheck(item.id, item.marcado);
+                        }
+                      }}
+                      aria-disabled={pendingChecklistItemId !== null}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -451,7 +515,8 @@ export default function EditalDetailPage() {
                         borderRadius: 'var(--radius-md)',
                         backgroundColor: '#101012',
                         border: `1px solid ${item.marcado ? 'var(--brand-primary-border)' : 'var(--border-subtle)'}`,
-                        cursor: 'pointer',
+                        cursor: pendingChecklistItemId === null ? 'pointer' : 'wait',
+                        pointerEvents: pendingChecklistItemId === null ? 'auto' : 'none',
                         transition: 'all 0.15s ease',
                       }}
                     >
@@ -468,7 +533,11 @@ export default function EditalDetailPage() {
                           color: '#0E0E10',
                         }}
                       >
-                        {item.marcado && <Check size={14} strokeWidth={3} />}
+                        {pendingChecklistItemId === item.id ? (
+                          <RefreshCw className="animate-spin" size={14} strokeWidth={3} />
+                        ) : (
+                          item.marcado && <Check size={14} strokeWidth={3} />
+                        )}
                       </div>
 
                       <span

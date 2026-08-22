@@ -104,6 +104,8 @@ body {
 
 .container {
   max-width: 1400px;
+  width: 100%;
+  min-width: 0;
   margin-left: auto;
   margin-right: auto;
   padding-left: 1.5rem;
@@ -168,7 +170,7 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: 16px; /* evita auto-zoom do Safari iOS; volta a 12.5px em ≥768px */
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -192,7 +194,7 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   color: var(--text-primary);
-  font-size: 12.5px;
+  font-size: 16px; /* evita auto-zoom do Safari iOS; volta a 12.5px em ≥768px */
   font-weight: 500;
   cursor: pointer;
   outline: none;
@@ -303,4 +305,361 @@ body {
 
 .live-pulse {
   animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* Spin animation for loading icons (referenced by className="animate-spin") */
+@keyframes spinKeyframes {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  display: inline-block;
+  animation: spinKeyframes 0.9s linear infinite;
+}
+
+/* Disabled visual state for action buttons */
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Select pills: 16px base evita auto-zoom no Safari iOS */
+@media (min-width: 768px) {
+  .select-trigger,
+  .select-pill-native {
+    font-size: 12.5px;
+  }
+}
+
+/* Header layout — desktop defaults match the previous inline styles */
+.app-header {
+  max-width: 100%;
+}
+
+.app-header-inner {
+  display: flex;
+  align-items: center;
+  height: 72px;
+  gap: 2rem;
+  min-width: 0;
+}
+
+.app-header-logo {
+  flex-shrink: 0;
+}
+
+.app-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  background-color: rgba(255, 255, 255, 0.04);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+}
+
+.app-header-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.app-header-health {
+  gap: 7px;
+  padding: 6px 14px;
+  flex-shrink: 0;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.app-header-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.app-header-sync {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Wide-but-tight desktop: keep one row, free space so the CTA is never clipped */
+@media (max-width: 1500px) {
+  .app-header-inner {
+    gap: 1rem;
+  }
+
+  .app-header-nav {
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .app-header-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-header-nav-link {
+    padding: 6px 10px;
+  }
+
+  .app-header-health {
+    padding: 6px 10px;
+  }
+
+  .app-header-actions {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .app-header-status,
+  .app-header-health-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .app-header-health {
+    padding: 6px 8px;
+    gap: 0;
+  }
+}
+
+@media (max-width: 960px) {
+  .app-header-nav-label,
+  .app-header-nav-badge {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .app-header-nav-link {
+    padding: 8px;
+    gap: 0;
+  }
+}
+
+/* Mobile: grid — logo+actions on row 1, nav capsule on row 2 */
+@media (max-width: 640px) {
+  .app-header .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .app-header-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    height: auto;
+    min-height: 0;
+    gap: 8px 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    align-items: center;
+  }
+
+  .app-header-logo {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .app-header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+    gap: 8px;
+  }
+
+  .app-header-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    justify-content: space-evenly;
+    min-width: 0;
+  }
+
+  .app-header-subtitle,
+  .app-header-nav-badge {
+    display: none;
+  }
+
+  .app-header-nav-link {
+    padding: 8px 12px;
+    gap: 0;
+  }
+
+  .app-header-nav-label,
+  .app-header-health-label,
+  .app-header-status,
+  .app-header-sync-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .app-header-health {
+    padding: 6px 8px;
+    gap: 0;
+  }
+
+  .btn-primary.app-header-sync {
+    padding: 8px;
+    min-width: 36px;
+    gap: 0;
+  }
+}
+
+/* Page titles / hub grids — wrap instead of blowing the viewport */
+.page-display-title {
+  font-family: var(--font-heading);
+  font-size: 34px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  margin: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.page-display-lead {
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.page-eyebrow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--brand-primary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.sync-source-grid,
+.editais-hub-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.sync-source-grid {
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.editais-hub-grid {
+  gap: 24px;
+}
+
+.sync-source-grid > *,
+.editais-hub-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.editais-dropzone {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.editais-feature-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.editais-feature-row span {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 768px) {
+  .sync-source-grid,
+  .editais-hub-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .page-display-title {
+    font-size: 26px;
+  }
+
+  .page-display-lead {
+    font-size: 14px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin,
+  .shimmer-box,
+  .live-pulse {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -31,6 +31,28 @@ function authHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${API_AUTH_TOKEN}` };
 }
 
+function isAbortError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const name = (error as { name?: unknown }).name;
+  return name === 'AbortError' || name === 'TimeoutError';
+}
+
+function createTimeoutError(): Error {
+  return new Error('Tempo limite excedido. Tente novamente.');
+}
+
+async function fetchWithFriendlyTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    if (isAbortError(error)) throw createTimeoutError();
+    throw error;
+  }
+}
+
 export async function fetchOpportunities(
   params: OpportunityFilterParams
 ): Promise<PaginatedOpportunitiesResponse> {
@@ -54,7 +76,7 @@ export async function fetchOpportunities(
   if (params.page) query.set('page', params.page.toString());
   if (params.pageSize) query.set('pageSize', params.pageSize.toString());
 
-  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades?${query.toString()}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/oportunidades?${query.toString()}`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -70,7 +92,7 @@ export async function fetchOpportunities(
 
 export async function fetchOpportunityDetail(id: string): Promise<OpportunityDetailResponse> {
   const encodedId = encodeURIComponent(id);
-  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -86,7 +108,7 @@ export async function fetchOpportunityDetail(id: string): Promise<OpportunityDet
 
 export async function fetchOpportunityOrigin(id: string): Promise<OpportunityOriginDetail> {
   const encodedId = encodeURIComponent(id);
-  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}/origem`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}/origem`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(15000),
@@ -106,7 +128,7 @@ export async function triggerDirectEditalAnalysis(
   documentUrl?: string
 ): Promise<EditalAnalysis> {
   const encodedId = encodeURIComponent(opportunityId);
-  const res = await fetch(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}/auditar-edital`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/oportunidades/${encodedId}/auditar-edital`, {
     method: 'POST',
     headers: {
       ...authHeaders(),
@@ -133,7 +155,7 @@ export async function fetchStats(
     minValue: minValue.toString(),
   });
 
-  const res = await fetch(`${API_BASE}/api/licitacoes/stats?${query.toString()}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/stats?${query.toString()}`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -156,7 +178,7 @@ export async function triggerSync(
     minValue: minValue.toString(),
   });
 
-  const res = await fetch(`${API_BASE}/api/licitacoes/sync?${query.toString()}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/sync?${query.toString()}`, {
     method: 'POST',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -175,7 +197,7 @@ export async function triggerTCESync(): Promise<{
   status: string;
   startedAt: string;
 }> {
-  const res = await fetch(`${API_BASE}/api/licitacoes/sync-tce`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/sync-tce`, {
     method: 'POST',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -198,7 +220,7 @@ export interface SyncStatusResponse {
 }
 
 export async function fetchSyncStatus(): Promise<SyncStatusResponse> {
-  const res = await fetch(`${API_BASE}/api/licitacoes/sync/status`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/sync/status`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -213,7 +235,7 @@ export async function fetchSyncStatus(): Promise<SyncStatusResponse> {
 }
 
 export async function fetchSyncHistory(limit: number = 20): Promise<LicitacaoSyncRun[]> {
-  const res = await fetch(`${API_BASE}/api/licitacoes/sync/history?limit=${limit}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/sync/history?limit=${limit}`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -247,10 +269,11 @@ export async function uploadEditalOrcamento(
     formData.append('oportunidadeId', oportunidadeId);
   }
 
-  const res = await fetch(`${API_BASE}/api/orcamentos/upload`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/orcamentos/upload`, {
     method: 'POST',
     headers: authHeaders(),
     body: formData,
+    signal: AbortSignal.timeout(120000),
   });
 
   if (!res.ok) {
@@ -265,9 +288,10 @@ export async function fetchOrcamentos(
   limit: number = 20,
   offset: number = 0
 ): Promise<PaginatedOrcamentosResponse> {
-  const res = await fetch(`${API_BASE}/api/orcamentos?limit=${limit}&offset=${offset}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/orcamentos?limit=${limit}&offset=${offset}`, {
     cache: 'no-store',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -278,9 +302,10 @@ export async function fetchOrcamentos(
 }
 
 export async function fetchOrcamentoDetail(id: string): Promise<Orcamento> {
-  const res = await fetch(`${API_BASE}/api/orcamentos/${id}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/orcamentos/${id}`, {
     cache: 'no-store',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -291,13 +316,14 @@ export async function fetchOrcamentoDetail(id: string): Promise<Orcamento> {
 }
 
 export async function updateOrcamentoItens(orcamento: Orcamento): Promise<Orcamento> {
-  const res = await fetch(`${API_BASE}/api/orcamentos/${orcamento.id}/itens`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/orcamentos/${orcamento.id}/itens`, {
     method: 'PUT',
     headers: {
       ...authHeaders(),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(orcamento),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -308,8 +334,9 @@ export async function updateOrcamentoItens(orcamento: Orcamento): Promise<Orcame
 }
 
 export async function downloadOrcamentoSeobraXlsx(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/orcamentos/${id}/exportar-seobra-xlsx`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/orcamentos/${id}/exportar-seobra-xlsx`, {
     headers: authHeaders(),
+    signal: AbortSignal.timeout(60000),
   });
   if (!res.ok) {
     throw new Error('Erro ao baixar planilha SEOBRA.');
@@ -324,9 +351,10 @@ export async function downloadOrcamentoSeobraXlsx(id: string): Promise<void> {
 }
 
 export async function despacharParaSeobra(id: string): Promise<Orcamento> {
-  const res = await fetch(`${API_BASE}/api/orcamentos/${id}/despachar-seobra`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/orcamentos/${id}/despachar-seobra`, {
     method: 'POST',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(120000),
   });
 
   if (!res.ok) {
@@ -338,7 +366,7 @@ export async function despacharParaSeobra(id: string): Promise<Orcamento> {
 }
 
 export async function fetchPncpHealth(): Promise<PncpHealth> {
-  const res = await fetch(`${API_BASE}/api/licitacoes/pncp-health`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/pncp-health`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -349,7 +377,7 @@ export async function fetchPncpHealth(): Promise<PncpHealth> {
 }
 
 export async function fetchTceHealth(): Promise<PncpHealth> {
-  const res = await fetch(`${API_BASE}/api/licitacoes/tce-health`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/licitacoes/tce-health`, {
     cache: 'no-store',
     headers: authHeaders(),
     signal: AbortSignal.timeout(12000),
@@ -360,9 +388,10 @@ export async function fetchTceHealth(): Promise<PncpHealth> {
 }
 
 export async function fetchSeobraStatus(): Promise<SeobraStatusResponse> {
-  const res = await fetch(`${API_BASE}/api/seobra/status`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/seobra/status`, {
     cache: 'no-store',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -413,14 +442,18 @@ export async function uploadEditalForAnalysis(
   try {
     res = await attempt();
   } catch (err) {
-    const isTimeoutError =
-      typeof err === 'object' && err !== null && 'name' in err && err.name === 'TimeoutError';
+    const isTimeoutError = isAbortError(err);
     if (!(err instanceof TypeError || isTimeoutError)) {
       throw err;
     }
 
     await new Promise((resolve) => setTimeout(resolve, 2500));
-    res = await attempt();
+    try {
+      res = await attempt();
+    } catch (retryErr) {
+      if (isAbortError(retryErr)) throw createTimeoutError();
+      throw retryErr;
+    }
   }
 
   if (res.status === 503) {
@@ -439,9 +472,10 @@ export async function fetchEditalAnalyses(
   limit: number = 20,
   offset: number = 0
 ): Promise<PaginatedEditalAnalysesResponse> {
-  const res = await fetch(`${API_BASE}/api/editais?limit=${limit}&offset=${offset}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/editais?limit=${limit}&offset=${offset}`, {
     cache: 'no-store',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -452,9 +486,10 @@ export async function fetchEditalAnalyses(
 }
 
 export async function fetchEditalAnalysisDetail(id: string): Promise<EditalAnalysis> {
-  const res = await fetch(`${API_BASE}/api/editais/${id}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/editais/${id}`, {
     cache: 'no-store',
     headers: authHeaders(),
+    signal: AbortSignal.timeout(12000),
   });
 
   if (!res.ok) {
@@ -465,13 +500,14 @@ export async function fetchEditalAnalysisDetail(id: string): Promise<EditalAnaly
 }
 
 export async function toggleEditalChecklist(itemId: string, marcado: boolean): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/editais/checklist/${itemId}`, {
+  const res = await fetchWithFriendlyTimeout(`${API_BASE}/api/editais/checklist/${itemId}`, {
     method: 'PUT',
     headers: {
       ...authHeaders(),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ marcado }),
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!res.ok) {
