@@ -318,28 +318,53 @@ Responda APENAS com o JSON válido, 100% em Português (PT-BR). Não inclua text
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(bodyJSON))
-	if err != nil {
-		return nil, fmt.Errorf("failed to build http request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", a.apiKey))
+	// ponytail: single retry on transient upstream failures (5xx/429/network);
+	// 120s cap per attempt keeps both attempts inside the 240s context budget.
+	const maxAttempts = 2
+	var respBytes []byte
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-time.After(2 * time.Second):
+			case <-ctx.Done():
+				return nil, fmt.Errorf("edital ai request canceled: %w", ctx.Err())
+			}
+		}
+		attemptCtx, attemptCancel := context.WithTimeout(ctx, 120*time.Second)
+		httpReq, err := http.NewRequestWithContext(attemptCtx, "POST", endpoint, bytes.NewReader(bodyJSON))
+		if err != nil {
+			attemptCancel()
+			return nil, fmt.Errorf("failed to build http request: %w", err)
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", a.apiKey))
 
-	resp, err := a.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("edital ai request failed: %w", err)
-	}
-	defer func() {
+		resp, err := a.httpClient.Do(httpReq)
+		if err != nil {
+			attemptCancel()
+			lastErr = fmt.Errorf("edital ai request failed: %w", err)
+			continue
+		}
+		respBytes, err = io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
-	}()
-
-	respBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		attemptCancel()
+		if err != nil {
+			lastErr = fmt.Errorf("failed to read response: %w", err)
+			continue
+		}
+		if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
+			lastErr = fmt.Errorf("edital ai endpoint returned status %d: %s", resp.StatusCode, string(respBytes))
+			continue
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return nil, fmt.Errorf("edital ai endpoint returned status %d: %s", resp.StatusCode, string(respBytes))
+		}
+		lastErr = nil
+		break
 	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("edital ai endpoint returned status %d: %s", resp.StatusCode, string(respBytes))
+	if lastErr != nil {
+		return nil, lastErr
 	}
 
 	var chatResp struct {

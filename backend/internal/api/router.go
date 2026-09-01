@@ -53,9 +53,21 @@ func newIPRateLimiter(rate int, window time.Duration) *ipRateLimiter {
 
 func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// ponytail: /health is exempt — Render's probes (every 5s from one IP)
+		// ponytail: /health is exempt — Railway's probes (every 5s from one IP)
 		// would otherwise lock the bucket and mark the service unhealthy
 		if r.URL.Path == "/health" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// CORS preflights are browser-generated per poll cycle; charging them
+		// doubles the real request count and starves the bucket.
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		if l.rate <= 0 {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -68,21 +80,30 @@ func (l *ipRateLimiter) Middleware(next http.Handler) http.Handler {
 		l.mu.Lock()
 		v, exists := l.visitors[ip]
 		now := time.Now()
-		if !exists || now.Sub(v.lastSeen) > l.window {
-			l.visitors[ip] = &visitor{lastSeen: now, tokens: 1}
+		if !exists {
+			l.visitors[ip] = &visitor{lastSeen: now, tokens: l.rate - 1}
 			l.mu.Unlock()
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		if v.tokens >= l.rate {
+		// Refill tokens proportionally to elapsed time; without this the
+		// bucket locks permanently while an active client keeps refreshing
+		// lastSeen (observed as endless 429s under dashboard polling).
+		if refill := int(now.Sub(v.lastSeen) / (l.window / time.Duration(l.rate))); refill > 0 {
+			v.tokens += refill
+			if v.tokens > l.rate {
+				v.tokens = l.rate
+			}
+		}
+		v.lastSeen = now
+
+		if v.tokens <= 0 {
 			l.mu.Unlock()
 			http.Error(w, `{"error":"Too Many Requests: limite de requisições excedido. Tente novamente em instantes."}`, http.StatusTooManyRequests)
 			return
 		}
-
-		v.tokens++
-		v.lastSeen = now
+		v.tokens--
 		l.mu.Unlock()
 
 		next.ServeHTTP(w, r)
